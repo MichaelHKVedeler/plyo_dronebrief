@@ -30,6 +30,8 @@ npm run preview
 - Export/import of portable snapshot keys, with schema validation and size limits.
 - Layer visibility switches, kept separate from saved brief content.
 - Optional Google Maps adapter: project location, circle/oval outlines, camera markers and polygons.
+- Satellite toggle and mouse-wheel zoom without Ctrl in both editor and viewer. These view preferences do not modify the brief JSON.
+- Editor/viewer fit the browser window. The details panel has its own shadcn scrollbar; on narrow screens it sits below the map.
 - Tests covering Unicode exports, malformed keys, persistence failures, and read-only behavior.
 
 Project and numeric fields commit on blur (clicking elsewhere or pressing Tab). Initial coordinates are 0, 0; set the shoot location before adding a rig. A rig has its own position; moving project coordinates does not silently move an existing rig. Use **Move rig to project location**.
@@ -54,7 +56,7 @@ The dev server stays on port 5173 and reports an error if that port is occupied,
 
 See [Google's API key restriction guidance](https://developers.google.com/maps/api-security-best-practices).
 
-A Maps JavaScript API key is browser-visible. Restrict its allowed referrers and API in Google Cloud; do not put a server secret in any VITE variable. A working Google Cloud configuration, including any required billing, is your responsibility. Google Maps could not be exercised against a live key during skeleton setup.
+A Maps JavaScript API key is browser-visible. Restrict its allowed referrers and API in Google Cloud; do not put a server secret in any VITE variable. A working Google Cloud configuration, including any required billing, is your responsibility. Verify live map loading on each deployment using its restricted key.
 
 Without a key, the map shows a clear placeholder. All application controls use shadcn/ui. The Google Maps canvas, attribution, and geographic shapes are the necessary mapping exception.
 

@@ -45,7 +45,7 @@ export default function App() {
     setScreen({ page: 'brief', session })
     if (session.brief !== screen.session.brief && session.mode === 'edit') saveBrief(session.brief)
   }
-  return <>
+  return <div className={screen.page === 'brief' ? 'flex h-dvh min-h-0 flex-col overflow-hidden' : 'min-h-svh'}>
     <AppHeader onHome={home}>{screen.page === 'brief' && <>
       <span role="status" className="mr-2 text-sm text-muted-foreground">{screen.session.mode === 'edit' ? saveStatus : 'Viewing shared snapshot'}</span>
       <Button variant="outline" onClick={home}><ArrowLeft /> Home</Button>
@@ -57,5 +57,5 @@ export default function App() {
     {screen.page === 'create' && <CreateBriefPage onCreate={(brief) => openBrief(brief, 'edit')} onCancel={home} />}
     {screen.page === 'brief' && <BriefPage session={screen.session} dispatch={dispatch} error={error} />}
     <ExportDialog shareKey={shareKey} onClose={() => setShareKey(null)} />
-  </>
+  </div>
 }
