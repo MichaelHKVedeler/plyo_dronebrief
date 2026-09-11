@@ -1,6 +1,6 @@
-import { useEffect, useId, useState } from 'react'
-import { APIProvider, Map, Polygon, AdvancedMarker, useMap, useApiLoadingStatus, APILoadingStatus } from '@vis.gl/react-google-maps'
-import { LocateFixed, MapPin, Minus, Plus, X } from 'lucide-react'
+import { useId, useState } from 'react'
+import { APIProvider, Map, Polygon, AdvancedMarker, useApiLoadingStatus, APILoadingStatus } from '@vis.gl/react-google-maps'
+import { MapPin, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
@@ -10,6 +10,8 @@ import type { BriefAction, BriefSession } from '@/features/briefs/state/brief-se
 import { cameraLabels, type CameraAngle, type Position } from '@/features/briefs/model/brief'
 import { CameraMarker } from './camera-marker'
 import { RigObject } from './rig-object'
+import { MapControls } from './map-controls'
+import { MapSearch } from './map-search'
 import { metersPerPixel } from './geometry'
 import { aimPlacement, idleTool, placeCamera, placementHint, type MapTool } from './placement'
 
@@ -20,17 +22,6 @@ type Props = {
   onToolChange: (tool: MapTool) => void
   selectedId: string | null
   onSelect: (id: string | null) => void
-}
-function MapControls({ position }: { position: Position }) {
-  const map = useMap()
-  const { lat, lng } = position
-  // Other brief edits must not reset the user's current map view.
-  useEffect(() => { map?.panTo({ lat, lng }) }, [map, lat, lng])
-  return <div className="absolute bottom-8 right-3 flex gap-1 rounded-lg border bg-card p-1 shadow-sm">
-    <Button variant="ghost" size="icon" aria-label="Zoom in" onClick={() => map?.setZoom((map.getZoom() ?? 2) + 1)}><Plus /></Button>
-    <Button variant="ghost" size="icon" aria-label="Zoom out" onClick={() => map?.setZoom((map.getZoom() ?? 2) - 1)}><Minus /></Button>
-    <Button variant="ghost" size="icon" aria-label="Center on project" onClick={() => { map?.panTo(position); map?.setZoom(17) }}><LocateFixed /></Button>
-  </div>
 }
 function ConnectedMap({ session, dispatch, tool, onToolChange, selectedId, onSelect }: Props) {
   const status = useApiLoadingStatus()
@@ -92,9 +83,9 @@ function ConnectedMap({ session, dispatch, tool, onToolChange, selectedId, onSel
       {pendingAngle && <CameraMarker angle={pendingAngle} editable={false} interactive={false} selected={false}
         pixelsToMeters={metersPerPixel(pendingAngle.position.lat, zoom)} onSelect={() => {}} onCommit={() => {}} />}
       {visibility.polygons && brief.polygons.map((polygon) => <Polygon key={polygon.id} paths={polygon.vertices} strokeColor="#b45309" fillColor="#d97706" fillOpacity={0.2} clickable={false} />)}
-      <MapControls position={brief.coordinates} />
-    </Map>
-    <div className="pointer-events-none absolute inset-x-3 top-3 flex flex-wrap items-start justify-between gap-2">
+      <MapControls brief={brief} />
+      <MapSearch />
+    <div className="pointer-events-none absolute inset-x-3 top-16 flex flex-wrap items-start justify-between gap-2">
       {editing && <Button variant={!interactive ? 'default' : 'secondary'} className="pointer-events-auto shadow-sm"
         onClick={() => { onSelect(null); onToolChange(interactive ? { kind: 'project' } : idleTool) }}>
         {interactive ? <MapPin /> : <X />}{interactive ? 'Set location' : 'Cancel placement'}
@@ -105,6 +96,7 @@ function ConnectedMap({ session, dispatch, tool, onToolChange, selectedId, onSel
       </div>
       {hint && <Badge className="w-full whitespace-normal py-2" role="status">{hint}</Badge>}
     </div>
+    </Map>
   </>
 }
 function MapMessage({ title, description }: { title: string; description: string }) {
