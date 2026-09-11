@@ -21,7 +21,7 @@ Position coordinates use WGS84. Height is a requested photography height in mete
 
 `radiusMeters` is the semi-major axis. `ovalRatio` is minor/major axis, 0.1–1; 1 is a circle. `rotationDegrees` rotates the major axis clockwise from north, in [0, 360). The rig's own position is independent of the project's reference coordinates.
 
-Map rendering currently uses a small-area approximation. Precise geodesic editing and handling of polar/antimeridian geometry are future work.
+Map geometry uses spherical distances and bearings with longitude wrapping. The rig outline has 64 vertices. The combined edge dot changes the semi-major axis and its bearing together: distance from the center determines radius, and direction from the center determines rotation. The dot stays on the major-axis endpoint while the center and oval ratio remain fixed. The oval handle sits halfway along the minor axis and changes the ratio without changing the major radius. These are planning graphics, not survey geometry.
 
 ## Angles
 
@@ -51,6 +51,8 @@ Map rendering currently uses a small-area approximation. Precise geodesic editin
 ```
 
 An angle uses the height list of its type. No direction field is used for 360.
+
+360 placement commits with one map click. DSLR and drone-image placement commits after a position click and a second look-at click. Only the resulting bearing is stored; the direction handle's screen-sized line is not a stored distance or field of view. Map drags commit position or direction at drag end. Temporary placement previews and selections are excluded from JSON.
 
 ## Polygons and image overlays
 
