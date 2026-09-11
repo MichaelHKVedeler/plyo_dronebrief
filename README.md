@@ -41,6 +41,19 @@ Project and numeric fields commit on blur (clicking elsewhere or pressing Tab). 
 3. Optionally set `VITE_GOOGLE_MAPS_MAP_ID`; the skeleton otherwise uses `DEMO_MAP_ID`.
 4. Restart Vite.
 
+Keep the actual key only in `.env.local`, which Git ignores. `.env.example` must stay blank. You can confirm the exclusion with `git check-ignore -v .env.local`. Do not force-add local environment files.
+
+In Google Cloud Console, open **APIs & Services → Credentials → your API key**:
+
+- Set **Application restrictions** to **Websites**.
+- Allow `http://127.0.0.1:5173/*` and `http://localhost:5173/*` for local development.
+- Set **API restrictions** to **Restrict key**, selecting **Maps JavaScript API**.
+- Confirm Maps JavaScript API is enabled and the Google Cloud project has the required billing configuration.
+
+The dev server stays on port 5173 and reports an error if that port is occupied, so it cannot silently switch to an origin excluded by your key restrictions. Before deploying, use a separately restricted production key and allow the exact production website origin. Configure it in your hosting provider's build environment; never commit it. Vite includes browser-prefixed values in the client build, so `.env.local` prevents source-control exposure, not browser visibility.
+
+See [Google's API key restriction guidance](https://developers.google.com/maps/api-security-best-practices).
+
 A Maps JavaScript API key is browser-visible. Restrict its allowed referrers and API in Google Cloud; do not put a server secret in any VITE variable. A working Google Cloud configuration, including any required billing, is your responsibility. Google Maps could not be exercised against a live key during skeleton setup.
 
 Without a key, the map shows a clear placeholder. All application controls use shadcn/ui. The Google Maps canvas, attribution, and geographic shapes are the necessary mapping exception.
