@@ -8,7 +8,7 @@ The runtime contract is `src/features/briefs/model/brief.ts`. This document expl
 | id | Stable brief ID |
 | createdAt, updatedAt | UTC ISO timestamps |
 | project | name, clientName, calendar date YYYY-MM-DD, times HH:mm[] |
-| coordinates | Project/map reference point {lat, lng}; initially 0, 0 |
+| coordinates | Project/map reference point {lat, lng}; new briefs default to Oslo (59.9139, 10.7522) |
 | circleRig | null or {id, position, radiusMeters, ovalRatio, rotationDegrees} |
 | angles | Discriminated camera-angle array |
 | typeSettings | Per-camera arrays of heightsMeters |

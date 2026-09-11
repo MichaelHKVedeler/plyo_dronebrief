@@ -63,7 +63,7 @@ export function createBrief(project: ProjectDetails): DroneBrief {
   const now = new Date().toISOString()
   return briefSchema.parse({
     schemaVersion: 1, id: crypto.randomUUID(), createdAt: now, updatedAt: now,
-    project, coordinates: { lat: 0, lng: 0 }, circleRig: null,
+    project, coordinates: { lat: 59.9139, lng: 10.7522 }, circleRig: null,
     angles: [], typeSettings: {
       'drone-image': { heightsMeters: [30, 60] },
       '360': { heightsMeters: [30] }, dslr: { heightsMeters: [1.6] },

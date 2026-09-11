@@ -57,7 +57,7 @@ function ConnectedMap({ session, dispatch, tool, onToolChange, selectedId, onSel
   if (status === APILoadingStatus.FAILED || status === APILoadingStatus.AUTH_FAILURE) return <MapMessage title="Map could not load" description="Check your map configuration and connection. The brief is still available." />
   if (status !== APILoadingStatus.LOADED) return <MapMessage title="Loading Google Maps…" description="Your brief is ready while the map connects." />
   return <>
-    <Map defaultCenter={brief.coordinates} defaultZoom={brief.coordinates.lat === 0 && brief.coordinates.lng === 0 ? 2 : 17}
+    <Map defaultCenter={brief.coordinates} defaultZoom={brief.coordinates.lat === 59.9139 && brief.coordinates.lng === 10.7522 ? 10 : brief.coordinates.lat === 0 && brief.coordinates.lng === 0 ? 2 : 17}
       mapId={import.meta.env.VITE_GOOGLE_MAPS_MAP_ID || 'DEMO_MAP_ID'} disableDefaultUI
       mapTypeId={satellite ? 'satellite' : 'roadmap'} tilt={0} gestureHandling="greedy"
       draggableCursor={editing && !interactive ? 'crosshair' : undefined}

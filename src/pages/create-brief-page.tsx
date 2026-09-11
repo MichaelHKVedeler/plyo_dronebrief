@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { ArrowLeft, Plus, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Slider } from '@/components/ui/slider'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -9,7 +10,11 @@ import { createBrief, projectSchema, type DroneBrief, type ProjectDetails } from
 
 export function CreateBriefPage({ onCreate, onCancel }: { onCreate: (brief: DroneBrief) => void; onCancel: () => void }) {
   const [step, setStep] = useState(0)
-  const [project, setProject] = useState<ProjectDetails>({ name: '', clientName: '', date: '', times: ['09:00'] })
+  const [project, setProject] = useState<ProjectDetails>(() => {
+    const today = new Date()
+    const date = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+    return { name: '', clientName: '', date, times: ['09:00'] }
+  })
   const [error, setError] = useState('')
   const update = (patch: Partial<ProjectDetails>) => setProject((current) => ({ ...current, ...patch }))
   return <main className="mx-auto max-w-xl px-6 py-10">
@@ -33,8 +38,22 @@ export function CreateBriefPage({ onCreate, onCancel }: { onCreate: (brief: Dron
         </> : <>
           <div className="grid gap-2"><Label htmlFor="shoot-date">Shoot date</Label><Input id="shoot-date" type="date" value={project.date} onChange={(e) => update({ date: e.target.value })} required /></div>
           <div className="grid gap-3">{project.times.map((time, index) => <div key={index} className="grid gap-2">
-            <Label htmlFor={'shoot-time-' + index}>Shoot time {index + 1}</Label>
-            <div className="flex gap-2"><Input id={'shoot-time-' + index} type="time" value={time} required onChange={(e) => update({ times: project.times.map((value, i) => i === index ? e.target.value : value) })} /><Button type="button" variant="outline" size="icon" disabled={project.times.length === 1} aria-label={'Remove shoot time ' + (index + 1)} onClick={() => update({ times: project.times.filter((_, i) => i !== index) })}><X /></Button></div>
+            <div className="flex items-center justify-between"><Label id={'shoot-time-label-' + index}>Shoot time {index + 1}</Label><span className="font-medium tabular-nums">{time}</span></div>
+            <div className="flex items-center gap-4">
+              <div className="min-w-0 flex-1">
+                <Slider className="py-3" min={0} max={1410} step={30} value={[Number(time.slice(0, 2)) * 60 + Number(time.slice(3))]} thumbProps={{ 'aria-labelledby': 'shoot-time-label-' + index, 'aria-valuetext': time }} onValueChange={([minutes]) => {
+                  const nextTime = `${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`
+                  update({ times: project.times.map((value, i) => i === index ? nextTime : value) })
+                }} />
+                <div className="relative mx-2 h-7 text-[10px] text-muted-foreground sm:text-xs" aria-hidden="true">
+                  {[0, 360, 720, 1080, 1410].map((minutes) => <span key={minutes} className="absolute top-0" style={{ left: `${minutes / 1410 * 100}%` }}>
+                    <span className="block h-1 w-px bg-border" />
+                    <span className="absolute top-2 whitespace-nowrap" style={{ transform: minutes === 0 ? 'none' : minutes === 1410 ? 'translateX(-100%)' : 'translateX(-50%)' }}>{String(Math.floor(minutes / 60)).padStart(2, '0')}:{String(minutes % 60).padStart(2, '0')}</span>
+                  </span>)}
+                </div>
+              </div>
+              <Button type="button" variant="outline" size="icon" className="shrink-0" disabled={project.times.length === 1} aria-label={'Remove shoot time ' + (index + 1)} onClick={() => update({ times: project.times.filter((_, i) => i !== index) })}><X /></Button>
+            </div>
           </div>)}
           <Button type="button" variant="outline" className="w-fit" disabled={project.times.length >= 24} onClick={() => update({ times: [...project.times, '12:00'] })}><Plus /> Add time</Button></div>
           <p className="text-sm text-muted-foreground">Times are local to the shoot location.</p>

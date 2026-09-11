@@ -24,7 +24,10 @@ export function MapControls({ brief }: { brief: DroneBrief }) {
   }, [map, brief])
   useEffect(() => {
     const previous = previousPosition.current
-    if (map && (previous.lat !== brief.coordinates.lat || previous.lng !== brief.coordinates.lng)) map.panTo(brief.coordinates)
+    if (map && (previous.lat !== brief.coordinates.lat || previous.lng !== brief.coordinates.lng)) {
+      map.panTo(brief.coordinates)
+      map.setZoom(17)
+    }
     previousPosition.current = brief.coordinates
   }, [map, brief.coordinates])
   return <div className="absolute bottom-8 right-3 flex gap-1 rounded-lg border bg-card p-1 shadow-sm">
