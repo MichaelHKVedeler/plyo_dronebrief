@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import App from '@/App'
 import { createBrief } from '@/features/briefs/model/brief'
@@ -37,7 +37,7 @@ it('creates with multiple times, saves edits, exports, and resumes after remount
   await user.clear(radius); await user.type(radius, '85'); await user.tab()
   expect(briefRepository.latest()?.circleRig?.radiusMeters).toBe(85)
   await user.click(screen.getByRole('button', { name: 'Export' }))
-  expect((screen.getByLabelText('Export key') as HTMLTextAreaElement).value).toMatch(/^DB1\./)
+  expect((screen.getByLabelText('Export key') as HTMLTextAreaElement).value).toMatch(/^DB2\./)
   app.unmount()
   render(<App />)
   await user.click(screen.getByRole('button', { name: 'Resume editing' }))
@@ -64,8 +64,10 @@ it('loads a viewer and toggles layers without writing or replacing the local dra
   await user.click(screen.getByRole('button', { name: 'Camera heights' }))
   expect(screen.getByText('30, 60 m')).toBeVisible()
   await user.click(screen.getByRole('tab', { name: 'Layers' }))
-  await user.click(screen.getByRole('switch', { name: 'Circle rig' }))
-  expect(screen.getByRole('switch', { name: 'Circle rig' })).toHaveAttribute('aria-checked', 'false')
+  await user.click(within(screen.getByRole('region', { name: 'Brief map' })).getByRole('switch', { name: 'Circle rig' }))
+  for (const toggle of screen.getAllByRole('switch', { name: 'Circle rig' })) expect(toggle).toHaveAttribute('aria-checked', 'false')
+  await user.click(within(screen.getByRole('tabpanel', { name: 'Layers' })).getByRole('switch', { name: 'Circle rig' }))
+  for (const toggle of screen.getAllByRole('switch', { name: 'Circle rig' })) expect(toggle).toHaveAttribute('aria-checked', 'true')
   expect(screen.queryByText(/50 m radius/)).not.toBeInTheDocument()
   expect(writes).not.toHaveBeenCalled()
   expect(briefRepository.latest()?.id).toBe(own.id)
@@ -81,5 +83,46 @@ it('shows a save failure and keeps export available', async () => {
   expect(screen.getByText('Not saved')).toBeInTheDocument()
   expect(screen.getByRole('alert')).toHaveTextContent('export a key')
   await user.click(screen.getByRole('button', { name: 'Export' }))
-  expect((screen.getByLabelText('Export key') as HTMLTextAreaElement).value).toMatch(/^DB1\./)
+  expect((screen.getByLabelText('Export key') as HTMLTextAreaElement).value).toMatch(/^DB2\./)
+})
+
+it('removes cameras using row X and Delete while protecting text editing', async () => {
+  const brief = createBrief({ name: 'Cameras', clientName: 'Client', date: '2026-09-11', times: ['09:00'] })
+  brief.angles = [
+    { id: 'a', label: 'Camera A', type: '360', position: brief.coordinates },
+    { id: 'b', label: 'Camera B', type: 'dslr', position: brief.coordinates, directionDegrees: 90 },
+  ]
+  briefRepository.save(brief)
+  const user = userEvent.setup()
+  render(<App />)
+  await user.click(screen.getByRole('button', { name: 'Resume editing' }))
+  await user.click(screen.getByRole('button', { name: 'Camera A' }))
+  await user.click(screen.getByRole('button', { name: 'Remove Camera B' }))
+  expect(briefRepository.latest()?.angles.map((angle) => angle.id)).toEqual(['a'])
+  expect(screen.getByLabelText('Camera label')).toHaveValue('Camera A')
+  fireEvent.keyDown(screen.getByLabelText('Camera label'), { key: 'Delete' })
+  expect(briefRepository.latest()?.angles).toHaveLength(1)
+  fireEvent.keyDown(window, { key: 'Delete' })
+  expect(briefRepository.latest()?.angles).toEqual([])
+  expect(screen.queryByLabelText('Camera label')).not.toBeInTheDocument()
+})
+
+
+it.each(['X', 'Delete'])('removes modifier-selected cameras with %s and preserves unselected cameras', async (method) => {
+  const brief = createBrief({ name: 'Group', clientName: 'Client', date: '2026-09-11', times: ['09:00'] })
+  brief.angles = ['A', 'B', 'C'].map((id) => ({ id, label: 'Camera ' + id, type: '360' as const, position: brief.coordinates }))
+  briefRepository.save(brief)
+  const user = userEvent.setup()
+  render(<App />)
+  await user.click(screen.getByRole('button', { name: 'Resume editing' }))
+  await user.click(screen.getByRole('button', { name: 'Camera A' }))
+  await user.keyboard(method === 'X' ? '{Shift>}' : '{Control>}')
+  await user.click(screen.getByRole('button', { name: 'Camera C' }))
+  await user.keyboard(method === 'X' ? '{/Shift}' : '{/Control}')
+  expect(briefRepository.latest()?.angles).toHaveLength(3)
+  if (method === 'X') await user.click(screen.getByRole('button', { name: 'Remove Camera A' }))
+  else await user.keyboard('{Delete}')
+  expect(briefRepository.latest()?.angles.map((angle) => angle.id)).toEqual(['B'])
+  expect(screen.getByRole('button', { name: 'Camera B' })).toHaveAttribute('aria-pressed', 'false')
+  expect(screen.queryByRole('checkbox')).not.toBeInTheDocument()
 })

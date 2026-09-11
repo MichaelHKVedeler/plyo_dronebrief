@@ -62,6 +62,10 @@ Image overlays reserve `id`, `name`, `source`, `position`, `widthMeters`, `heigh
 
 The whole JSON must fit within the 2 MB share-key limit. Future remote asset storage will require a deliberate contract and import-validation update.
 
+ShadeMap consumes the same WGS84 positions and rig outline geometry without changing the JSON. Map renderer, center/zoom, and the shadow slider are ephemeral view state. Shadows use the project's shoot date plus the selected time in the viewed location's timezone. Newbuild polygons have no height and do not cast simulated shadows.
+
 ## Compatibility and validation
 
 Imports and saved drafts pass through the same Zod schema. Invalid values, unsupported versions, oversized keys, and malformed encoding are rejected. Unrecognized object fields are stripped by Zod. Add explicit version migrations before introducing incompatible semantics.
+
+Transport versions are independent of the JSON schema: DB1 is base64url UTF-8 JSON; DB2 is base64url raw-DEFLATE UTF-8 JSON. New exports use DB2; imports accept both and retain the 2 MB uncompressed limit. Coordinates and other values are preserved without rounding. QR codes encode the same complete DB2 key and are omitted when it exceeds 2,200 characters.

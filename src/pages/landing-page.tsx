@@ -31,7 +31,7 @@ export function LandingPage({ onCreate, onLoad, onResume, draft, error }: Props)
         event.preventDefault()
         try { onLoad(importBriefKey(key)) } catch (error) { setLoadError((error as Error).message) }
       }}>
-        <div className="grid gap-2"><Label htmlFor="share-key">Export key</Label><Textarea id="share-key" placeholder="DB1.…" value={key} onChange={(event) => { setKey(event.target.value); setLoadError('') }} required className="max-h-48 min-h-28 break-all font-mono" /></div>
+        <div className="grid gap-2"><Label htmlFor="share-key">Export key</Label><Textarea id="share-key" placeholder="DB2.…" value={key} onChange={(event) => { setKey(event.target.value); setLoadError('') }} required className="max-h-48 min-h-28 break-all font-mono" /></div>
         {loadError && <p role="alert" className="text-sm text-destructive">{loadError}</p>}
         <Button type="submit">Open read-only brief</Button>
       </form>

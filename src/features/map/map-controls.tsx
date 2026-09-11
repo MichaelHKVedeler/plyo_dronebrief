@@ -4,9 +4,11 @@ import { LocateFixed, Maximize, Minus, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import type { DroneBrief } from '@/features/briefs/model/brief'
 import { fitScene } from './scene-bounds'
+import type { MapNavigation } from './map-navigation'
 
-export function MapControls({ brief }: { brief: DroneBrief }) {
+export function MapControls({ brief, navigation, shadeActive = false }: { brief: DroneBrief; navigation?: MapNavigation | null; shadeActive?: boolean }) {
   const map = useMap()
+  const activeMap = navigation === undefined ? map : navigation
   const framedId = useRef<string | null>(null)
   const previousPosition = useRef(brief.coordinates)
   useEffect(() => {
@@ -24,16 +26,16 @@ export function MapControls({ brief }: { brief: DroneBrief }) {
   }, [map, brief])
   useEffect(() => {
     const previous = previousPosition.current
-    if (map && (previous.lat !== brief.coordinates.lat || previous.lng !== brief.coordinates.lng)) {
-      map.panTo(brief.coordinates)
-      map.setZoom(17)
+    if (activeMap && (previous.lat !== brief.coordinates.lat || previous.lng !== brief.coordinates.lng)) {
+      activeMap.panTo(brief.coordinates)
+      activeMap.setZoom(17)
     }
     previousPosition.current = brief.coordinates
-  }, [map, brief.coordinates])
-  return <div className="absolute bottom-8 right-3 flex gap-1 rounded-lg border bg-card p-1 shadow-sm">
-    <Button variant="ghost" size="icon" aria-label="Zoom in" onClick={() => map?.setZoom((map.getZoom() ?? 2) + 1)}><Plus /></Button>
-    <Button variant="ghost" size="icon" aria-label="Zoom out" onClick={() => map?.setZoom((map.getZoom() ?? 2) - 1)}><Minus /></Button>
-    <Button variant="ghost" size="icon" aria-label="Frame scene" title="Frame scene" onClick={() => { if (map) fitScene(map, brief) }}><Maximize /></Button>
-    <Button variant="ghost" size="icon" aria-label="Center on project" onClick={() => { map?.panTo(brief.coordinates); map?.setZoom(17) }}><LocateFixed /></Button>
+  }, [activeMap, brief.coordinates])
+  return <div className={`absolute right-3 z-20 flex gap-1 rounded-lg border bg-card p-1 shadow-sm ${shadeActive ? 'bottom-32 @min-[650px]:bottom-8' : 'bottom-8'}`}>
+    <Button variant="ghost" size="icon" aria-label="Zoom in" disabled={!activeMap} onClick={() => activeMap?.setZoom((activeMap.getZoom() ?? 2) + 1)}><Plus /></Button>
+    <Button variant="ghost" size="icon" aria-label="Zoom out" disabled={!activeMap} onClick={() => activeMap?.setZoom((activeMap.getZoom() ?? 2) - 1)}><Minus /></Button>
+    <Button variant="ghost" size="icon" aria-label="Frame scene" title="Frame scene" disabled={!activeMap} onClick={() => { if (activeMap) fitScene(activeMap, brief) }}><Maximize /></Button>
+    <Button variant="ghost" size="icon" aria-label="Center on project" disabled={!activeMap} onClick={() => { activeMap?.panTo(brief.coordinates); activeMap?.setZoom(17) }}><LocateFixed /></Button>
   </div>
 }

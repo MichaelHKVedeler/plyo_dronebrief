@@ -6,7 +6,7 @@ Applies to every file in this repository. Humans and AI assistants share the sam
 
 - Use React, strict TypeScript, Vite, and Tailwind v4. npm and package-lock.json are authoritative.
 - Use ONLY shadcn/ui for application controls: buttons, inputs, labels, dialogs, tabs, switches, cards, alerts, etc. Install missing primitives with the shadcn CLI.
-- Semantic HTML for layout and text is fine. Lucide icons and Google Maps geometry/canvas/attribution are allowed. Do not introduce another UI kit or handcraft substitutes for available shadcn controls.
+- Semantic HTML for layout and text is fine. Lucide icons and Google Maps/MapLibre/ShadeMap geometry, canvas, and attribution are allowed. Keep mapping SDK controls disabled and compose app controls with shadcn. Do not introduce another UI kit or handcraft substitutes for available shadcn controls.
 - Keep official shadcn source in src/components/ui. Compose and style at call sites, and change shared theme tokens in src/styles/globals.css.
 - Do not put business logic, repository calls, or map code in components/ui.
 - Avoid new dependencies unless needed for the assigned feature. Commit lockfile changes alongside manifest changes.
@@ -39,6 +39,7 @@ Use `@/` imports across features. Within a feature, relative imports are fine. P
 - Keep schemaVersion and export prefix versioned. A breaking field change requires an explicit migration/version decision, tests, and documentation. Never silently reinterpret existing exports.
 - Validate imported data before opening it. Preserve size limits and reject unsupported versions.
 - Stored settings and ephemeral UI state are different: selections, tool mode, map pan/zoom, visibility, and dialogs do not belong in saved brief content.
+- ShadeMap is a lazy-loaded preview adapter. Preserve WGS84 coordinates and convert zoom via map-view.ts; never write provider, shadow time, or camera view into a brief. Both maps share search/navigation/layer controls and click placement; Google Maps owns object dragging and adjustment handles. Keep shared UI outside the provider canvases. All keys belong in ignored .env.local or deployment environment variables.
 
 ## Edit/view and saving
 

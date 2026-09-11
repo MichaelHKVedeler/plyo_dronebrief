@@ -27,7 +27,7 @@ npm run preview
 - Separate editor and read-only viewer modes.
 - Basic editor: rename project, coordinates, circle/oval rig settings, camera height arrays.
 - JSON autosave in browser localStorage after every committed editor change.
-- Export/import of portable snapshot keys, with schema validation and size limits.
+- Compressed snapshot keys and downloadable QR codes, with legacy key support, schema validation and size limits.
 - Layer visibility switches, kept separate from saved brief content.
 - Optional Google Maps adapter: project location, circle/oval outlines, camera markers and polygons.
 - Map placement for 360, DSLR, and drone images, with distinct icons and camera directions.
@@ -36,16 +36,20 @@ npm run preview
 - Editor/viewer fit the browser window. The details panel has its own shadcn scrollbar; on narrow screens it sits below the map.
 - Briefs automatically frame their cameras, complete rig outline, and polygons when opened. **Frame scene** repeats this at any time; edits, search, and visibility toggles do not trigger automatic reframing.
 - Shadcn accordion sections group project details, camera points, location, rig settings, and camera heights. Selecting a map object opens its settings; opening sections does not save the brief.
-- Street/location search on the map, with selectable Google geocoding results. Search moves the view only and works in the viewer too.
+- Street/location suggestions while typing (after three characters and a 350 ms pause), with Enter/search-button geocoding as a fallback. Search moves the view only and works in the viewer too.
+- One shared map toolbar keeps search and navigation available in both providers. The shadcn ButtonGroup sits above Satellite, which is shown only in Google Maps.
+- Label-free Google cloud style provided in `docs/google-map-no-labels.json`; publish and associate it with your map ID as described below. Project/camera labels and attribution remain visible.
+- A compact map layer menu below Set location toggles the rig and additional angles in editor and viewer, synchronized with the Layers panel.
+- ShadeMap shadow preview with the same WGS84 coordinates and matched zoom scale, terrain/building shadows, and a bottom-center time slider using the shoot date and viewed location's timezone.
 - Tests covering Unicode exports, malformed keys, persistence failures, and read-only behavior.
 
 Project and numeric fields commit on blur (clicking elsewhere or pressing Tab). New briefs start in Oslo (59.9139, 10.7522). Search to move the map, then use Set location or enter coordinates before adding a rig. Saved and imported briefs keep their stored location. A rig has its own position; moving project coordinates does not silently move an existing rig. Use **Move rig to project location**.
 
 ### Map editing
 
-In the Project panel, choose **Add 360 point**, **Add DSLR point**, or **Add drone image**, then click a position on the map. A 360 point is complete immediately. For DSLR and drone images, click a second location to choose where the camera points. **Escape** or **Cancel placement** discards an unfinished placement.
+In Google Maps, choose **Add 360 point**, **Add DSLR point**, or **Add drone image**, then place points repeatedly on the map. Click to place a 360 point. For DSLR and drone images, press to set the position, hold and drag to aim, then release to finish the point. The same tool stays active for the next point. **Right-click**, **Escape**, or **Cancel placement** stops placement and discards any unfinished point.
 
-Drag any camera icon, the rig center, or the rig interior to move it. Hover or select the rig to reveal one edge dot for both scale and rotation, plus the inside oval handle for ovalness. Hover or select a DSLR/drone camera to reveal its direction arrow, then drag the arrow to aim. Selecting an object keeps its handles visible. Drag the edge dot in/out to resize and around the center to rotate. Use the numeric settings in the sidebar for precise adjustments or keyboard input. Camera selection exposes its label, coordinates, direction where applicable, and removal action.
+Drag a camera icon or the center move icon of the rig to reposition it. The rig interior can be clicked to select it, but cannot be dragged to move the rig. Hover or select the rig to reveal one edge dot for both scale and rotation, plus the oval handle on the minor-axis edge for ovalness. DSLR/drone direction arrows remain visible beside their camera icons. Drag an arrow to aim in the editor. Selecting an object keeps its handles visible. Drag the edge dot in/out to resize and around the center to rotate. Use the numeric settings in the sidebar for precise adjustments or keyboard input. Camera selection exposes its label, coordinates, direction where applicable, and removal action.
 
 Movement previews are temporary until the drag ends; committed changes autosave and are included in exports. Placement, selection, and hover state are not saved. Loaded briefs display the same geometry with editing and adjustment handles disabled.
 
@@ -63,7 +67,8 @@ In Google Cloud Console, open **APIs & Services → Credentials → your API key
 - Set **Application restrictions** to **Websites**.
 - Allow `http://127.0.0.1:5173/*` and `http://localhost:5173/*` for local development.
 - Set **API restrictions** to **Restrict key**, selecting **Maps JavaScript API**.
-- For location search, enable **Geocoding API** in the same Google Cloud project and add it to this key's allowed APIs as well. No new key or code change is needed. Search submits only when you press Enter or the search button; choose a result to jump there. If access is denied, the map remains usable and search shows a setup message.
+- For suggestions while typing, enable **Places API (New)** in the same Google Cloud project and add it to this key's allowed APIs. The app uses AutocompleteSuggestion with session tokens and requests place details only after selection. Choose a suggestion (Tab then Enter also works) to jump there; Escape dismisses results. Suggestions do not change saved coordinates.
+- Keep **Geocoding API** enabled and allowed for the Enter/search-button fallback. If Places access is missing, the map remains usable and search explains how to enable suggestions; Enter still searches addresses. No new key is needed.
 - Confirm Maps JavaScript API is enabled and the Google Cloud project has the required billing configuration.
 
 The dev server stays on port 5173 and reports an error if that port is occupied, so it cannot silently switch to an origin excluded by your key restrictions. Before deploying, use a separately restricted production key and allow the exact production website origin. Configure it in your hosting provider's build environment; never commit it. Vite includes browser-prefixed values in the client build, so `.env.local` prevents source-control exposure, not browser visibility.
@@ -75,11 +80,43 @@ A Maps JavaScript API key is browser-visible. Restrict its allowed referrers and
 
 Without a key, the map shows a clear placeholder. All application controls use shadcn/ui. The Google Maps canvas, attribution, and geographic shapes are the necessary mapping exception.
 
+## Hide Google basemap labels
+
+Google requires cloud styling when a map ID is present; the editor's advanced markers require a map ID. Inline styles and StyledMapType are therefore not used. In Google Cloud **Map Styles**, create a style using the JSON in `docs/google-map-no-labels.json`, save/publish it, and associate it with a JavaScript map ID. Put that ID in `VITE_GOOGLE_MAPS_MAP_ID` in `.env.local` and restart Vite. Alternatively, edit the existing associated cloud style to hide label text and icons. Google's DEMO_MAP_ID cannot be styled by this app. This Google Cloud configuration step is required before Google labels disappear.
+
+Reference: [Google cloud map styling](https://developers.google.com/maps/documentation/javascript/cloud-customization/map-styles).
+
+## ShadeMap setup
+
+The optional shadow preview uses MapLibre and the official ShadeMap SDK. OpenFreeMap provides the basemap and OpenStreetMap buildings; AWS Open Data supplies elevation tiles. No Mapbox or MapTiler key is needed. The renderer is loaded only when switching to ShadeMap.
+
+1. In the project root's ignored `.env.local`, fill in `VITE_SHADEMAP_API_KEY=your_key_here` (a blank entry is provided). Keep `.env.example` blank.
+2. Enable your development/production domains in your ShadeMap account as required by your key/plan.
+3. Restart Vite, open a brief, and select **ShadeMap**. Use **Google Maps** to switch back.
+
+The current center and scale transfer in both directions, including fractional zoom: Google's 256 px tile convention maps to MapLibre zoom minus one (512 px). Brief coordinates are never rounded or rewritten. Google Maps remains mounted while hidden so returning does not reframe the scene. Provider choice, shadow time, and map movement are temporary view settings; exports and autosave are unaffected.
+
+The slider spans 00:00–23:55 in five-minute steps on the brief's shoot date. Its displayed IANA timezone follows the viewed location, including daylight saving. For a nonexistent local clock time at a spring DST transition, the UI shows the resolved clock time and an adjustment notice. At the autumn repeated hour, the timezone library chooses one occurrence; this UI does not select between both occurrences.
+
+ShadeMap is a preview in both editor and viewer. Rig outlines, camera positions/direction lines, and polygons use the same brief data. Search, Set location, camera placement, zoom, framing, and layer toggles work over both maps. ShadeMap retains repeated click placement (a second click sets DSLR/drone direction); Escape or Cancel placement stops. Google Maps owns press-drag-release placement, object dragging and adjustment handles. Missing keys, failed map loading, and SDK license failures show a message while keeping the return control available.
+
+The adapter waits for map tiles before querying buildings, explicitly retains MapLibre geometry getters, and removes duplicate tile-buffer polygons before sending plain GeoJSON to ShadeMap. Development keys are not documented as using lower-quality shadow rendering; paid plans primarily change deployment and usage allowances.
+
+Building shadows depend on OpenStreetMap coverage and available height attributes; missing heights use a 3 m estimate, and buildings load at street-level zoom. Terrain resolution also limits detail. The preview is not a measured survey. Newbuild polygons currently have no height field and are outlines, not shadow-casting buildings. Image overlays remain unimplemented in both renderers.
+
+Like the Google browser key, this Vite-prefixed key is visible to browsers. `.env.local` keeps it out of Git; restrict permitted domains with the provider and use your hosting environment for production configuration. API keys are never included in brief JSON or shared keys.
+
+References: [ShadeMap SDK](https://github.com/ted-piotrowski/mapbox-gl-shadow-simulator), [OpenFreeMap](https://openfreemap.org/quick_start/).
+
 ## Persistence and export semantics
 
 This skeleton has no server, database, account system, or disk-file writer. JSON is serialized to browser storage under `dronebrief:draft:v1:<id>`. The last draft is offered on the landing page. Clearing browser storage removes drafts. Keep an export key to retain a portable copy.
 
-An export key starts with `DB1.` and contains the complete validated UTF-8 JSON snapshot encoded with base64url. It works in another browser or on another device running this app. It is longer than a database lookup key, is not encrypted or signed, and is not a live link. Anyone with it can read its content; later edits require another export. Export/import is limited to 2 MB of JSON. Embedded images will increase key size.
+New export keys start with `DB2.` and contain the complete validated UTF-8 JSON snapshot, compressed with raw DEFLATE and encoded with base64url. Existing uncompressed `DB1.` keys still load. Brief JSON remains schema version 1. Older app versions cannot read DB2 keys. Compression preserves all values, including coordinate precision. Imports enforce the 2 MB JSON limit with a bounded decompression buffer. Embedded images can still produce large keys.
+
+The export dialog generates a QR code locally for keys up to 2,200 characters and offers a PNG download. Scan to copy the key and paste it into Load brief on another device running the updated app. It contains the snapshot itself, not a website link. Larger briefs show a Copy key fallback instead of truncating the snapshot. No brief data is sent to a QR service.
+
+Keys are longer than database lookup IDs, are not encrypted or signed, and are not live links. Anyone with a key can read its content; later edits require another export.
 
 Loading always opens a viewer. The UI omits editing controls, and the session reducer rejects mutations in view mode. This is an application behavior guarantee, not a tamper-proof authorization system. Viewer visibility changes never alter the saved JSON or overwrite a local draft.
 
