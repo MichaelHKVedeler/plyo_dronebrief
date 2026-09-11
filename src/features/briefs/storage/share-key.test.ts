@@ -1,9 +1,23 @@
 import { describe, expect, it } from 'vitest'
 import { createBrief } from '../model/brief'
 import { exportBriefKey, importBriefKey } from './share-key'
+import { deflateSync } from 'fflate'
+
+function encoded(bytes: Uint8Array) { return btoa(Array.from(bytes, (b) => String.fromCharCode(b)).join('')).replaceAll('+', '-').replaceAll('/', '_').replace(/=+$/, '') }
 
 describe('portable brief keys', () => {
   const brief = createBrief({ name: 'Havnekvartalet 🚁', clientName: 'Müller & Søn', date: '2026-09-11', times: ['09:00', '17:30'] })
+  it('compresses exports and still loads legacy DB1 snapshots', () => {
+    const legacy = 'DB1.' + encoded(new TextEncoder().encode(JSON.stringify(brief)))
+    expect(importBriefKey(legacy)).toEqual(brief)
+    expect(exportBriefKey(brief)).toMatch(/^DB2\./)
+    expect(exportBriefKey(brief).length).toBeLessThan(legacy.length * 0.75)
+  })
+  it('rejects compressed payloads beyond the decompressed size limit and truncated streams', () => {
+    const oversized = 'DB2.' + encoded(deflateSync(new TextEncoder().encode(' '.repeat(2_000_001))))
+    expect(() => importBriefKey(oversized)).toThrow()
+    expect(() => importBriefKey(exportBriefKey(brief).slice(0, -12))).toThrow()
+  })
   it('round-trips Unicode and every shape type without external storage', () => {
     const complete = { ...brief,
       circleRig: { id: 'rig', position: { lat: 59.9, lng: 10.7 }, radiusMeters: 80, ovalRatio: 0.5, rotationDegrees: 45 },

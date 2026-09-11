@@ -4,9 +4,9 @@ The skeleton intentionally includes the workflow and data boundaries, not the co
 
 | Feature | Current state | Next work |
 | --- | --- | --- |
-| Create/load/export | Working | Optional backend for short lookup keys |
+| Create/load/export | Compressed DB2 keys, legacy DB1 import, local QR generation and PNG download for fitting snapshots | Optional backend for short lookup keys and scannable viewer links |
 | Draft storage | Browser JSON, last draft resume | Shared durable storage and draft list |
-| Google Maps | Live map, Oslo default for new briefs, satellite toggle, wheel zoom, auto scene framing, Frame scene action, location search, and collapsible sidebar | Optional autocomplete suggestions |
+| Google Maps | Live map, aligned search/satellite toolbar, Places suggestions, Enter geocoding fallback, wheel zoom, scene framing, and collapsible sidebar | Further map editing tools |
 | Circle rig | Add, drag center/interior, combined scale/rotation edge dot and oval handle, numeric settings | Optional snapping and undo history |
 | Camera angles | Place/select/rename/remove, drag, direction handles, distinct icons, per-type heights | Optional field-of-view footprints |
 | 360 | One-click position-only placement and draggable panorama icon | Optional panorama coverage preview |

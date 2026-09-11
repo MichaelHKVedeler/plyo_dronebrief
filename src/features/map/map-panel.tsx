@@ -84,17 +84,21 @@ function ConnectedMap({ session, dispatch, tool, onToolChange, selectedId, onSel
         pixelsToMeters={metersPerPixel(pendingAngle.position.lat, zoom)} onSelect={() => {}} onCommit={() => {}} />}
       {visibility.polygons && brief.polygons.map((polygon) => <Polygon key={polygon.id} paths={polygon.vertices} strokeColor="#b45309" fillColor="#d97706" fillOpacity={0.2} clickable={false} />)}
       <MapControls brief={brief} />
-      <MapSearch />
-    <div className="pointer-events-none absolute inset-x-3 top-16 flex flex-wrap items-start justify-between gap-2">
+    <div className="pointer-events-none absolute inset-x-3 top-3 z-10 grid gap-2">
+      <div className="flex items-start justify-between gap-2">
+        <MapSearch />
+        <Label htmlFor={satelliteId} className="pointer-events-auto flex h-11 shrink-0 cursor-pointer items-center gap-2 rounded-lg border bg-card px-2 shadow-sm sm:px-3">
+          <Switch id={satelliteId} checked={satellite} onCheckedChange={setSatellite} />
+          <span>Satellite</span>
+        </Label>
+      </div>
+      <div className="flex flex-wrap items-start gap-2">
       {editing && <Button variant={!interactive ? 'default' : 'secondary'} className="pointer-events-auto shadow-sm"
         onClick={() => { onSelect(null); onToolChange(interactive ? { kind: 'project' } : idleTool) }}>
         {interactive ? <MapPin /> : <X />}{interactive ? 'Set location' : 'Cancel placement'}
       </Button>}
-      <div className="pointer-events-auto ml-auto flex h-9 items-center gap-2 rounded-md border bg-card px-3 shadow-sm">
-        <Switch id={satelliteId} checked={satellite} onCheckedChange={setSatellite} />
-        <Label htmlFor={satelliteId}>Satellite</Label>
-      </div>
       {hint && <Badge className="w-full whitespace-normal py-2" role="status">{hint}</Badge>}
+      </div>
     </div>
     </Map>
   </>
