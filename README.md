@@ -25,32 +25,32 @@ npm run preview
 - Landing page with create, load, and resume-last-local-draft actions.
 - Two-step wizard: project/client, then date and multiple times. The date defaults to today, with half-hour time sliders.
 - Separate editor and read-only viewer modes.
-- Basic editor: rename project, coordinates, circle/oval rig settings, camera height arrays.
+- Basic editor: rename project, add rigs at the current map center, adjust rigs on the map, and set camera height arrays.
 - JSON autosave in browser localStorage after every committed editor change.
 - Compressed snapshot keys and downloadable QR codes, with legacy key support, schema validation and size limits.
 - Layer visibility switches, kept separate from saved brief content.
-- Optional Google Maps adapter: project location, circle/oval outlines, camera markers and polygons.
+- Optional Google Maps adapter: circle/oval outlines, camera markers and polygons.
 - Map placement for 360, DSLR, and drone images, with distinct icons and camera directions.
 - Drag cameras and the circle rig to move them; rig handles adjust radius, rotation, and ovalness, and camera handles adjust direction.
 - Satellite toggle and mouse-wheel zoom without Ctrl in both editor and viewer. The editor opens in Satellite; the viewer opens in the normal map. These view preferences do not modify the brief JSON.
 - A subtle 15% ink overlay dims the Google basemap beneath the rig and camera objects. It does not intercept gestures or dim app controls and attribution, and makes no extra map requests.
 - Editor/viewer fit the browser window. The details panel has its own shadcn scrollbar; on narrow screens it sits below the map.
 - Briefs automatically frame their cameras, complete rig outline, and polygons when opened. **Frame scene** repeats this at any time; edits, search, and visibility toggles do not trigger automatic reframing.
-- Shadcn accordion sections group project details, camera points, location, rig settings, and camera heights. Selecting a map object opens its settings; opening sections does not save the brief.
+- Shadcn accordion sections group project details, camera creation with per-type heights, added camera points, and rig settings. Selecting a map object opens its settings; opening sections does not save the brief.
 - Street/location suggestions while typing (after three characters and a 350 ms pause), with Enter/search-button geocoding as a fallback. Search moves the view only and works in the viewer too.
 - One shared map toolbar keeps search and navigation available in both providers. The shadcn ButtonGroup sits above Satellite, which is shown only in Google Maps.
-- Label-free Google cloud style provided in `docs/google-map-no-labels.json`; publish and associate it with your map ID as described below. Project/camera labels and attribution remain visible.
-- A compact map layer menu below Set location toggles the rig and additional angles in editor and viewer, synchronized with the Layers panel.
+- Label-free Google cloud style provided in `docs/google-map-no-labels.json`; publish and associate it with your map ID as described below. Camera labels and attribution remain visible.
+- A compact map layer menu under search toggles the rig and additional angles in editor and viewer, synchronized with the Layers panel.
 - ShadeMap shadow preview with the same WGS84 coordinates and matched zoom scale, terrain/building shadows, and a bottom-center time slider using the shoot date and viewed location's timezone.
 - Tests covering Unicode exports, malformed keys, persistence failures, and read-only behavior.
 
-Project and numeric fields commit on blur (clicking elsewhere or pressing Tab). New briefs start in Oslo (59.9139, 10.7522). Search to move the map, then use Set location or enter coordinates before adding a rig. Saved and imported briefs keep their stored location. A rig has its own position; moving project coordinates does not silently move an existing rig. Use **Move rig to project location**.
+Project and numeric fields commit on blur (clicking elsewhere or pressing Tab). New briefs start in Oslo (59.9139, 10.7522). Search or pan to the desired area, then choose **Add Circle Rig** to place a rig at the current map center. The project-location marker and controls have been removed. Existing `coordinates` remain in schema version 1 for import/export compatibility and as a fallback for empty briefs or an unavailable map. Camera heights sit below their corresponding add buttons; placed points have a separate **Added camera points** section. Oval and rotation adjustments use map handles, and oval rigs display their smallest and biggest radii.
 
 ### Map editing
 
-In Google Maps, choose **Add 360 point**, **Add DSLR point**, or **Add drone image**, then place points repeatedly on the map. Click to place a 360 point. For DSLR and drone images, press to set the position, hold and drag to aim, then release to finish the point. The same tool stays active for the next point. **Right-click**, **Escape**, or **Cancel placement** stops placement and discards any unfinished point.
+In either map, choose **Add 360 point**, **Add DSLR point**, or **Add drone image**, then place points repeatedly on the map. Click to place a 360 point. For DSLR and drone images, press to set the position, hold and drag to aim, then release to finish the point. The same tool stays active for the next point. **Right-click**, **Escape**, or **Cancel placement** stops placement and discards any unfinished point.
 
-Drag a camera icon or the center move icon of the rig to reposition it. The rig interior can be clicked to select it, but cannot be dragged to move the rig. Hover or select the rig to reveal one edge dot for both scale and rotation, plus the oval handle on the minor-axis edge for ovalness. DSLR/drone direction arrows remain visible beside their camera icons. Drag an arrow to aim in the editor. Selecting an object keeps its handles visible. Drag the edge dot in/out to resize and around the center to rotate. Use the numeric settings in the sidebar for precise adjustments or keyboard input. Camera selection exposes its label, coordinates, direction where applicable, and removal action.
+Drag a camera icon or the center move icon of the rig to reposition it. The rig interior can be clicked to select it. In ShadeMap, dragging the interior pans the map; middle-button dragging pans over the map, rig, and camera icons. Moving the rig itself uses its center icon. Hover or select the rig to reveal one edge dot for both scale and rotation, plus the oval handle on the minor-axis edge for ovalness. DSLR/drone direction arrows remain visible beside their camera icons. Drag an arrow to aim in the editor. Selecting an object keeps its handles visible. Drag the edge dot in/out to resize and around the center to rotate. The sidebar retains a radius field for circles and displays both radii for ovals; map handles control ovalness and rotation. Camera selection exposes its label, coordinates, direction where applicable, and removal action.
 
 Movement previews are temporary until the drag ends; committed changes autosave and are included in exports. Placement, selection, and hover state are not saved. Loaded briefs display the same geometry with editing and adjustment handles disabled.
 
@@ -105,7 +105,7 @@ The current center and scale transfer in both directions, including fractional z
 
 The slider spans 00:00–23:55 in five-minute steps on the brief's shoot date. Its displayed IANA timezone follows the viewed location, including daylight saving. For a nonexistent local clock time at a spring DST transition, the UI shows the resolved clock time and an adjustment notice. At the autumn repeated hour, the timezone library chooses one occurrence; this UI does not select between both occurrences.
 
-ShadeMap is a preview in both editor and viewer. Rig outlines, camera positions/direction lines, and polygons use the same brief data. Search, Set location, camera placement, zoom, framing, and layer toggles work over both maps. ShadeMap retains repeated click placement (a second click sets DSLR/drone direction); Escape or Cancel placement stops. Google Maps owns press-drag-release placement, object dragging and adjustment handles. Missing keys, failed map loading, and SDK license failures show a message while keeping the return control available.
+ShadeMap provides shadow preview and object editing in the editor, with a read-only viewer. Both maps share camera icons, direction arrows, selection highlights, rig outlines, and adjustment controls. Search, camera placement, zoom, framing, and layer toggles work over both maps. Both maps use repeated press-drag-release placement for DSLR/drone cameras and one-click placement for 360 points; right-click, Escape, or Cancel placement stops and discards any unfinished point. Both maps support camera selection and dragging, arrow dragging to aim, rig center dragging, and scale/rotation/oval handles. ShadeMap drags commit on release; Escape or pointer cancellation discards the preview. Missing keys, failed map loading, and SDK license failures show a message while keeping the return control available.
 
 The adapter waits for map tiles before querying buildings, explicitly retains MapLibre geometry getters, and removes duplicate tile-buffer polygons before sending plain GeoJSON to ShadeMap. Development keys are not documented as using lower-quality shadow rendering; paid plans primarily change deployment and usage allowances.
 

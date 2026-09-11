@@ -1,5 +1,5 @@
 import { useRef, useState, type ReactNode } from 'react'
-import { AdvancedMarker } from '@vis.gl/react-google-maps'
+import { useObjectRenderer } from './object-renderer'
 import { Button } from '@/components/ui/button'
 import type { Position } from '@/features/briefs/model/brief'
 
@@ -9,6 +9,7 @@ type Props = {
   position: Position
   label: string
   children: ReactNode
+  onCancel?: () => void
   onStart: () => void
   onPreview: (position: Position) => void
   onCommit: (position: Position) => void
@@ -18,7 +19,8 @@ type Props = {
   className?: string
   constrain?: (position: Position) => Position
 }
-export function MapHandle({ position, label, children, onStart, onPreview, onCommit, onEnter, onLeave, onStep, constrain, bare = false, interactive = true, className = '' }: Props) {
+export function MapHandle({ position, label, children, onCancel, onStart, onPreview, onCommit, onEnter, onLeave, onStep, constrain, bare = false, interactive = true, className = '' }: Props) {
+  const { Marker: AdvancedMarker } = useObjectRenderer()
   const marker = useRef<google.maps.marker.AdvancedMarkerElement | null>(null)
   const [focused, setFocused] = useState(false)
   const handleClass = (bare
@@ -44,6 +46,7 @@ export function MapHandle({ position, label, children, onStart, onPreview, onCom
     <AdvancedMarker ref={marker} position={position} anchorLeft="-50%" anchorTop="-50%" zIndex={101}
     title={label} draggable={interactive} clickable={interactive} style={{ pointerEvents: interactive ? 'auto' : 'none', opacity: constrain ? 0 : 1 }}
     onMouseEnter={onEnter} onMouseLeave={onLeave}
+    onDragCancel={onCancel}
     onDragStart={() => { if (interactive) onStart() }}
     onDrag={(event) => { if (event.latLng) drag(event.latLng.toJSON(), false) }}
     onDragEnd={(event) => { if (event.latLng) drag(event.latLng.toJSON(), true) }}>

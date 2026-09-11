@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { AdvancedMarker, Polygon } from '@vis.gl/react-google-maps'
+import { useObjectRenderer } from './object-renderer'
 import { Circle, Move } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { MapHandle } from './map-handle'
@@ -9,6 +9,7 @@ import { mapBrandColor } from './map-colors'
 
 type Props = { rig: CircleRig; dark?: boolean; editable: boolean; selected: boolean; interactive: boolean; onSelect: () => void; onCommit: (rig: CircleRig) => void }
 export function RigObject({ rig, dark = false, editable, selected, interactive, onSelect, onCommit }: Props) {
+  const { Marker: AdvancedMarker, Polygon } = useObjectRenderer()
   const color = mapBrandColor(dark)
   const hover = useHoverHandles(!interactive)
   const [draft, setDraft] = useState<{ source: CircleRig; value: CircleRig } | null>(null)
@@ -32,7 +33,7 @@ export function RigObject({ rig, dark = false, editable, selected, interactive, 
     {editable && <AdvancedMarker position={visible.position} anchorLeft="-50%" anchorTop="-50%" title="Move circle rig"
       zIndex={15} draggable={canEdit} clickable={canEdit} style={{ pointerEvents: canEdit ? 'auto' : 'none' }}
       onMouseEnter={hover.enter} onMouseLeave={hover.leave}
-      onDragStart={start}
+      onDragCancel={() => setDraft(null)} onDragStart={start}
       onDrag={(event) => { if (canEdit && event.latLng) setDraft({ source: rig, value: { ...rig, position: event.latLng.toJSON() } }) }}
       onDragEnd={(event) => { if (canEdit && event.latLng) commit({ ...rig, position: event.latLng.toJSON() }) }}>
       <Button disabled={!canEdit} size="icon-sm" variant="outline" className="cursor-grab touch-none rounded-full border-primary bg-card text-primary shadow-md active:cursor-grabbing dark:bg-card dark:border-primary dark:hover:bg-secondary"
@@ -40,13 +41,13 @@ export function RigObject({ rig, dark = false, editable, selected, interactive, 
         onClick={(event) => { event.stopPropagation(); onSelect() }}><Move /></Button>
     </AdvancedMarker>}
     {handles && <>
-      <MapHandle interactive={canEdit} position={radiusPoint} label="Scale and rotate circle rig" className="cursor-crosshair"
+      <MapHandle onCancel={() => setDraft(null)} interactive={canEdit} position={radiusPoint} label="Scale and rotate circle rig" className="cursor-crosshair"
         onEnter={hover.enter} onLeave={hover.leave} onStart={start}
         onPreview={(point) => setDraft({ source: rig, value: scaleAndRotateRig(visible, point) })}
         onCommit={(point) => commit(scaleAndRotateRig(visible, point))}>
         <Circle className="size-3 fill-current" />
       </MapHandle>
-      <MapHandle interactive={canEdit} position={ovalPoint} label="Adjust rig ovalness" className="cursor-ew-resize"
+      <MapHandle onCancel={() => setDraft(null)} interactive={canEdit} position={ovalPoint} label="Adjust rig ovalness" className="cursor-ew-resize"
         constrain={(point) => {
           const shaped = reshapeRig(visible, point)
           return destination(shaped.position, shaped.radiusMeters * shaped.ovalRatio, shaped.rotationDegrees + 90)
