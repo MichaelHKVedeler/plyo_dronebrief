@@ -1,9 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useId, useState } from 'react'
 import { APIProvider, Map, Polygon, AdvancedMarker, useMap, useApiLoadingStatus, APILoadingStatus } from '@vis.gl/react-google-maps'
 import { ArrowUp, Camera, LocateFixed, MapPin, Minus, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
+import { Label } from '@/components/ui/label'
+import { Switch } from '@/components/ui/switch'
 import type { BriefSession } from '@/features/briefs/state/brief-session'
 import type { Position } from '@/features/briefs/model/brief'
 import { rigOutline } from './geometry'
@@ -21,12 +23,15 @@ function MapControls({ position }: { position: Position }) {
 function ConnectedMap({ session, onPosition }: Props) {
   const status = useApiLoadingStatus()
   const [placing, setPlacing] = useState(false)
+  const [satellite, setSatellite] = useState(false)
+  const satelliteId = useId()
   const { brief, visibility, mode } = session
   if (status === APILoadingStatus.FAILED || status === APILoadingStatus.AUTH_FAILURE) return <MapMessage title="Map could not load" description="Check your map configuration and connection. The brief is still available." />
   if (status !== APILoadingStatus.LOADED) return <MapMessage title="Loading Google Maps…" description="Your brief is ready while the map connects." />
   return <>
     <Map defaultCenter={brief.coordinates} defaultZoom={brief.coordinates.lat === 0 && brief.coordinates.lng === 0 ? 2 : 17}
       mapId={import.meta.env.VITE_GOOGLE_MAPS_MAP_ID || 'DEMO_MAP_ID'} disableDefaultUI
+      mapTypeId={satellite ? 'satellite' : 'roadmap'} tilt={0} gestureHandling="greedy"
       onClick={(event) => {
         if (mode === 'edit' && placing && event.detail.latLng) { onPosition(event.detail.latLng); setPlacing(false) }
       }}>
@@ -38,18 +43,25 @@ function ConnectedMap({ session, onPosition }: Props) {
       {visibility.polygons && brief.polygons.map((polygon) => <Polygon key={polygon.id} paths={polygon.vertices} strokeColor="#b45309" fillColor="#d97706" fillOpacity={0.2} clickable={false} />)}
       <MapControls position={brief.coordinates} />
     </Map>
-    {mode === 'edit' && <Button variant={placing ? 'default' : 'secondary'} className="absolute left-3 top-3 shadow-sm" onClick={() => setPlacing(!placing)}><MapPin />{placing ? 'Click map to set location · Cancel' : 'Set project location'}</Button>}
+    <div className="pointer-events-none absolute inset-x-3 top-3 flex flex-wrap items-start justify-between gap-2">
+      {mode === 'edit' && <Button variant={placing ? 'default' : 'secondary'} className="pointer-events-auto shadow-sm" onClick={() => setPlacing(!placing)}><MapPin />{placing ? 'Cancel placement' : 'Set location'}</Button>}
+      <div className="pointer-events-auto ml-auto flex h-9 items-center gap-2 rounded-md border bg-card px-3 shadow-sm">
+        <Switch id={satelliteId} checked={satellite} onCheckedChange={setSatellite} />
+        <Label htmlFor={satelliteId}>Satellite</Label>
+      </div>
+      {placing && mode === 'edit' && <Badge className="w-fit whitespace-normal">Click the map to set the project location.</Badge>}
+    </div>
   </>
 }
 function MapMessage({ title, description }: { title: string; description: string }) {
-  return <div className="flex h-full min-h-80 items-center justify-center bg-muted/60 p-8">
+  return <div className="flex h-full min-h-0 items-center justify-center overflow-auto bg-muted/60 p-4 sm:p-8">
     <div className="max-w-sm text-center"><MapPin className="mx-auto mb-4 size-9 text-primary" /><h2 className="text-lg font-semibold">{title}</h2><p className="mt-2 text-sm leading-relaxed text-muted-foreground">{description}</p></div>
   </div>
 }
 export function MapPanel(props: Props) {
   const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY?.trim()
-  return <Card className="relative min-h-[420px] overflow-hidden py-0 lg:min-h-[640px]">
-    <CardContent className="relative h-[420px] p-0 lg:h-[640px]">
+  return <Card className="relative h-full min-h-0 min-w-0 overflow-hidden py-0" role="region" aria-label="Brief map">
+    <CardContent className="relative h-full min-h-0 p-0">
       {apiKey ? <APIProvider apiKey={apiKey}><ConnectedMap {...props} /></APIProvider> : <MapMessage title="Map setup pending" description={props.session.mode === 'edit' ? 'Google Maps will appear once connected. You can already set project details, coordinates, and rig settings, then export your brief.' : 'Google Maps will appear once connected. You can view the project details and toggle the layers below.'} />}
     </CardContent>
   </Card>

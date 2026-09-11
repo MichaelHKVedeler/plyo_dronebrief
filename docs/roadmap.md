@@ -6,7 +6,7 @@ The skeleton intentionally includes the workflow and data boundaries, not the co
 | --- | --- | --- |
 | Create/load/export | Working | Optional backend for short lookup keys |
 | Draft storage | Browser JSON, last draft resume | Shared durable storage and draft list |
-| Google Maps | Adapter implemented; live credentials not tested | Configure key and verify real map interactions |
+| Google Maps | Live map, satellite toggle, wheel zoom, and independent details scrolling | Extend direct map-editing tools |
 | Circle rig | Add, reposition to project, edit radius/ratio/rotation; outline renderer | Drag handles and direct map editing |
 | Camera angles | Typed data, imported marker rendering, per-type height editing | Add/select/move, direction and footprint handles |
 | 360 | Position-only contract and marker | Placement tool |
@@ -18,4 +18,4 @@ The skeleton intentionally includes the workflow and data boundaries, not the co
 
 Implement each map tool under src/features/map and send updates through the brief session reducer. Do not write Google Maps objects to the JSON or bypass view-mode guards.
 
-Recommended sequence: confirm live map integration, add camera-angle tools, add polygon drawing, then add image overlay uploads and transforms. Consider backend storage before enabling large image uploads: embedding images in a copied key does not scale well.
+Recommended sequence: add camera-angle tools, add polygon drawing, then add image overlay uploads and transforms. Consider backend storage before enabling large image uploads: embedding images in a copied key does not scale well.
