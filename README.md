@@ -34,6 +34,9 @@ npm run preview
 - Drag cameras and the circle rig to move them; rig handles adjust radius, rotation, and ovalness, and camera handles adjust direction.
 - Satellite toggle and mouse-wheel zoom without Ctrl in both editor and viewer. These view preferences do not modify the brief JSON.
 - Editor/viewer fit the browser window. The details panel has its own shadcn scrollbar; on narrow screens it sits below the map.
+- Briefs automatically frame their cameras, complete rig outline, and polygons when opened. **Frame scene** repeats this at any time; edits, search, and visibility toggles do not trigger automatic reframing.
+- Shadcn accordion sections group project details, camera points, location, rig settings, and camera heights. Selecting a map object opens its settings; opening sections does not save the brief.
+- Street/location search on the map, with selectable Google geocoding results. Search moves the view only and works in the viewer too.
 - Tests covering Unicode exports, malformed keys, persistence failures, and read-only behavior.
 
 Project and numeric fields commit on blur (clicking elsewhere or pressing Tab). Initial coordinates are 0, 0; set the shoot location before adding a rig. A rig has its own position; moving project coordinates does not silently move an existing rig. Use **Move rig to project location**.
@@ -60,11 +63,13 @@ In Google Cloud Console, open **APIs & Services → Credentials → your API key
 - Set **Application restrictions** to **Websites**.
 - Allow `http://127.0.0.1:5173/*` and `http://localhost:5173/*` for local development.
 - Set **API restrictions** to **Restrict key**, selecting **Maps JavaScript API**.
+- For location search, enable **Geocoding API** in the same Google Cloud project and add it to this key's allowed APIs as well. No new key or code change is needed. Search submits only when you press Enter or the search button; choose a result to jump there. If access is denied, the map remains usable and search shows a setup message.
 - Confirm Maps JavaScript API is enabled and the Google Cloud project has the required billing configuration.
 
 The dev server stays on port 5173 and reports an error if that port is occupied, so it cannot silently switch to an origin excluded by your key restrictions. Before deploying, use a separately restricted production key and allow the exact production website origin. Configure it in your hosting provider's build environment; never commit it. Vite includes browser-prefixed values in the client build, so `.env.local` prevents source-control exposure, not browser visibility.
 
 See [Google's API key restriction guidance](https://developers.google.com/maps/api-security-best-practices).
+See [Google's JavaScript geocoding setup](https://developers.google.com/maps/documentation/javascript/geocoding) for the search service requirements.
 
 A Maps JavaScript API key is browser-visible. Restrict its allowed referrers and API in Google Cloud; do not put a server secret in any VITE variable. A working Google Cloud configuration, including any required billing, is your responsibility. Verify live map loading on each deployment using its restricted key.
 

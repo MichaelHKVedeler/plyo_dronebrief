@@ -20,8 +20,7 @@ export function CamerasPanel({ brief, selectedId, placing, onAdd, onSelect, onUp
   function updateSelected(update: (angle: CameraAngle) => CameraAngle) {
     if (selected) onUpdate((b) => ({ ...b, angles: b.angles.map((angle) => angle.id === selected.id ? update(angle) : angle) }))
   }
-  return <section className="grid gap-3" aria-label="Camera points">
-    <h2 className="text-sm font-semibold">Camera points</h2>
+  return <div className="grid gap-3">
     {cameraTypes.map((type) => {
       const Icon = cameraAppearance[type].Icon
       return <Button key={type} variant="outline" className="justify-start" disabled={brief.angles.length >= 1000}
@@ -50,5 +49,5 @@ export function CamerasPanel({ brief, selectedId, placing, onAdd, onSelect, onUp
         onSelect(null)
       }}><Trash2 /> Remove camera</Button>
     </CardContent></Card>}
-  </section>
+  </div>
 }

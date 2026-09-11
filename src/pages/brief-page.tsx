@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
+import { Accordion } from '@/components/ui/accordion'
+import { SettingsSection } from '@/features/briefs/components/settings-section'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
@@ -39,7 +41,7 @@ export function BriefPage({ session, dispatch, error }: { session: BriefSession;
               <div className="px-4 pb-4">
                 <TabsContent value="project"><ProjectPanel session={session} selectedId={selectedId} onSelect={setSelectedId} onAddCamera={addCamera} placing={tool.kind !== 'idle'} onUpdate={(update) => dispatch({ type: 'update', update })} /></TabsContent>
                 <TabsContent value="layers"><LayersPanel session={session} onToggle={(layer, visible) => dispatch({ type: 'visibility', layer, visible })} /></TabsContent>
-                <p className="mt-5 text-sm text-muted-foreground">{session.mode === 'edit' ? 'Drag objects to move them. Drag the rig edge dot to scale and rotate. The inside oval handle adjusts ovalness. Camera arrows adjust the look-at direction.' : 'Camera icons show the type, and direction lines show where each camera points.'}</p>
+                <Accordion type="multiple" className="mt-2"><SettingsSection value="help" title="Map help"><p className="text-sm text-muted-foreground">{session.mode === 'edit' ? 'Drag objects to move them. Drag the rig edge dot to scale and rotate. The inside oval handle adjusts ovalness. Camera arrows adjust the look-at direction.' : 'Camera icons show the type, and direction lines show where each camera points.'}</p><p className="text-sm text-muted-foreground">Search to jump to a location. Frame scene brings all cameras and the rig back into view.</p></SettingsSection></Accordion>
               </div>
             </ScrollArea>
           </Tabs>
