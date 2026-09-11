@@ -27,6 +27,8 @@ it('creates with multiple times, saves edits, exports, and resumes after remount
   await user.click(screen.getByRole('button', { name: 'Create brief' }))
   expect(screen.getByText('Saved on this device')).toBeInTheDocument()
   expect(briefRepository.latest()?.project.times).toEqual(['00:30', '12:00'])
+  expect(briefRepository.latest()?.coordinates).toEqual({ lat: 59.9139, lng: 10.7522 })
+  expect(screen.getByLabelText('Search location')).toBeDisabled()
   await user.click(screen.getByRole('button', { name: 'Add circle rig at project location' }))
   const radius = screen.getByLabelText('Radius (m)')
   await user.clear(radius); await user.type(radius, '85'); await user.tab()

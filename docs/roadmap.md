@@ -6,7 +6,7 @@ The skeleton intentionally includes the workflow and data boundaries, not the co
 | --- | --- | --- |
 | Create/load/export | Working | Optional backend for short lookup keys |
 | Draft storage | Browser JSON, last draft resume | Shared durable storage and draft list |
-| Google Maps | Adapter implemented; live credentials not tested | Configure key and verify real map interactions |
+| Google Maps | Adapter, Oslo default, and Google Places search implemented; live suggestions verified | Expand map editing tools |
 | Circle rig | Add, reposition to project, edit radius/ratio/rotation; outline renderer | Drag handles and direct map editing |
 | Camera angles | Typed data, imported marker rendering, per-type height editing | Add/select/move, direction and footprint handles |
 | 360 | Position-only contract and marker | Placement tool |

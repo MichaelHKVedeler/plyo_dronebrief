@@ -32,16 +32,16 @@ npm run preview
 - Optional Google Maps adapter: project location, circle/oval outlines, camera markers and polygons.
 - Tests covering Unicode exports, malformed keys, persistence failures, and read-only behavior.
 
-Project and numeric fields commit on blur (clicking elsewhere or pressing Tab). Initial coordinates are 0, 0; set the shoot location before adding a rig. A rig has its own position; moving project coordinates does not silently move an existing rig. Use **Move rig to project location**.
+Project and numeric fields commit on blur (clicking elsewhere or pressing Tab). New briefs start in Oslo (59.9139, 10.7522). Use the Google Maps location search above the map or enter coordinates before adding a rig. Saved and imported briefs keep their stored location. A rig has its own position; moving project coordinates does not silently move an existing rig. Use **Move rig to project location**.
 
 ## Google Maps setup
 
 1. Copy `.env.example` to `.env.local`.
-2. Set `VITE_GOOGLE_MAPS_API_KEY` using your own Google Cloud project with Maps JavaScript API enabled.
+2. Set `VITE_GOOGLE_MAPS_API_KEY` using your own Google Cloud project with Maps JavaScript API and Places API (New) enabled.
 3. Optionally set `VITE_GOOGLE_MAPS_MAP_ID`; the skeleton otherwise uses `DEMO_MAP_ID`.
 4. Restart Vite.
 
-A Maps JavaScript API key is browser-visible. Restrict its allowed referrers and API in Google Cloud; do not put a server secret in any VITE variable. A working Google Cloud configuration, including any required billing, is your responsibility. Google Maps could not be exercised against a live key during skeleton setup.
+A Maps JavaScript API key is browser-visible. Restrict its allowed referrers and API in Google Cloud; do not put a server secret in any VITE variable. A working Google Cloud configuration, including any required billing, is your responsibility. Google Maps and Places suggestions were verified with the configured key. Automated tests cover selection, lookup failures, and leaving the editor during a pending lookup.
 
 Without a key, the map shows a clear placeholder. All application controls use shadcn/ui. The Google Maps canvas, attribution, and geographic shapes are the necessary mapping exception.
 

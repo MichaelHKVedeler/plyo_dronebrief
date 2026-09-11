@@ -21,7 +21,7 @@ describe('read-only boundary', () => {
     const session = openSession(brief, 'edit')
     const next = reduceSession(session, { type: 'update', update: (b) => ({ ...b, coordinates: { lat: 10, lng: 20 } }) })
     expect(next.brief.coordinates).toEqual({ lat: 10, lng: 20 })
-    expect(brief.coordinates).toEqual({ lat: 0, lng: 0 })
+    expect(brief.coordinates).toEqual({ lat: 59.9139, lng: 10.7522 })
     expect(() => reduceSession(session, { type: 'update', update: (b) => ({ ...b, coordinates: { lat: 100, lng: 0 } }) })).toThrow()
   })
 })

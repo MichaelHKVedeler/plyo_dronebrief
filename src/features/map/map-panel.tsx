@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { APIProvider, Map, Polygon, AdvancedMarker, useMap, useApiLoadingStatus, APILoadingStatus } from '@vis.gl/react-google-maps'
 import { ArrowUp, Camera, LocateFixed, MapPin, Minus, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -7,11 +7,19 @@ import { Card, CardContent } from '@/components/ui/card'
 import type { BriefSession } from '@/features/briefs/state/brief-session'
 import type { Position } from '@/features/briefs/model/brief'
 import { rigOutline } from './geometry'
+import { LocationSearch, SearchUnavailable } from './location-search'
 
 type Props = { session: BriefSession; onPosition: (position: Position) => void }
 function MapControls({ position }: { position: Position }) {
   const map = useMap()
-  useEffect(() => { map?.panTo(position) }, [map, position])
+  const previousPosition = useRef(position)
+  useEffect(() => {
+    if (!map) return
+    const changed = previousPosition.current.lat !== position.lat || previousPosition.current.lng !== position.lng
+    map.panTo(position)
+    if (changed) map.setZoom(17)
+    previousPosition.current = position
+  }, [map, position])
   return <div className="absolute bottom-8 right-3 flex gap-1 rounded-lg border bg-card p-1 shadow-sm">
     <Button variant="ghost" size="icon" aria-label="Zoom in" onClick={() => map?.setZoom((map.getZoom() ?? 2) + 1)}><Plus /></Button>
     <Button variant="ghost" size="icon" aria-label="Zoom out" onClick={() => map?.setZoom((map.getZoom() ?? 2) - 1)}><Minus /></Button>
@@ -25,7 +33,7 @@ function ConnectedMap({ session, onPosition }: Props) {
   if (status === APILoadingStatus.FAILED || status === APILoadingStatus.AUTH_FAILURE) return <MapMessage title="Map could not load" description="Check your map configuration and connection. The brief is still available." />
   if (status !== APILoadingStatus.LOADED) return <MapMessage title="Loading Google Maps…" description="Your brief is ready while the map connects." />
   return <>
-    <Map defaultCenter={brief.coordinates} defaultZoom={brief.coordinates.lat === 0 && brief.coordinates.lng === 0 ? 2 : 17}
+    <Map defaultCenter={brief.coordinates} defaultZoom={brief.coordinates.lat === 59.9139 && brief.coordinates.lng === 10.7522 ? 10 : brief.coordinates.lat === 0 && brief.coordinates.lng === 0 ? 2 : 17}
       mapId={import.meta.env.VITE_GOOGLE_MAPS_MAP_ID || 'DEMO_MAP_ID'} disableDefaultUI
       onClick={(event) => {
         if (mode === 'edit' && placing && event.detail.latLng) { onPosition(event.detail.latLng); setPlacing(false) }
@@ -48,9 +56,13 @@ function MapMessage({ title, description }: { title: string; description: string
 }
 export function MapPanel(props: Props) {
   const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY?.trim()
-  return <Card className="relative min-h-[420px] overflow-hidden py-0 lg:min-h-[640px]">
+  const panel = <div className="grid gap-3">
+    {props.session.mode === 'edit' && (apiKey ? <LocationSearch position={props.session.brief.coordinates} onPosition={props.onPosition} /> : <SearchUnavailable message="Connect Google Maps and Places to search. New briefs start in Oslo; you can also enter coordinates in Project." />)}
+    <Card className="relative min-h-[420px] overflow-hidden py-0 lg:min-h-[640px]">
     <CardContent className="relative h-[420px] p-0 lg:h-[640px]">
-      {apiKey ? <APIProvider apiKey={apiKey}><ConnectedMap {...props} /></APIProvider> : <MapMessage title="Map setup pending" description={props.session.mode === 'edit' ? 'Google Maps will appear once connected. You can already set project details, coordinates, and rig settings, then export your brief.' : 'Google Maps will appear once connected. You can view the project details and toggle the layers below.'} />}
+      {apiKey ? <ConnectedMap {...props} /> : <MapMessage title="Map setup pending" description={props.session.mode === 'edit' ? 'Google Maps will appear once connected. You can already set project details, coordinates, and rig settings, then export your brief.' : 'Google Maps will appear once connected. You can view the project details and toggle the layers below.'} />}
     </CardContent>
-  </Card>
+    </Card>
+  </div>
+  return apiKey ? <APIProvider apiKey={apiKey}>{panel}</APIProvider> : panel
 }

@@ -38,3 +38,14 @@
   body { @apply m-0 bg-background font-sans text-base text-foreground antialiased; }
   button:not(:disabled), [role="switch"]:not(:disabled) { cursor: pointer; }
 }
+
+.location-autocomplete::part(focus-ring) {
+  outline: none;
+  border: none;
+  box-shadow: none;
+}
+
+.location-autocomplete::part(input):focus {
+  outline: none;
+  box-shadow: none;
+}
