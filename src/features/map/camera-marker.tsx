@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { AdvancedMarker } from '@vis.gl/react-google-maps'
+import { useObjectRenderer } from './object-renderer'
 import { Navigation } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -19,6 +19,7 @@ type Props = {
   onCommit: (angle: CameraAngle) => void
 }
 export function CameraMarker({ angle, editable, selected, pixelsToMeters, interactive = true, onSelect, onCommit }: Props) {
+  const { Marker: AdvancedMarker } = useObjectRenderer()
   const hover = useHoverHandles(!interactive)
   const [draft, setDraft] = useState<{ source: CameraAngle; value: CameraAngle } | null>(null)
   const visible = draft?.source === angle ? draft.value : angle
@@ -36,7 +37,7 @@ export function CameraMarker({ angle, editable, selected, pixelsToMeters, intera
       zIndex={selected ? 30 : 20} draggable={editable && interactive} clickable={editable && interactive}
       style={{ pointerEvents: interactive ? 'auto' : 'none' }}
       onMouseEnter={hover.enter} onMouseLeave={hover.leave}
-      onDragStart={() => { if (editable && interactive) { onSelect(true); hover.enter() } }}
+      onDragCancel={() => setDraft(null)} onDragStart={() => { if (editable && interactive) { onSelect(true); hover.enter() } }}
       onDrag={(event) => { if (editable && interactive && event.latLng) setDraft({ source: angle, value: { ...angle, position: event.latLng.toJSON() } }) }}
       onDragEnd={(event) => { if (editable && interactive && event.latLng) commit({ ...angle, position: event.latLng.toJSON() }) }}>
       <div className="relative">
@@ -58,7 +59,7 @@ export function CameraMarker({ angle, editable, selected, pixelsToMeters, intera
         <Badge variant="secondary" className="pointer-events-none absolute left-1/2 top-full mt-1 -translate-x-1/2 whitespace-nowrap">{angle.label}</Badge>
       </div>
     </AdvancedMarker>
-    {directional && <MapHandle bare interactive={editable && interactive}
+    {directional && <MapHandle onCancel={() => setDraft(null)} bare interactive={editable && interactive}
       position={target} label={'Aim ' + angle.label} className="cursor-crosshair"
       constrain={(point) => destination(visible.position, pixelsToMeters * 31,
         distanceMeters(visible.position, point) > 0.01 ? bearingDegrees(visible.position, point) : visible.directionDegrees)}

@@ -4,7 +4,7 @@ import { afterEach, expect, it, vi } from 'vitest'
 import { MapHandle } from './map-handle'
 
 const sdk = vi.hoisted(() => ({ props: {} as Record<string, unknown>, visual: {} as Record<string, unknown>, marker: { position: {} } }))
-vi.mock('@vis.gl/react-google-maps', () => ({
+vi.mock('@vis.gl/react-google-maps', () => ({ Polygon: () => null,
   AdvancedMarker: (props: Record<string, unknown>) => {
     if (props.onDrag) sdk.props = props
     else sdk.visual = props

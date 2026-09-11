@@ -4,7 +4,7 @@ import type { MapNavigation } from './map-navigation'
 import { ViewerLayers } from './viewer-layers'
 import { GoogleMapView } from './google-map-view'
 import type { MapView } from './map-view'
-import { APIProvider, Map, Polygon, AdvancedMarker, useApiLoadingStatus, APILoadingStatus, useMap } from '@vis.gl/react-google-maps'
+import { APIProvider, Map, Polygon, useApiLoadingStatus, APILoadingStatus, useMap } from '@vis.gl/react-google-maps'
 import { MapPin, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -20,9 +20,10 @@ import { MapSearch } from './map-search'
 import { CameraPlacementGesture } from './camera-placement-gesture'
 import { MiddleMousePan } from './middle-mouse-pan'
 import { metersPerPixel } from './geometry'
-import { aimPlacement, idleTool, placeCamera, placementHint, type MapTool } from './placement'
+import { idleTool, placeCamera, placementHint, type MapTool } from './placement'
 
 type Props = {
+  onViewCenterChange?: (center: Position) => void
   selectedCameraIds: string[]
   onSelectCamera: (id: string, additive: boolean) => void
   session: BriefSession
@@ -61,14 +62,6 @@ function ConnectedMap({ selectedCameraIds, onSelectCamera, session, dispatch, to
         if (source?.composedPath().some((target) => target instanceof Element && target.closest('gmp-advanced-marker'))) return
         if (event.detail.latLng) onMapClick(event.detail.latLng)
       }}>
-      <AdvancedMarker position={brief.coordinates} title="Project location" zIndex={1}
-        draggable={editing && objectsInteractive} style={{ pointerEvents: objectsInteractive ? 'auto' : 'none' }}
-        onDragEnd={(event) => {
-          if (editing && objectsInteractive && event.latLng) {
-            const coordinates = event.latLng.toJSON()
-            dispatch({ type: 'update', update: (b) => ({ ...b, coordinates }) })
-          }
-        }}><MapPin className="size-7 fill-white text-primary" /></AdvancedMarker>
       {visibility.circleRig && brief.circleRig && <RigObject rig={brief.circleRig} satellite={satellite} editable={editing} interactive={objectsInteractive}
         selected={selectedId === brief.circleRig.id}
         onSelect={() => onSelect(brief.circleRig!.id)}
@@ -103,23 +96,17 @@ function MapWorkspace(props: Props) {
   const satelliteId = useId()
   const [shadeStart, setShadeStart] = useState<MapView | null>(null)
   const shadeActive = shadeStart !== null
-  const activeHint = shadeActive && tool.kind === 'camera'
-    ? (tool.position ? 'Click to choose the camera direction. ' : 'Click to place a camera. ') + 'Keep placing points; Esc or Cancel placement stops.'
-    : hint
   const [shadeNavigation, setShadeNavigation] = useState<MapNavigation | null>(null)
   const [minutes, setMinutes] = useState(() => {
     const [hours, mins] = (brief.project.times[0] || '12:00').split(':').map(Number)
     return hours * 60 + mins
   })
   const view = useRef<MapView>({ center: brief.coordinates, zoom: 10 })
-  const onViewChange = (next: MapView) => { view.current = next }
+  const onViewChange = (next: MapView) => { view.current = next; props.onViewCenterChange?.(next.center) }
   function handleMapClick(point: Position) {
     if (!editing) return
     if (tool.kind === 'idle') { onSelect(null); return }
-    if (tool.kind === 'project') {
-      dispatch({ type: 'update', update: (b) => ({ ...b, coordinates: point }) })
-      onToolChange(idleTool)
-    } else if (tool.kind === 'camera') handleCameraPlace(tool, point)
+    if (tool.kind === 'camera') handleCameraPlace(tool, point)
   }
   function handleCameraPlace(tool: MapTool, point: Position) {
     if (editing && tool.kind === 'camera') {
@@ -142,9 +129,9 @@ function MapWorkspace(props: Props) {
       {apiKey ? <ConnectedMap {...props} active={!shadeActive} view={view} satellite={satellite} onViewChange={onViewChange} onMapClick={handleMapClick} onCameraPlace={handleCameraPlace} /> : <MapMessage title="Map setup pending" description="Google Maps will appear once connected. Your brief is still available." />}
     </div>
     {shadeActive && <Suspense fallback={<MapMessage title="Loading ShadeMap…" description="Preparing the shadow preview." />}>
-      <ShadeMapPanel session={session} initialView={shadeStart} onViewChange={onViewChange} minutes={minutes} onMinutesChange={setMinutes}
+      <ShadeMapPanel dispatch={dispatch} selectedId={props.selectedId} selectedCameraIds={props.selectedCameraIds} onSelect={onSelect} onSelectCamera={props.onSelectCamera} session={session} initialView={shadeStart} onViewChange={onViewChange} minutes={minutes} onMinutesChange={setMinutes}
         onNavigation={setShadeNavigation} tool={tool} onMapClick={handleMapClick}
-        onAim={(point) => { if (editing && tool.kind === 'camera' && tool.position) onToolChange(aimPlacement(tool, point)) }} />
+        onToolChange={onToolChange} onCameraPlace={handleCameraPlace} />
     </Suspense>}
     <div className="pointer-events-none absolute inset-x-3 top-3 z-20 grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2">
       <div className="col-span-2 min-w-0 @min-[550px]:col-span-1">
@@ -160,13 +147,10 @@ function MapWorkspace(props: Props) {
         </Label>}
       </div>
       <div className="col-start-1 row-start-2 grid justify-items-start gap-2">
-        {editing && <Button variant={!interactive ? 'default' : 'secondary'} className="pointer-events-auto shadow-sm"
-          onClick={() => { onSelect(null); onToolChange(interactive ? { kind: 'project' } : idleTool) }}>
-          {interactive ? <MapPin /> : <X />}{interactive ? 'Set location' : 'Cancel placement'}
-        </Button>}
+        {editing && !interactive && <Button className="pointer-events-auto shadow-sm" onClick={() => onToolChange(idleTool)}><X />Cancel placement</Button>}
         <ViewerLayers session={session} dispatch={dispatch} />
       </div>
-      {activeHint && <Badge className="col-span-2 whitespace-normal py-2" role="status">{activeHint}</Badge>}
+      {hint && <Badge className="col-span-2 whitespace-normal py-2" role="status">{hint}</Badge>}
     </div>
     <MapControls brief={brief} navigation={shadeActive ? shadeNavigation : googleMap} shadeActive={shadeActive} />
   </CardContent>

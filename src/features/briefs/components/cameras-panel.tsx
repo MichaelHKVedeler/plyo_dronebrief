@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent } from '@/components/ui/card'
-import { cameraLabels, cameraTypes, type CameraAngle, type DroneBrief } from '../model/brief'
+import { type CameraAngle, type DroneBrief } from '../model/brief'
 import { cameraAppearance } from './camera-appearance'
 import { NumberField } from './number-field'
 
@@ -14,12 +14,9 @@ type Props = {
   onRemoveCameras: (ids: string[]) => void
   brief: DroneBrief
   selectedId: string | null
-  placing: boolean
-  onAdd: (type: CameraAngle['type']) => void
-  onSelect: (id: string | null) => void
   onUpdate: (update: (brief: DroneBrief) => DroneBrief) => void
 }
-export function CamerasPanel({ selectedCameraIds, onSelectCamera, onRemoveCameras, brief, selectedId, onAdd, onUpdate }: Props) {
+export function CamerasPanel({ selectedCameraIds, onSelectCamera, onRemoveCameras, brief, selectedId, onUpdate }: Props) {
   const selected = brief.angles.find((angle) => angle.id === selectedId)
   function remove(id: string) {
     onRemoveCameras(selectedCameraIds.includes(id) ? selectedCameraIds : [id])
@@ -28,11 +25,7 @@ export function CamerasPanel({ selectedCameraIds, onSelectCamera, onRemoveCamera
     if (selected) onUpdate((b) => ({ ...b, angles: b.angles.map((angle) => angle.id === selected.id ? update(angle) : angle) }))
   }
   return <div className="grid gap-3">
-    {cameraTypes.map((type) => {
-      const Icon = cameraAppearance[type].Icon
-      return <Button key={type} variant="outline" className="justify-start" disabled={brief.angles.length >= 1000}
-        onClick={() => onAdd(type)}><Icon />{type === 'drone-image' ? 'Add drone image' : 'Add ' + cameraLabels[type] + ' point'}</Button>
-    })}
+    {!brief.angles.length && <p className="text-sm text-muted-foreground">No camera points yet. Choose a camera type above to place one.</p>}
     {brief.angles.map((angle) => {
       const Icon = cameraAppearance[angle.type].Icon
       return <div key={angle.id} className="flex min-w-0 items-center gap-1">

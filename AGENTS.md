@@ -39,7 +39,7 @@ Use `@/` imports across features. Within a feature, relative imports are fine. P
 - Keep schemaVersion and export prefix versioned. A breaking field change requires an explicit migration/version decision, tests, and documentation. Never silently reinterpret existing exports.
 - Validate imported data before opening it. Preserve size limits and reject unsupported versions.
 - Stored settings and ephemeral UI state are different: selections, tool mode, map pan/zoom, visibility, and dialogs do not belong in saved brief content.
-- ShadeMap is a lazy-loaded preview adapter. Preserve WGS84 coordinates and convert zoom via map-view.ts; never write provider, shadow time, or camera view into a brief. Both maps share search/navigation/layer controls and click placement; Google Maps owns object dragging and adjustment handles. Keep shared UI outside the provider canvases. All keys belong in ignored .env.local or deployment environment variables.
+- ShadeMap is a lazy-loaded preview adapter. Preserve WGS84 coordinates and convert zoom via map-view.ts; never write provider, shadow time, or camera view into a brief. Both maps share search/navigation/layer controls and click placement; Both maps share camera/rig components for selection, dragging and adjustment handles through provider-specific geometry adapters. Keep shared UI outside the provider canvases. All keys belong in ignored .env.local or deployment environment variables.
 
 ## Edit/view and saving
 
