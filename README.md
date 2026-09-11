@@ -30,11 +30,21 @@ npm run preview
 - Export/import of portable snapshot keys, with schema validation and size limits.
 - Layer visibility switches, kept separate from saved brief content.
 - Optional Google Maps adapter: project location, circle/oval outlines, camera markers and polygons.
+- Map placement for 360, DSLR, and drone images, with distinct icons and camera directions.
+- Drag cameras and the circle rig to move them; rig handles adjust radius, rotation, and ovalness, and camera handles adjust direction.
 - Satellite toggle and mouse-wheel zoom without Ctrl in both editor and viewer. These view preferences do not modify the brief JSON.
 - Editor/viewer fit the browser window. The details panel has its own shadcn scrollbar; on narrow screens it sits below the map.
 - Tests covering Unicode exports, malformed keys, persistence failures, and read-only behavior.
 
 Project and numeric fields commit on blur (clicking elsewhere or pressing Tab). Initial coordinates are 0, 0; set the shoot location before adding a rig. A rig has its own position; moving project coordinates does not silently move an existing rig. Use **Move rig to project location**.
+
+### Map editing
+
+In the Project panel, choose **Add 360 point**, **Add DSLR point**, or **Add drone image**, then click a position on the map. A 360 point is complete immediately. For DSLR and drone images, click a second location to choose where the camera points. **Escape** or **Cancel placement** discards an unfinished placement.
+
+Drag any camera icon, the rig center, or the rig interior to move it. Hover or select the rig to reveal one edge dot for both scale and rotation, plus the inside oval handle for ovalness. Hover or select a DSLR/drone camera to reveal its direction arrow, then drag the arrow to aim. Selecting an object keeps its handles visible. Drag the edge dot in/out to resize and around the center to rotate. Use the numeric settings in the sidebar for precise adjustments or keyboard input. Camera selection exposes its label, coordinates, direction where applicable, and removal action.
+
+Movement previews are temporary until the drag ends; committed changes autosave and are included in exports. Placement, selection, and hover state are not saved. Loaded briefs display the same geometry with editing and adjustment handles disabled.
 
 ## Google Maps setup
 

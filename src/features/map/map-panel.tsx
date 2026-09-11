@@ -1,55 +1,109 @@
 import { useEffect, useId, useState } from 'react'
 import { APIProvider, Map, Polygon, AdvancedMarker, useMap, useApiLoadingStatus, APILoadingStatus } from '@vis.gl/react-google-maps'
-import { ArrowUp, Camera, LocateFixed, MapPin, Minus, Plus } from 'lucide-react'
+import { LocateFixed, MapPin, Minus, Plus, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
-import type { BriefSession } from '@/features/briefs/state/brief-session'
-import type { Position } from '@/features/briefs/model/brief'
-import { rigOutline } from './geometry'
+import type { BriefAction, BriefSession } from '@/features/briefs/state/brief-session'
+import { cameraLabels, type CameraAngle, type Position } from '@/features/briefs/model/brief'
+import { CameraMarker } from './camera-marker'
+import { RigObject } from './rig-object'
+import { metersPerPixel } from './geometry'
+import { aimPlacement, idleTool, placeCamera, placementHint, type MapTool } from './placement'
 
-type Props = { session: BriefSession; onPosition: (position: Position) => void }
+type Props = {
+  session: BriefSession
+  dispatch: (action: BriefAction) => void
+  tool: MapTool
+  onToolChange: (tool: MapTool) => void
+  selectedId: string | null
+  onSelect: (id: string | null) => void
+}
 function MapControls({ position }: { position: Position }) {
   const map = useMap()
-  useEffect(() => { map?.panTo(position) }, [map, position])
+  const { lat, lng } = position
+  // Other brief edits must not reset the user's current map view.
+  useEffect(() => { map?.panTo({ lat, lng }) }, [map, lat, lng])
   return <div className="absolute bottom-8 right-3 flex gap-1 rounded-lg border bg-card p-1 shadow-sm">
     <Button variant="ghost" size="icon" aria-label="Zoom in" onClick={() => map?.setZoom((map.getZoom() ?? 2) + 1)}><Plus /></Button>
     <Button variant="ghost" size="icon" aria-label="Zoom out" onClick={() => map?.setZoom((map.getZoom() ?? 2) - 1)}><Minus /></Button>
     <Button variant="ghost" size="icon" aria-label="Center on project" onClick={() => { map?.panTo(position); map?.setZoom(17) }}><LocateFixed /></Button>
   </div>
 }
-function ConnectedMap({ session, onPosition }: Props) {
+function ConnectedMap({ session, dispatch, tool, onToolChange, selectedId, onSelect }: Props) {
   const status = useApiLoadingStatus()
-  const [placing, setPlacing] = useState(false)
   const [satellite, setSatellite] = useState(false)
+  const [zoom, setZoom] = useState(17)
   const satelliteId = useId()
   const { brief, visibility, mode } = session
+  const editing = mode === 'edit'
+  const interactive = tool.kind === 'idle'
+  const hint = editing ? placementHint(tool) : null
+  function handleMapClick(point: Position) {
+    if (!editing) return
+    if (tool.kind === 'project') {
+      dispatch({ type: 'update', update: (b) => ({ ...b, coordinates: point }) })
+      onToolChange(idleTool)
+    } else if (tool.kind === 'camera') {
+      if (brief.angles.length >= 1000) { onToolChange(idleTool); return }
+      let labelNumber = 1
+      const labels = new Set(brief.angles.map((angle) => angle.label))
+      while (labels.has(cameraLabels[tool.cameraType] + ' ' + labelNumber)) labelNumber++
+      const result = placeCamera(tool, point, crypto.randomUUID(), labelNumber)
+      if (result.angle) {
+        const angle = result.angle
+        dispatch({ type: 'update', update: (b) => ({ ...b, angles: [...b.angles, angle] }) })
+        onSelect(angle.id)
+      }
+      onToolChange(result.tool)
+    }
+  }
+  const pendingAngle: CameraAngle | null = tool.kind === 'camera' && tool.position && tool.cameraType !== '360'
+    ? { id: 'placement-preview', label: 'Choose direction', type: tool.cameraType, position: tool.position, directionDegrees: tool.directionDegrees }
+    : null
   if (status === APILoadingStatus.FAILED || status === APILoadingStatus.AUTH_FAILURE) return <MapMessage title="Map could not load" description="Check your map configuration and connection. The brief is still available." />
   if (status !== APILoadingStatus.LOADED) return <MapMessage title="Loading Google Maps…" description="Your brief is ready while the map connects." />
   return <>
     <Map defaultCenter={brief.coordinates} defaultZoom={brief.coordinates.lat === 0 && brief.coordinates.lng === 0 ? 2 : 17}
       mapId={import.meta.env.VITE_GOOGLE_MAPS_MAP_ID || 'DEMO_MAP_ID'} disableDefaultUI
       mapTypeId={satellite ? 'satellite' : 'roadmap'} tilt={0} gestureHandling="greedy"
-      onClick={(event) => {
-        if (mode === 'edit' && placing && event.detail.latLng) { onPosition(event.detail.latLng); setPlacing(false) }
-      }}>
-      <AdvancedMarker position={brief.coordinates} title="Project location"><MapPin className="size-7 fill-white text-primary" /></AdvancedMarker>
-      {visibility.circleRig && brief.circleRig && <Polygon paths={rigOutline(brief.circleRig)} strokeColor="#2958bb" strokeWeight={2} fillColor="#2958bb" fillOpacity={0.12} clickable={false} />}
-      {visibility.angles && brief.angles.map((angle) => <AdvancedMarker key={angle.id} position={angle.position} title={angle.label}>
-        <Badge className="gap-1">{angle.type === '360' ? <Camera /> : <ArrowUp style={{ transform: 'rotate(' + angle.directionDegrees + 'deg)' }} />}{angle.label}</Badge>
-      </AdvancedMarker>)}
+      draggableCursor={editing && !interactive ? 'crosshair' : undefined}
+      onZoomChanged={(event) => setZoom(event.detail.zoom)}
+      onClick={(event) => { if (event.detail.latLng) handleMapClick(event.detail.latLng) }}
+      onMousemove={(event) => { if (editing && event.detail.latLng && tool.kind === 'camera' && tool.position) onToolChange(aimPlacement(tool, event.detail.latLng)) }}>
+      <AdvancedMarker position={brief.coordinates} title="Project location" zIndex={1}
+        draggable={editing && interactive} style={{ pointerEvents: interactive ? 'auto' : 'none' }}
+        onDragEnd={(event) => {
+          if (editing && event.latLng) {
+            const coordinates = event.latLng.toJSON()
+            dispatch({ type: 'update', update: (b) => ({ ...b, coordinates }) })
+          }
+        }}><MapPin className="size-7 fill-white text-primary" /></AdvancedMarker>
+      {visibility.circleRig && brief.circleRig && <RigObject rig={brief.circleRig} editable={editing} interactive={interactive}
+        selected={selectedId === brief.circleRig.id}
+        onSelect={() => onSelect(brief.circleRig!.id)}
+        onCommit={(rig) => dispatch({ type: 'update', update: (b) => ({ ...b, circleRig: b.circleRig?.id === rig.id ? rig : b.circleRig }) })} />}
+      {visibility.angles && brief.angles.map((angle) => <CameraMarker key={angle.id} angle={angle} editable={editing}
+        interactive={interactive} selected={selectedId === angle.id} pixelsToMeters={metersPerPixel(angle.position.lat, zoom)}
+        onSelect={() => onSelect(angle.id)}
+        onCommit={(updated) => dispatch({ type: 'update', update: (b) => ({ ...b, angles: b.angles.map((item) => item.id === updated.id ? updated : item) }) })} />)}
+      {pendingAngle && <CameraMarker angle={pendingAngle} editable={false} interactive={false} selected={false}
+        pixelsToMeters={metersPerPixel(pendingAngle.position.lat, zoom)} onSelect={() => {}} onCommit={() => {}} />}
       {visibility.polygons && brief.polygons.map((polygon) => <Polygon key={polygon.id} paths={polygon.vertices} strokeColor="#b45309" fillColor="#d97706" fillOpacity={0.2} clickable={false} />)}
       <MapControls position={brief.coordinates} />
     </Map>
     <div className="pointer-events-none absolute inset-x-3 top-3 flex flex-wrap items-start justify-between gap-2">
-      {mode === 'edit' && <Button variant={placing ? 'default' : 'secondary'} className="pointer-events-auto shadow-sm" onClick={() => setPlacing(!placing)}><MapPin />{placing ? 'Cancel placement' : 'Set location'}</Button>}
+      {editing && <Button variant={!interactive ? 'default' : 'secondary'} className="pointer-events-auto shadow-sm"
+        onClick={() => { onSelect(null); onToolChange(interactive ? { kind: 'project' } : idleTool) }}>
+        {interactive ? <MapPin /> : <X />}{interactive ? 'Set location' : 'Cancel placement'}
+      </Button>}
       <div className="pointer-events-auto ml-auto flex h-9 items-center gap-2 rounded-md border bg-card px-3 shadow-sm">
         <Switch id={satelliteId} checked={satellite} onCheckedChange={setSatellite} />
         <Label htmlFor={satelliteId}>Satellite</Label>
       </div>
-      {placing && mode === 'edit' && <Badge className="w-fit whitespace-normal">Click the map to set the project location.</Badge>}
+      {hint && <Badge className="w-full whitespace-normal py-2" role="status">{hint}</Badge>}
     </div>
   </>
 }
