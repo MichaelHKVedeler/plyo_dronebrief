@@ -11,17 +11,17 @@
   --color-popover: var(--card);
   --color-popover-foreground: var(--foreground);
   --color-primary: var(--primary);
-  --color-primary-foreground: #ffffff;
-  --color-secondary: #e9eef5;
-  --color-secondary-foreground: #23344f;
-  --color-muted: #f0f3f7;
-  --color-muted-foreground: #53627a;
-  --color-accent: #e8effb;
-  --color-accent-foreground: #1e4399;
-  --color-destructive: #b42332;
-  --color-border: #dbe2eb;
-  --color-input: #c9d3e1;
-  --color-ring: #3563c5;
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -29,11 +29,45 @@
   --font-sans: "Segoe UI", system-ui, sans-serif;
 }
 :root {
-  --background: #f7f9fc;
-  --foreground: #17263e;
-  --card: #ffffff;
-  --primary: #2958bb;
+  --background: #FFFFFF;
+  --foreground: #0A0C0E;
+  --card: #FFFFFF;
+  --primary: #00B48F;
+  --primary-foreground: #0A0C0E;
+  --secondary: #ECEDEB;
+  --secondary-foreground: #0A0C0E;
+  --muted: #F5F6F4;
+  --muted-foreground: #606662;
+  --accent: #E0F3EC;
+  --accent-foreground: #075E4B;
+  --destructive: #B42332;
+  --border: #DCDFDA;
+  --input: #BDC4BE;
+  --ring: #008A6D;
   --radius: 0.625rem;
+}
+.dark {
+  --background: #0A0C0E;
+  --foreground: #FFFFFF;
+  --card: #131719;
+  --primary: #00A17F;
+  --primary-foreground: #0A0C0E;
+  --secondary: #252B2D;
+  --secondary-foreground: #ECEDEB;
+  --muted: #1B2022;
+  --muted-foreground: #ADB5B0;
+  --accent: #143C33;
+  --accent-foreground: #65DDC0;
+  --destructive: #F17883;
+  --border: #303739;
+  --input: #46514D;
+  --ring: #00B48F;
+}
+/* Brand shape overrides stay outside the vendored shadcn primitives.
+   Joined controls and row-like ghost buttons retain their existing shapes. */
+[data-slot="button"]:not([data-variant="ghost"]):not([data-variant="link"]):not([data-slot="button-group"] *),
+[data-slot="button"][data-size^="icon"]:not([data-slot="button-group"] *) {
+  border-radius: 9999px;
 }
 @layer base {
   * { @apply border-border outline-ring/50; }

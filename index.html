@@ -4,7 +4,16 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="Create and share drone photography briefs." />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/svg+xml" href="/brand/plyo-mark-shaded-light.svg" />
+    <script>
+      // Apply the preference before the first paint; the header keeps it in sync.
+      try {
+        const theme = localStorage.getItem('dronebrief:theme');
+        const dark = theme === 'dark' || (theme !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches);
+        document.documentElement.classList.toggle('dark', dark);
+        document.documentElement.style.colorScheme = dark ? 'dark' : 'light';
+      } catch { /* The header will apply the system preference. */ }
+    </script>
     <title>Dronebrief</title>
   </head>
   <body><div id="root"></div><script type="module" src="/src/main.tsx"></script></body>
