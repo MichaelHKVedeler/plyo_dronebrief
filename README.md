@@ -23,7 +23,7 @@ npm run preview
 - Vite + React + strict TypeScript + Tailwind CSS v4.
 - Official shadcn/ui components, installed through its CLI; no second UI kit.
 - Landing page with create, load, and resume-last-local-draft actions.
-- Two-step wizard: project/client, then date and multiple times.
+- Two-step wizard: project/client, then date and multiple times. The date defaults to today, with half-hour time sliders.
 - Separate editor and read-only viewer modes.
 - Basic editor: rename project, coordinates, circle/oval rig settings, camera height arrays.
 - JSON autosave in browser localStorage after every committed editor change.
@@ -39,7 +39,7 @@ npm run preview
 - Street/location search on the map, with selectable Google geocoding results. Search moves the view only and works in the viewer too.
 - Tests covering Unicode exports, malformed keys, persistence failures, and read-only behavior.
 
-Project and numeric fields commit on blur (clicking elsewhere or pressing Tab). Initial coordinates are 0, 0; set the shoot location before adding a rig. A rig has its own position; moving project coordinates does not silently move an existing rig. Use **Move rig to project location**.
+Project and numeric fields commit on blur (clicking elsewhere or pressing Tab). New briefs start in Oslo (59.9139, 10.7522). Search to move the map, then use Set location or enter coordinates before adding a rig. Saved and imported briefs keep their stored location. A rig has its own position; moving project coordinates does not silently move an existing rig. Use **Move rig to project location**.
 
 ### Map editing
 

@@ -29,6 +29,9 @@ export function sceneBounds(points: Position[]): google.maps.LatLngBoundsLiteral
 }
 
 export function fitScene(map: google.maps.Map, brief: DroneBrief) {
+  if (!brief.angles.length && !brief.circleRig && !brief.polygons.length && brief.coordinates.lat === 59.9139 && brief.coordinates.lng === 10.7522) {
+    map.moveCamera({ center: brief.coordinates, zoom: 10 }); return
+  }
   if (!brief.angles.length && !brief.circleRig && !brief.polygons.length && brief.coordinates.lat === 0 && brief.coordinates.lng === 0) {
     map.moveCamera({ center: brief.coordinates, zoom: 2 }); return
   }

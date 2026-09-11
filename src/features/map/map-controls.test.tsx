@@ -29,10 +29,12 @@ it('frames on opening, preserves the view during edits, and supports explicit re
   expect(map.fitBounds).toHaveBeenCalledTimes(2)
   expect(map.fitBounds.mock.calls[1][0].north).toBeGreaterThan(61)
 })
-it('frames a different project and gives an empty new brief a world view', () => {
+it('frames a different project and preserves Oslo and legacy world defaults for empty briefs', () => {
   const view = render(<MapControls brief={brief} />)
   view.rerender(<MapControls brief={{ ...brief, id: 'another' }} />)
   expect(map.fitBounds).toHaveBeenCalledTimes(2)
   view.rerender(<MapControls brief={{ ...brief, id: 'empty', angles: [] }} />)
+  expect(map.moveCamera).toHaveBeenCalledWith({ center: { lat: 59.9139, lng: 10.7522 }, zoom: 10 })
+  view.rerender(<MapControls brief={{ ...brief, id: 'legacy', angles: [], coordinates: { lat: 0, lng: 0 } }} />)
   expect(map.moveCamera).toHaveBeenCalledWith({ center: { lat: 0, lng: 0 }, zoom: 2 })
 })
