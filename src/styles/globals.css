@@ -1,0 +1,40 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--foreground);
+  --color-popover: var(--card);
+  --color-popover-foreground: var(--foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: #ffffff;
+  --color-secondary: #e9eef5;
+  --color-secondary-foreground: #23344f;
+  --color-muted: #f0f3f7;
+  --color-muted-foreground: #53627a;
+  --color-accent: #e8effb;
+  --color-accent-foreground: #1e4399;
+  --color-destructive: #b42332;
+  --color-border: #dbe2eb;
+  --color-input: #c9d3e1;
+  --color-ring: #3563c5;
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --font-sans: "Segoe UI", system-ui, sans-serif;
+}
+:root {
+  --background: #f7f9fc;
+  --foreground: #17263e;
+  --card: #ffffff;
+  --primary: #2958bb;
+  --radius: 0.625rem;
+}
+@layer base {
+  * { @apply border-border outline-ring/50; }
+  body { @apply m-0 bg-background font-sans text-base text-foreground antialiased; }
+  button:not(:disabled), [role="switch"]:not(:disabled) { cursor: pointer; }
+}
