@@ -9,8 +9,8 @@ import { CamerasPanel } from './cameras-panel'
 import { NumberField } from './number-field'
 import type { BriefSession } from '../state/brief-session'
 
-type Props = { session: BriefSession; onUpdate: (update: (brief: DroneBrief) => DroneBrief) => void; selectedId: string | null; onSelect: (id: string | null) => void; onAddCamera: (type: CameraAngle['type']) => void; placing: boolean }
-export function ProjectPanel({ session, onUpdate, selectedId, onSelect, onAddCamera, placing }: Props) {
+type Props = { selectedCameraIds: string[]; onSelectCamera: (id: string, range: boolean) => void; onRemoveCameras: (ids: string[]) => void; session: BriefSession; onUpdate: (update: (brief: DroneBrief) => DroneBrief) => void; selectedId: string | null; onSelect: (id: string | null) => void; onAddCamera: (type: CameraAngle['type']) => void; placing: boolean }
+export function ProjectPanel({ selectedCameraIds, onSelectCamera, onRemoveCameras, session, onUpdate, selectedId, onSelect, onAddCamera, placing }: Props) {
   const { brief, mode } = session
   const [open, setOpen] = useState<string[]>(mode === 'edit' ? ['cameras'] : ['project'])
   const [lastSelected, setLastSelected] = useState<string | null>(null)
@@ -53,7 +53,7 @@ export function ProjectPanel({ session, onUpdate, selectedId, onSelect, onAddCam
     <p className="text-sm text-muted-foreground">{brief.project.clientName}<br />{brief.project.date} · {brief.project.times.join(', ')}</p>
     </SettingsSection>
     <SettingsSection value="cameras" title="Camera points" count={brief.angles.length}>
-    <CamerasPanel brief={brief} selectedId={selectedId} onSelect={onSelect} onAdd={onAddCamera} placing={placing} onUpdate={onUpdate} />
+    <CamerasPanel selectedCameraIds={selectedCameraIds} onSelectCamera={onSelectCamera} onRemoveCameras={onRemoveCameras} brief={brief} selectedId={selectedId} onSelect={onSelect} onAdd={onAddCamera} placing={placing} onUpdate={onUpdate} />
     </SettingsSection>
     <SettingsSection value="location" title="Project location">
     <NumberField label="Latitude" value={brief.coordinates.lat} min={-90} max={90} onChange={(lat) => onUpdate((b) => ({ ...b, coordinates: { ...b.coordinates, lat } }))} />

@@ -9,8 +9,8 @@ The skeleton intentionally includes the workflow and data boundaries, not the co
 | Google Maps | Live map, Oslo default for new briefs, satellite toggle, wheel zoom, auto scene framing, Frame scene action, location search, and collapsible sidebar | Optional autocomplete suggestions |
 | Circle rig | Add, drag center icon only, combined scale/rotation edge dot and oval handle, numeric settings | Optional snapping and undo history |
 | Camera angles | Place/select/rename/remove, drag, direction handles, distinct icons, per-type heights | Optional field-of-view footprints |
-| 360 | One-click position-only placement and draggable panorama icon | Optional panorama coverage preview |
-| DSLR | Two-click placement, camera icon, draggable position and aim handle | Optional lens settings |
+| 360 | Repeated one-click position-only placement and draggable panorama icon | Optional panorama coverage preview |
+| DSLR | Repeated press-drag-release placement, camera icon, draggable position and aim handle | Optional lens settings |
 | Newbuild polygons | Contract and imported polygon rendering | Drawing, vertex editing, geometry validation |
 | Image overlays | Contract and layer list only | Upload, bitmap rendering, move/scale/rotate/opacity tools |
 | Viewer | UI and state-level read-only, local visibility | Backend permissions if stronger access control is needed |

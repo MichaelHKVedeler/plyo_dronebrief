@@ -12,11 +12,14 @@ import { CameraMarker } from './camera-marker'
 import { RigObject } from './rig-object'
 import { MapControls } from './map-controls'
 import { MapSearch } from './map-search'
+import { CameraPlacementGesture } from './camera-placement-gesture'
 import { MiddleMousePan } from './middle-mouse-pan'
 import { metersPerPixel } from './geometry'
-import { aimPlacement, idleTool, placeCamera, placementHint, type MapTool } from './placement'
+import { idleTool, placeCamera, placementHint, type MapTool } from './placement'
 
 type Props = {
+  selectedCameraIds: string[]
+  onSelectCamera: (id: string, additive: boolean) => void
   session: BriefSession
   dispatch: (action: BriefAction) => void
   tool: MapTool
@@ -24,7 +27,7 @@ type Props = {
   selectedId: string | null
   onSelect: (id: string | null) => void
 }
-function ConnectedMap({ session, dispatch, tool, onToolChange, selectedId, onSelect }: Props) {
+function ConnectedMap({ selectedCameraIds, onSelectCamera, session, dispatch, tool, onToolChange, selectedId, onSelect }: Props) {
   const status = useApiLoadingStatus()
   const [satellite, setSatellite] = useState(false)
   const [zoom, setZoom] = useState(17)
@@ -37,10 +40,17 @@ function ConnectedMap({ session, dispatch, tool, onToolChange, selectedId, onSel
   const hint = editing ? placementHint(tool) : null
   function handleMapClick(point: Position) {
     if (!editing || middlePanning) return
+    if (tool.kind === 'idle') {
+      onSelect(null)
+      return
+    }
     if (tool.kind === 'project') {
       dispatch({ type: 'update', update: (b) => ({ ...b, coordinates: point }) })
       onToolChange(idleTool)
-    } else if (tool.kind === 'camera') {
+    }
+  }
+  function handleCameraPlace(tool: MapTool, point: Position) {
+    if (editing && tool.kind === 'camera') {
       if (brief.angles.length >= 1000) { onToolChange(idleTool); return }
       let labelNumber = 1
       const labels = new Set(brief.angles.map((angle) => angle.label))
@@ -62,11 +72,15 @@ function ConnectedMap({ session, dispatch, tool, onToolChange, selectedId, onSel
   return <>
     <Map defaultCenter={brief.coordinates} defaultZoom={brief.coordinates.lat === 59.9139 && brief.coordinates.lng === 10.7522 ? 10 : brief.coordinates.lat === 0 && brief.coordinates.lng === 0 ? 2 : 17}
       mapId={import.meta.env.VITE_GOOGLE_MAPS_MAP_ID || 'DEMO_MAP_ID'} disableDefaultUI
-      mapTypeId={satellite ? 'satellite' : 'roadmap'} tilt={0} gestureHandling={middlePanning ? 'none' : 'greedy'}
+      mapTypeId={satellite ? 'satellite' : 'roadmap'} tilt={0} gestureHandling={middlePanning || (editing && tool.kind === 'camera') ? 'none' : 'greedy'}
       draggableCursor={editing && !interactive ? 'crosshair' : undefined}
       onZoomChanged={(event) => setZoom(event.detail.zoom)}
-      onClick={(event) => { if (event.detail.latLng) handleMapClick(event.detail.latLng) }}
-      onMousemove={(event) => { if (editing && event.detail.latLng && tool.kind === 'camera' && tool.position) onToolChange(aimPlacement(tool, event.detail.latLng)) }}>
+      onClick={(event) => {
+        const source = event.domEvent
+        if (source instanceof MouseEvent && (source.ctrlKey || source.shiftKey)) return
+        if (source?.composedPath().some((target) => target instanceof Element && target.closest('gmp-advanced-marker'))) return
+        if (event.detail.latLng) handleMapClick(event.detail.latLng)
+      }}>
       <AdvancedMarker position={brief.coordinates} title="Project location" zIndex={1}
         draggable={editing && objectsInteractive} style={{ pointerEvents: objectsInteractive ? 'auto' : 'none' }}
         onDragEnd={(event) => {
@@ -80,14 +94,15 @@ function ConnectedMap({ session, dispatch, tool, onToolChange, selectedId, onSel
         onSelect={() => onSelect(brief.circleRig!.id)}
         onCommit={(rig) => dispatch({ type: 'update', update: (b) => ({ ...b, circleRig: b.circleRig?.id === rig.id ? rig : b.circleRig }) })} />}
       {visibility.angles && brief.angles.map((angle) => <CameraMarker key={angle.id} angle={angle} editable={editing}
-        interactive={objectsInteractive} selected={selectedId === angle.id} pixelsToMeters={metersPerPixel(angle.position.lat, zoom)}
-        onSelect={() => onSelect(angle.id)}
+        interactive={objectsInteractive} selected={selectedCameraIds.includes(angle.id)} pixelsToMeters={metersPerPixel(angle.position.lat, zoom)}
+        onSelect={(additive = false) => onSelectCamera(angle.id, additive)}
         onCommit={(updated) => dispatch({ type: 'update', update: (b) => ({ ...b, angles: b.angles.map((item) => item.id === updated.id ? updated : item) }) })} />)}
       {pendingAngle && <CameraMarker angle={pendingAngle} editable={false} interactive={false} selected={false}
         pixelsToMeters={metersPerPixel(pendingAngle.position.lat, zoom)} onSelect={() => {}} onCommit={() => {}} />}
       {visibility.polygons && brief.polygons.map((polygon) => <Polygon key={polygon.id} paths={polygon.vertices} strokeColor="#b45309" fillColor="#d97706" fillOpacity={0.2} clickable={false} />)}
       <MapControls brief={brief} />
       <MiddleMousePan onActiveChange={setMiddlePanning} />
+      {editing && <CameraPlacementGesture tool={tool} onToolChange={onToolChange} onPlace={handleCameraPlace} />}
       <MapSearch />
     <div className="pointer-events-none absolute inset-x-3 top-16 flex flex-wrap items-start justify-between gap-2">
       {editing && <Button variant={!interactive ? 'default' : 'secondary'} className="pointer-events-auto shadow-sm"

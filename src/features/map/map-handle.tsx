@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button'
 import type { Position } from '@/features/briefs/model/brief'
 
 type Props = {
+  bare?: boolean
   interactive?: boolean
   position: Position
   label: string
@@ -17,10 +18,12 @@ type Props = {
   className?: string
   constrain?: (position: Position) => Position
 }
-export function MapHandle({ position, label, children, onStart, onPreview, onCommit, onEnter, onLeave, onStep, constrain, interactive = true, className = '' }: Props) {
+export function MapHandle({ position, label, children, onStart, onPreview, onCommit, onEnter, onLeave, onStep, constrain, bare = false, interactive = true, className = '' }: Props) {
   const marker = useRef<google.maps.marker.AdvancedMarkerElement | null>(null)
   const [focused, setFocused] = useState(false)
-  const handleClass = 'touch-none rounded-full border-2 border-primary bg-card text-primary shadow-md ' + className
+  const handleClass = (bare
+    ? 'touch-none border-0 bg-transparent text-primary shadow-none hover:bg-transparent disabled:opacity-100 '
+    : 'touch-none rounded-full border-2 border-primary bg-card text-primary shadow-md ') + className
   function drag(point: Position, commit: boolean) {
     if (!interactive) return
     const constrained = constrain ? constrain(point) : point
@@ -35,7 +38,7 @@ export function MapHandle({ position, label, children, onStart, onPreview, onCom
         Its position and the outline are rendered from the same shape state. */}
     {constrain && <AdvancedMarker position={position} anchorLeft="-50%" anchorTop="-50%" zIndex={100}
       draggable={false} clickable={false} style={{ pointerEvents: 'none' }}>
-      <Button aria-hidden="true" tabIndex={-1} disabled={!interactive} type="button" size="icon-sm" variant="outline"
+      <Button aria-hidden="true" tabIndex={-1} disabled={!interactive} type="button" size="icon-sm" variant={bare ? 'ghost' : 'outline'}
         className={handleClass + (focused ? ' ring-2 ring-ring' : '')}>{children}</Button>
     </AdvancedMarker>}
     <AdvancedMarker ref={marker} position={position} anchorLeft="-50%" anchorTop="-50%" zIndex={101}
@@ -44,7 +47,7 @@ export function MapHandle({ position, label, children, onStart, onPreview, onCom
     onDragStart={() => { if (interactive) onStart() }}
     onDrag={(event) => { if (event.latLng) drag(event.latLng.toJSON(), false) }}
     onDragEnd={(event) => { if (event.latLng) drag(event.latLng.toJSON(), true) }}>
-    <Button disabled={!interactive} type="button" size="icon-sm" variant="outline"
+    <Button disabled={!interactive} type="button" size="icon-sm" variant={bare ? 'ghost' : 'outline'}
       className={handleClass}
       aria-label={label} title={label + ' · drag to adjust'}
       onFocus={() => { setFocused(true); onEnter() }} onBlur={() => { setFocused(false); onLeave() }}
