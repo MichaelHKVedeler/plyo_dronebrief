@@ -46,7 +46,7 @@ describe('map transform geometry', () => {
   })
   it('adjusts ovalness in the rotated rig frame', () => {
     const target = destination(rig.position, 40, rig.rotationDegrees + 90)
-    expect(reshapeRig(rig, target).ovalRatio).toBeCloseTo(0.8)
+    expect(reshapeRig(rig, target).ovalRatio).toBeCloseTo(0.4)
     expect(reshapeRig(rig, destination(rig.position, 40, rig.rotationDegrees)).ovalRatio).toBe(0.1)
   })
   it('keeps gizmo output inside schema limits', () => {

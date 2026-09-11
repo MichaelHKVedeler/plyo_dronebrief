@@ -19,7 +19,7 @@ type Props = {
   onCommit: (angle: CameraAngle) => void
 }
 export function CameraMarker({ angle, editable, selected, pixelsToMeters, interactive = true, onSelect, onCommit }: Props) {
-  const hover = useHoverHandles()
+  const hover = useHoverHandles(!interactive)
   const [draft, setDraft] = useState<{ source: CameraAngle; value: CameraAngle } | null>(null)
   const visible = draft?.source === angle ? draft.value : angle
   const appearance = cameraAppearance[angle.type]
@@ -37,12 +37,12 @@ export function CameraMarker({ angle, editable, selected, pixelsToMeters, intera
       zIndex={selected ? 30 : 20} draggable={editable && interactive} clickable={editable && interactive}
       style={{ pointerEvents: interactive ? 'auto' : 'none' }}
       onMouseEnter={hover.enter} onMouseLeave={hover.leave}
-      onClick={() => { if (editable) onSelect() }}
-      onDragStart={() => { if (editable) { onSelect(); hover.enter() } }}
-      onDrag={(event) => { if (editable && event.latLng) setDraft({ source: angle, value: { ...angle, position: event.latLng.toJSON() } }) }}
-      onDragEnd={(event) => { if (editable && event.latLng) commit({ ...angle, position: event.latLng.toJSON() }) }}>
+      onClick={() => { if (editable && interactive) onSelect() }}
+      onDragStart={() => { if (editable && interactive) { onSelect(); hover.enter() } }}
+      onDrag={(event) => { if (editable && interactive && event.latLng) setDraft({ source: angle, value: { ...angle, position: event.latLng.toJSON() } }) }}
+      onDragEnd={(event) => { if (editable && interactive && event.latLng) commit({ ...angle, position: event.latLng.toJSON() }) }}>
       <div className="relative">
-        {editable ? <Button size="icon" variant="outline" aria-label={'Move ' + angle.label} title={angle.label}
+        {editable ? <Button disabled={!interactive} size="icon" variant="outline" aria-label={'Move ' + angle.label} title={angle.label}
           className={'cursor-grab touch-none rounded-full border-2 shadow-md active:cursor-grabbing ' + appearance.className + (selected ? ' ring-2 ring-primary ring-offset-2' : '')}
           onFocus={hover.enter} onBlur={hover.leave}
           onClick={(event) => { event.stopPropagation(); onSelect() }}>{symbol}</Button>
@@ -50,7 +50,7 @@ export function CameraMarker({ angle, editable, selected, pixelsToMeters, intera
         <Badge variant="secondary" className="pointer-events-none absolute left-1/2 top-full mt-1 -translate-x-1/2 whitespace-nowrap">{angle.label}</Badge>
       </div>
     </AdvancedMarker>
-    {editable && interactive && directional && (hover.hovered || selected || draft !== null) && <MapHandle
+    {editable && directional && (hover.hovered || selected || draft !== null) && <MapHandle interactive={interactive}
       position={target} label={'Aim ' + angle.label} className="cursor-crosshair"
       onEnter={hover.enter} onLeave={hover.leave} onStart={() => { onSelect(); hover.enter() }}
       onPreview={(point) => {

@@ -12,6 +12,7 @@ import { CameraMarker } from './camera-marker'
 import { RigObject } from './rig-object'
 import { MapControls } from './map-controls'
 import { MapSearch } from './map-search'
+import { MiddleMousePan } from './middle-mouse-pan'
 import { metersPerPixel } from './geometry'
 import { aimPlacement, idleTool, placeCamera, placementHint, type MapTool } from './placement'
 
@@ -27,13 +28,15 @@ function ConnectedMap({ session, dispatch, tool, onToolChange, selectedId, onSel
   const status = useApiLoadingStatus()
   const [satellite, setSatellite] = useState(false)
   const [zoom, setZoom] = useState(17)
+  const [middlePanning, setMiddlePanning] = useState(false)
   const satelliteId = useId()
   const { brief, visibility, mode } = session
   const editing = mode === 'edit'
   const interactive = tool.kind === 'idle'
+  const objectsInteractive = interactive && !middlePanning
   const hint = editing ? placementHint(tool) : null
   function handleMapClick(point: Position) {
-    if (!editing) return
+    if (!editing || middlePanning) return
     if (tool.kind === 'project') {
       dispatch({ type: 'update', update: (b) => ({ ...b, coordinates: point }) })
       onToolChange(idleTool)
@@ -59,31 +62,32 @@ function ConnectedMap({ session, dispatch, tool, onToolChange, selectedId, onSel
   return <>
     <Map defaultCenter={brief.coordinates} defaultZoom={brief.coordinates.lat === 59.9139 && brief.coordinates.lng === 10.7522 ? 10 : brief.coordinates.lat === 0 && brief.coordinates.lng === 0 ? 2 : 17}
       mapId={import.meta.env.VITE_GOOGLE_MAPS_MAP_ID || 'DEMO_MAP_ID'} disableDefaultUI
-      mapTypeId={satellite ? 'satellite' : 'roadmap'} tilt={0} gestureHandling="greedy"
+      mapTypeId={satellite ? 'satellite' : 'roadmap'} tilt={0} gestureHandling={middlePanning ? 'none' : 'greedy'}
       draggableCursor={editing && !interactive ? 'crosshair' : undefined}
       onZoomChanged={(event) => setZoom(event.detail.zoom)}
       onClick={(event) => { if (event.detail.latLng) handleMapClick(event.detail.latLng) }}
       onMousemove={(event) => { if (editing && event.detail.latLng && tool.kind === 'camera' && tool.position) onToolChange(aimPlacement(tool, event.detail.latLng)) }}>
       <AdvancedMarker position={brief.coordinates} title="Project location" zIndex={1}
-        draggable={editing && interactive} style={{ pointerEvents: interactive ? 'auto' : 'none' }}
+        draggable={editing && objectsInteractive} style={{ pointerEvents: objectsInteractive ? 'auto' : 'none' }}
         onDragEnd={(event) => {
-          if (editing && event.latLng) {
+          if (editing && objectsInteractive && event.latLng) {
             const coordinates = event.latLng.toJSON()
             dispatch({ type: 'update', update: (b) => ({ ...b, coordinates }) })
           }
         }}><MapPin className="size-7 fill-white text-primary" /></AdvancedMarker>
-      {visibility.circleRig && brief.circleRig && <RigObject rig={brief.circleRig} editable={editing} interactive={interactive}
+      {visibility.circleRig && brief.circleRig && <RigObject rig={brief.circleRig} satellite={satellite} editable={editing} interactive={objectsInteractive}
         selected={selectedId === brief.circleRig.id}
         onSelect={() => onSelect(brief.circleRig!.id)}
         onCommit={(rig) => dispatch({ type: 'update', update: (b) => ({ ...b, circleRig: b.circleRig?.id === rig.id ? rig : b.circleRig }) })} />}
       {visibility.angles && brief.angles.map((angle) => <CameraMarker key={angle.id} angle={angle} editable={editing}
-        interactive={interactive} selected={selectedId === angle.id} pixelsToMeters={metersPerPixel(angle.position.lat, zoom)}
+        interactive={objectsInteractive} selected={selectedId === angle.id} pixelsToMeters={metersPerPixel(angle.position.lat, zoom)}
         onSelect={() => onSelect(angle.id)}
         onCommit={(updated) => dispatch({ type: 'update', update: (b) => ({ ...b, angles: b.angles.map((item) => item.id === updated.id ? updated : item) }) })} />)}
       {pendingAngle && <CameraMarker angle={pendingAngle} editable={false} interactive={false} selected={false}
         pixelsToMeters={metersPerPixel(pendingAngle.position.lat, zoom)} onSelect={() => {}} onCommit={() => {}} />}
       {visibility.polygons && brief.polygons.map((polygon) => <Polygon key={polygon.id} paths={polygon.vertices} strokeColor="#b45309" fillColor="#d97706" fillOpacity={0.2} clickable={false} />)}
       <MapControls brief={brief} />
+      <MiddleMousePan onActiveChange={setMiddlePanning} />
       <MapSearch />
     <div className="pointer-events-none absolute inset-x-3 top-16 flex flex-wrap items-start justify-between gap-2">
       {editing && <Button variant={!interactive ? 'default' : 'secondary'} className="pointer-events-auto shadow-sm"

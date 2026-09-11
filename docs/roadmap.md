@@ -7,7 +7,7 @@ The skeleton intentionally includes the workflow and data boundaries, not the co
 | Create/load/export | Working | Optional backend for short lookup keys |
 | Draft storage | Browser JSON, last draft resume | Shared durable storage and draft list |
 | Google Maps | Live map, Oslo default for new briefs, satellite toggle, wheel zoom, auto scene framing, Frame scene action, location search, and collapsible sidebar | Optional autocomplete suggestions |
-| Circle rig | Add, drag center/interior, combined scale/rotation edge dot and oval handle, numeric settings | Optional snapping and undo history |
+| Circle rig | Add, drag center icon only, combined scale/rotation edge dot and oval handle, numeric settings | Optional snapping and undo history |
 | Camera angles | Place/select/rename/remove, drag, direction handles, distinct icons, per-type heights | Optional field-of-view footprints |
 | 360 | One-click position-only placement and draggable panorama icon | Optional panorama coverage preview |
 | DSLR | Two-click placement, camera icon, draggable position and aim handle | Optional lens settings |
