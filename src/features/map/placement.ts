@@ -4,7 +4,6 @@ import { bearingDegrees, distanceMeters } from './geometry'
 export type CameraType = CameraAngle['type']
 export type MapTool =
   | { kind: 'idle' }
-  | { kind: 'project' }
   | { kind: 'camera'; cameraType: CameraType; position: Position | null; directionDegrees: number }
 
 export const idleTool: MapTool = { kind: 'idle' }
@@ -25,7 +24,6 @@ export function placeCamera(tool: MapTool, point: Position, id: string, labelNum
   return { tool: startCameraPlacement(tool.cameraType), angle: { ...base, type: tool.cameraType, directionDegrees: distanceMeters(tool.position, point) < 0.01 ? tool.directionDegrees : bearingDegrees(tool.position, point) } }
 }
 export function placementHint(tool: MapTool): string | null {
-  if (tool.kind === 'project') return 'Click the map to set the project location.'
   if (tool.kind === 'camera') return tool.position
     ? 'Drag to aim, then release to place. Right-click or Esc stops placement.'
     : (tool.cameraType === '360' ? 'Click to place a 360 point. ' : 'Press and drag to place and aim a camera. ') + 'Keep placing points; right-click or Esc stops.'

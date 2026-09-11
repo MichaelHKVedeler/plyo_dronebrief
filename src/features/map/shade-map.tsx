@@ -1,36 +1,41 @@
-import { useEffect, useRef, useState } from 'react'
+import { attachShadePlacement } from './shade-placement'
+import { attachShadeMapPan } from './shade-map-pan'
+import { ShadeProjection } from './shade-projection'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Map as LibreMap, type GeoJSONSource } from 'maplibre-gl'
 import ShadeMap from 'mapbox-gl-shadow-simulator'
-import { MapPin } from 'lucide-react'
 import type { Position } from '@/features/briefs/model/brief'
 import type { MapNavigation } from './map-navigation'
-import type { MapTool } from './placement'
+import { idleTool, type MapTool } from './placement'
 import { shadowBuildings } from './shadow-buildings'
-import { Badge } from '@/components/ui/badge'
+import { CameraMarker } from './camera-marker'
+import { RigObject } from './rig-object'
+import { ObjectRenderer } from './object-renderer'
+import { ShadeMarker, ShadePolygon } from './shade-object-renderer'
+import { metersPerPixel } from './geometry'
 import { Slider } from '@/components/ui/slider'
-import type { BriefSession } from '@/features/briefs/state/brief-session'
-import { cameraAppearance } from '@/features/briefs/components/camera-appearance'
+import type { BriefAction, BriefSession } from '@/features/briefs/state/brief-session'
 import { fromShadeView, toShadeView, type MapView } from './map-view'
 import { shadeScene } from './shade-scene'
 import { shadowTime, timeLabel } from './shadow-time'
 import { useDarkMode } from '@/lib/use-dark-mode'
-import { mapBrandColor } from './map-colors'
 import 'maplibre-gl/dist/maplibre-gl.css'
 
-type Props = { session: BriefSession; initialView: MapView; onViewChange: (view: MapView) => void; minutes: number; onMinutesChange: (value: number) => void; onNavigation: (navigation: MapNavigation | null) => void; tool: MapTool; onMapClick: (point: Position) => void; onAim: (point: Position) => void }
-export function ShadeMapPanel({ session, initialView, onViewChange, minutes, onMinutesChange, onNavigation, tool, onMapClick, onAim }: Props) {
+type Props = { dispatch: (action: BriefAction) => void; selectedId: string | null; selectedCameraIds: string[]; onSelect: (id: string | null) => void; onSelectCamera: (id: string, additive: boolean) => void; session: BriefSession; initialView: MapView; onViewChange: (view: MapView) => void; minutes: number; onMinutesChange: (value: number) => void; onNavigation: (navigation: MapNavigation | null) => void; tool: MapTool; onMapClick: (point: Position) => void; onToolChange: (tool: MapTool) => void; onCameraPlace: (tool: MapTool, point: Position) => void }
+export function ShadeMapPanel({ dispatch, selectedId, selectedCameraIds, onSelect, onSelectCamera, session, initialView, onViewChange, minutes, onMinutesChange, onNavigation, tool, onMapClick, onToolChange, onCameraPlace }: Props) {
   const dark = useDarkMode()
   const host = useRef<HTMLDivElement>(null)
   const shade = useRef<ShadeMap | null>(null)
-  const latest = useRef({ session, onViewChange, minutes, onNavigation, onMapClick, onAim, dark })
-  useEffect(() => { latest.current = { session, onViewChange, minutes, onNavigation, onMapClick, onAim, dark } }, [session, onViewChange, minutes, onNavigation, onMapClick, onAim, dark])
+  const latest = useRef({ session, onViewChange, minutes, onNavigation, onMapClick, tool, onToolChange, onCameraPlace })
+  useLayoutEffect(() => { latest.current = { session, onViewChange, minutes, onNavigation, onMapClick, tool, onToolChange, onCameraPlace } }, [session, onViewChange, minutes, onNavigation, onMapClick, tool, onToolChange, onCameraPlace])
   const startView = useRef(initialView)
   const [map, setMap] = useState<LibreMap | null>(null)
   const [view, setView] = useState(initialView)
+  const [timeCenter, setTimeCenter] = useState(initialView.center)
   const [ready, setReady] = useState(false)
   const [error, setError] = useState('')
   const key = import.meta.env.VITE_SHADEMAP_API_KEY?.trim()
-  const time = shadowTime(session.brief.project.date, minutes, view.center)
+  const time = useMemo(() => shadowTime(session.brief.project.date, minutes, timeCenter), [session.brief.project.date, minutes, timeCenter])
   const timestamp = time.instant.getTime()
   useEffect(() => {
     let live = true
@@ -45,14 +50,17 @@ export function ShadeMapPanel({ session, initialView, onViewChange, minutes, onM
       const frame = requestAnimationFrame(() => setError('This browser could not start the shadow map. Return to Google Maps.'))
       return () => cancelAnimationFrame(frame)
     }
+    let viewFrame: number | null = null
     const sync = () => {
       if (!live) return
       const next = fromShadeView(instance.getCenter(), instance.getZoom())
       setView(next); latest.current.onViewChange(next)
     }
-    instance.on('move', sync)
-    instance.on('click', (event) => latest.current.onMapClick({ lat: event.lngLat.lat, lng: event.lngLat.lng }))
-    instance.on('mousemove', (event) => latest.current.onAim({ lat: event.lngLat.lat, lng: event.lngLat.lng }))
+    const scheduleView = () => { if (viewFrame === null) viewFrame = requestAnimationFrame(() => { viewFrame = null; sync() }) }
+    instance.on('move', scheduleView)
+    instance.on('moveend', () => { if (live) setTimeCenter(fromShadeView(instance.getCenter(), instance.getZoom()).center) })
+    instance.on('resize', sync)
+    instance.on('click', (event) => { if (latest.current.tool.kind !== 'camera') latest.current.onMapClick({ lat: event.lngLat.lat, lng: event.lngLat.lng }) })
     const pendingLoads = new Set<() => void>()
     const waitForTiles = () => new Promise<void>((resolve) => {
       const finish = () => { instance.off('idle', finish); pendingLoads.delete(finish); resolve() }
@@ -73,7 +81,7 @@ export function ShadeMapPanel({ session, initialView, onViewChange, minutes, onM
       if (!live) return
       // Hide base-map labels; brief labels and required attribution stay visible.
       for (const layer of instance.getStyle().layers) if (layer.type === 'symbol') instance.setLayoutProperty(layer.id, 'visibility', 'none')
-      instance.addSource('brief-scene', { type: 'geojson', data: shadeScene(latest.current.session.brief, latest.current.session.visibility, startView.current.zoom, latest.current.dark) })
+      instance.addSource('brief-scene', { type: 'geojson', data: shadeScene(latest.current.session.brief, { ...latest.current.session.visibility, circleRig: false, angles: false }, startView.current.zoom) })
       instance.addLayer({ id: 'brief-fill', type: 'fill', source: 'brief-scene', filter: ['==', '$type', 'Polygon'], paint: { 'fill-color': ['get', 'color'], 'fill-opacity': 0.08 } })
       instance.addLayer({ id: 'brief-outline', type: 'line', source: 'brief-scene', paint: { 'line-color': ['get', 'color'], 'line-width': 2 } })
       if (key) {
@@ -124,32 +132,39 @@ export function ShadeMapPanel({ session, initialView, onViewChange, minutes, onM
     })
     const resize = new ResizeObserver(() => instance.resize())
     resize.observe(host.current!)
-    return () => { live = false; for (const finish of pendingLoads) finish(); latest.current.onNavigation(null); resize.disconnect(); window.removeEventListener('unhandledrejection', licensingError); shade.current?.remove(); shade.current = null; instance.remove() }
+    return () => { live = false; if (viewFrame !== null) cancelAnimationFrame(viewFrame); for (const finish of pendingLoads) finish(); latest.current.onNavigation(null); resize.disconnect(); window.removeEventListener('unhandledrejection', licensingError); shade.current?.remove(); shade.current = null; instance.remove() }
   }, [key])
   useEffect(() => {
-    const pending = tool.kind === 'camera' && tool.position && tool.cameraType !== '360'
-      ? { id: 'pending', label: 'Choose direction', type: tool.cameraType, position: tool.position, directionDegrees: tool.directionDegrees } : null
-    const brief = pending ? { ...session.brief, angles: [...session.brief.angles, pending] } : session.brief
-    if (map && ready) (map.getSource('brief-scene') as GeoJSONSource)?.setData(shadeScene(brief, session.visibility, view.zoom, dark))
-  }, [map, ready, session.brief, session.visibility, view.zoom, tool, dark])
+    // Interactive camera and rig geometry is rendered by the shared object controls.
+    if (map && ready) (map.getSource('brief-scene') as GeoJSONSource)?.setData(shadeScene(session.brief, { ...session.visibility, circleRig: false, angles: false }, view.zoom))
+  }, [map, ready, session.brief, session.visibility, view.zoom])
   useEffect(() => { if (map) map.getCanvas().style.cursor = session.mode === 'edit' && tool.kind !== 'idle' ? 'crosshair' : '' }, [map, session.mode, tool.kind])
+  useEffect(() => { if (map && host.current?.parentElement) return attachShadeMapPan(map, host.current.parentElement) }, [map])
+  const cameraType = session.mode === 'edit' && tool.kind === 'camera' ? tool.cameraType : null
+  useEffect(() => {
+    if (!map || !cameraType || !host.current?.parentElement) return
+    return attachShadePlacement(map, host.current.parentElement, () => ({ tool: latest.current.tool, onToolChange: latest.current.onToolChange, onPlace: latest.current.onCameraPlace }))
+  }, [map, cameraType])
   useEffect(() => { shade.current?.setDate(new Date(timestamp)) }, [timestamp, ready])
-  const markers = [
-    { id: 'project', label: 'Project location', position: session.brief.coordinates, Icon: MapPin, color: mapBrandColor(dark) },
-    ...(tool.kind === 'camera' && tool.position ? [{ id: 'pending', label: 'Choose direction', position: tool.position, Icon: cameraAppearance[tool.cameraType].Icon, color: cameraAppearance[tool.cameraType].color }] : []),
-    ...(session.visibility.angles ? session.brief.angles.map((angle) => ({ ...angle, Icon: cameraAppearance[angle.type].Icon, color: cameraAppearance[angle.type].color })) : []),
-  ]
-  return <div className="absolute inset-0 isolate bg-muted" aria-label="ShadeMap preview">
+  const editable = session.mode === 'edit'
+  const interactive = tool.kind === 'idle'
+  const pendingAngle = tool.kind === 'camera' && tool.position && tool.cameraType !== '360'
+    ? { id: 'pending', label: 'Choose direction', type: tool.cameraType, position: tool.position, directionDegrees: tool.directionDegrees } : null
+  return <div className="absolute inset-0 isolate bg-muted" aria-label="ShadeMap preview" onContextMenu={(event) => { event.preventDefault(); if (editable) onToolChange(idleTool) }}>
     <div ref={host} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }} />
-    {ready && map && <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-label="Brief objects">
-      {markers.map(({ id, label, position, Icon, color }) => {
-        const pixel = map.project([position.lng, position.lat])
-        return <div key={id} className="absolute flex -translate-x-1/2 -translate-y-1/2 flex-col items-center" style={{ left: pixel.x, top: pixel.y }}>
-          <Badge className="flex size-9 justify-center rounded-full border-2 bg-white shadow-sm" style={{ color, borderColor: color }}><Icon className="size-5" /></Badge>
-          <Badge variant="secondary" className="absolute top-full mt-1 whitespace-nowrap">{label}</Badge>
-        </div>
-      })}
-    </div>}
+    {ready && map && <ShadeProjection value={map}><ObjectRenderer value={{ Marker: ShadeMarker, Polygon: ShadePolygon }}>
+      <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden" aria-label="Brief objects">
+        {session.visibility.circleRig && session.brief.circleRig && <RigObject rig={session.brief.circleRig} dark={dark} editable={editable} interactive={interactive}
+          selected={selectedId === session.brief.circleRig.id} onSelect={() => onSelect(session.brief.circleRig!.id)}
+          onCommit={(rig) => dispatch({ type: 'update', update: (brief) => ({ ...brief, circleRig: brief.circleRig?.id === rig.id ? rig : brief.circleRig }) })} />}
+        {session.visibility.angles && session.brief.angles.map((angle) => <CameraMarker key={angle.id} angle={angle} editable={editable} interactive={interactive}
+          selected={selectedCameraIds.includes(angle.id)} pixelsToMeters={metersPerPixel(angle.position.lat, view.zoom)}
+          onSelect={(additive = false) => onSelectCamera(angle.id, additive)}
+          onCommit={(updated) => dispatch({ type: 'update', update: (brief) => ({ ...brief, angles: brief.angles.map((item) => item.id === updated.id ? updated : item) }) })} />)}
+        {pendingAngle && <CameraMarker angle={pendingAngle} editable={false} interactive={false} selected={false}
+          pixelsToMeters={metersPerPixel(pendingAngle.position.lat, view.zoom)} onSelect={() => {}} onCommit={() => {}} />}
+      </div>
+    </ObjectRenderer></ShadeProjection>}
     {(!key || error || !ready) && <p role="status" className="absolute inset-x-3 top-28 z-10 mx-auto max-w-md rounded-md border bg-card p-3 text-sm shadow-sm">
       {!key ? 'Add VITE_SHADEMAP_API_KEY to .env.local and restart Vite to enable shadows.' : error || 'Loading shadow map…'}
     </p>}

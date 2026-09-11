@@ -32,7 +32,7 @@ it('creates with multiple times, saves edits, exports, and resumes after remount
   expect(briefRepository.latest()?.coordinates).toEqual({ lat: 59.9139, lng: 10.7522 })
   expect(screen.getByText('Map setup pending')).toBeInTheDocument()
   await user.click(screen.getByRole('button', { name: 'Circle rig' }))
-  await user.click(screen.getByRole('button', { name: 'Add circle rig at project location' }))
+  await user.click(screen.getByRole('button', { name: 'Add Circle Rig' }))
   const radius = screen.getByLabelText('Radius (m)')
   await user.clear(radius); await user.type(radius, '85'); await user.tab()
   expect(briefRepository.latest()?.circleRig?.radiusMeters).toBe(85)
