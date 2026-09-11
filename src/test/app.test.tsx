@@ -85,3 +85,44 @@ it('shows a save failure and keeps export available', async () => {
   await user.click(screen.getByRole('button', { name: 'Export' }))
   expect((screen.getByLabelText('Export key') as HTMLTextAreaElement).value).toMatch(/^DB2\./)
 })
+
+it('removes cameras using row X and Delete while protecting text editing', async () => {
+  const brief = createBrief({ name: 'Cameras', clientName: 'Client', date: '2026-09-11', times: ['09:00'] })
+  brief.angles = [
+    { id: 'a', label: 'Camera A', type: '360', position: brief.coordinates },
+    { id: 'b', label: 'Camera B', type: 'dslr', position: brief.coordinates, directionDegrees: 90 },
+  ]
+  briefRepository.save(brief)
+  const user = userEvent.setup()
+  render(<App />)
+  await user.click(screen.getByRole('button', { name: 'Resume editing' }))
+  await user.click(screen.getByRole('button', { name: 'Camera A' }))
+  await user.click(screen.getByRole('button', { name: 'Remove Camera B' }))
+  expect(briefRepository.latest()?.angles.map((angle) => angle.id)).toEqual(['a'])
+  expect(screen.getByLabelText('Camera label')).toHaveValue('Camera A')
+  fireEvent.keyDown(screen.getByLabelText('Camera label'), { key: 'Delete' })
+  expect(briefRepository.latest()?.angles).toHaveLength(1)
+  fireEvent.keyDown(window, { key: 'Delete' })
+  expect(briefRepository.latest()?.angles).toEqual([])
+  expect(screen.queryByLabelText('Camera label')).not.toBeInTheDocument()
+})
+
+
+it.each(['X', 'Delete'])('removes modifier-selected cameras with %s and preserves unselected cameras', async (method) => {
+  const brief = createBrief({ name: 'Group', clientName: 'Client', date: '2026-09-11', times: ['09:00'] })
+  brief.angles = ['A', 'B', 'C'].map((id) => ({ id, label: 'Camera ' + id, type: '360' as const, position: brief.coordinates }))
+  briefRepository.save(brief)
+  const user = userEvent.setup()
+  render(<App />)
+  await user.click(screen.getByRole('button', { name: 'Resume editing' }))
+  await user.click(screen.getByRole('button', { name: 'Camera A' }))
+  await user.keyboard(method === 'X' ? '{Shift>}' : '{Control>}')
+  await user.click(screen.getByRole('button', { name: 'Camera C' }))
+  await user.keyboard(method === 'X' ? '{/Shift}' : '{/Control}')
+  expect(briefRepository.latest()?.angles).toHaveLength(3)
+  if (method === 'X') await user.click(screen.getByRole('button', { name: 'Remove Camera A' }))
+  else await user.keyboard('{Delete}')
+  expect(briefRepository.latest()?.angles.map((angle) => angle.id)).toEqual(['B'])
+  expect(screen.getByRole('button', { name: 'Camera B' })).toHaveAttribute('aria-pressed', 'false')
+  expect(screen.queryByRole('checkbox')).not.toBeInTheDocument()
+})

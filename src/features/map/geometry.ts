@@ -69,12 +69,12 @@ export function scaleAndRotateRig(rig: CircleRig, point: Position): CircleRig {
   return rotateRig(resizeRig(rig, point), point)
 }
 
-// The oval handle sits halfway along the minor axis, inside the rig.
+// The oval handle sits on the minor-axis edge of the rig.
 export function reshapeRig(rig: CircleRig, point: Position): CircleRig {
   const { east, north } = localOffset(rig.position, point)
   const rotation = radians(rig.rotationDegrees)
   const minorDistance = east * Math.cos(rotation) - north * Math.sin(rotation)
-  return { ...rig, ovalRatio: clamp(Math.abs(minorDistance) * 2 / rig.radiusMeters, 0.1, 1) }
+  return { ...rig, ovalRatio: clamp(Math.abs(minorDistance) / rig.radiusMeters, 0.1, 1) }
 }
 
 export function metersPerPixel(latitude: number, zoom: number): number {

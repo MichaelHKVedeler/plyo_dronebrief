@@ -9,7 +9,7 @@ const position = { lat: 51.5, lng: -0.1 }
 describe('camera placement', () => {
   it('places 360 in one click with no direction property', () => {
     const result = placeCamera(startCameraPlacement('360'), position, 'a', 1)
-    expect(result.tool).toEqual(idleTool)
+    expect(result.tool).toEqual(startCameraPlacement('360'))
     expect(result.angle).toEqual({ id: 'a', label: '360 1', type: '360', position })
     expect(angleSchema.safeParse(result.angle).success).toBe(true)
   })
@@ -19,15 +19,15 @@ describe('camera placement', () => {
     const target = destination(position, 50, 135)
     const aimed = aimPlacement(first.tool, target)
     const second = placeCamera(aimed, target, 'saved-id', 1)
-    expect(second.tool).toEqual(idleTool)
+    expect(second.tool).toEqual(startCameraPlacement(type))
     expect(second.angle?.position).toEqual(position)
     expect(second.angle?.id).toBe('saved-id')
     expect(second.angle && 'directionDegrees' in second.angle ? second.angle.directionDegrees : NaN).toBeCloseTo(135)
     expect(angleSchema.safeParse(second.angle).success).toBe(true)
   })
-  it('does not create a camera for a cancelled or zero-distance aim', () => {
+  it('uses the current direction without movement and rejects cancelled placement', () => {
     const first = placeCamera(startCameraPlacement('dslr'), position, 'a', 1)
-    expect(placeCamera(first.tool, position, 'a', 1).angle).toBeUndefined()
+    expect(placeCamera(first.tool, position, 'a', 1).angle).toMatchObject({ directionDegrees: 0 })
     expect(placeCamera(idleTool, position, 'a', 1).angle).toBeUndefined()
   })
   it('saves moved and aimed camera data in exports but refuses it in a viewer', () => {

@@ -47,9 +47,9 @@ Project and numeric fields commit on blur (clicking elsewhere or pressing Tab). 
 
 ### Map editing
 
-In the Project panel, choose **Add 360 point**, **Add DSLR point**, or **Add drone image**, then click a position on the map. A 360 point is complete immediately. For DSLR and drone images, click a second location to choose where the camera points. **Escape** or **Cancel placement** discards an unfinished placement.
+In Google Maps, choose **Add 360 point**, **Add DSLR point**, or **Add drone image**, then place points repeatedly on the map. Click to place a 360 point. For DSLR and drone images, press to set the position, hold and drag to aim, then release to finish the point. The same tool stays active for the next point. **Right-click**, **Escape**, or **Cancel placement** stops placement and discards any unfinished point.
 
-Drag any camera icon, the rig center, or the rig interior to move it. Hover or select the rig to reveal one edge dot for both scale and rotation, plus the inside oval handle for ovalness. Hover or select a DSLR/drone camera to reveal its direction arrow, then drag the arrow to aim. Selecting an object keeps its handles visible. Drag the edge dot in/out to resize and around the center to rotate. Use the numeric settings in the sidebar for precise adjustments or keyboard input. Camera selection exposes its label, coordinates, direction where applicable, and removal action.
+Drag a camera icon or the center move icon of the rig to reposition it. The rig interior can be clicked to select it, but cannot be dragged to move the rig. Hover or select the rig to reveal one edge dot for both scale and rotation, plus the oval handle on the minor-axis edge for ovalness. DSLR/drone direction arrows remain visible beside their camera icons. Drag an arrow to aim in the editor. Selecting an object keeps its handles visible. Drag the edge dot in/out to resize and around the center to rotate. Use the numeric settings in the sidebar for precise adjustments or keyboard input. Camera selection exposes its label, coordinates, direction where applicable, and removal action.
 
 Movement previews are temporary until the drag ends; committed changes autosave and are included in exports. Placement, selection, and hover state are not saved. Loaded briefs display the same geometry with editing and adjustment handles disabled.
 
@@ -98,7 +98,7 @@ The current center and scale transfer in both directions, including fractional z
 
 The slider spans 00:00–23:55 in five-minute steps on the brief's shoot date. Its displayed IANA timezone follows the viewed location, including daylight saving. For a nonexistent local clock time at a spring DST transition, the UI shows the resolved clock time and an adjustment notice. At the autumn repeated hour, the timezone library chooses one occurrence; this UI does not select between both occurrences.
 
-ShadeMap is a preview in both editor and viewer. Rig outlines, camera positions/direction lines, and polygons use the same brief data. Search, Set location, camera placement, zoom, framing, and layer toggles work over both maps. Google Maps owns object dragging and adjustment handles. Missing keys, failed map loading, and SDK license failures show a message while keeping the return control available.
+ShadeMap is a preview in both editor and viewer. Rig outlines, camera positions/direction lines, and polygons use the same brief data. Search, Set location, camera placement, zoom, framing, and layer toggles work over both maps. ShadeMap retains repeated click placement (a second click sets DSLR/drone direction); Escape or Cancel placement stops. Google Maps owns press-drag-release placement, object dragging and adjustment handles. Missing keys, failed map loading, and SDK license failures show a message while keeping the return control available.
 
 The adapter waits for map tiles before querying buildings, explicitly retains MapLibre geometry getters, and removes duplicate tile-buffer polygons before sending plain GeoJSON to ShadeMap. Development keys are not documented as using lower-quality shadow rendering; paid plans primarily change deployment and usage allowances.
 
