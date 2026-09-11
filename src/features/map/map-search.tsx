@@ -5,9 +5,11 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
 import { mapPadding } from './scene-bounds'
+import type { MapNavigation } from './map-navigation'
 
-export function MapSearch() {
-  const map = useMap()
+export function MapSearch({ navigation }: { navigation?: MapNavigation | null }) {
+  const googleMap = useMap()
+  const map = navigation === undefined ? googleMap : navigation
   const geocoding = useMapsLibrary('geocoding')
   const places = useMapsLibrary('places')
   const [suggestions, setSuggestions] = useState<google.maps.places.PlacePrediction[]>([])

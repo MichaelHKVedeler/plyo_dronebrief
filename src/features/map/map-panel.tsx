@@ -1,5 +1,10 @@
-import { useId, useState } from 'react'
-import { APIProvider, Map, Polygon, AdvancedMarker, useApiLoadingStatus, APILoadingStatus } from '@vis.gl/react-google-maps'
+import { lazy, Suspense, useId, useRef, useState, type RefObject } from 'react'
+import { ButtonGroup } from '@/components/ui/button-group'
+import type { MapNavigation } from './map-navigation'
+import { ViewerLayers } from './viewer-layers'
+import { GoogleMapView } from './google-map-view'
+import type { MapView } from './map-view'
+import { APIProvider, Map, Polygon, AdvancedMarker, useApiLoadingStatus, APILoadingStatus, useMap } from '@vis.gl/react-google-maps'
 import { MapPin, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -23,34 +28,14 @@ type Props = {
   selectedId: string | null
   onSelect: (id: string | null) => void
 }
-function ConnectedMap({ session, dispatch, tool, onToolChange, selectedId, onSelect }: Props) {
+const ShadeMapPanel = lazy(() => import('./shade-map').then((module) => ({ default: module.ShadeMapPanel })))
+type GoogleProps = Props & { active: boolean; view: RefObject<MapView>; onViewChange: (view: MapView) => void; satellite: boolean; onMapClick: (point: Position) => void }
+function ConnectedMap({ session, dispatch, tool, onToolChange, selectedId, onSelect, active, view, onViewChange, satellite, onMapClick }: GoogleProps) {
   const status = useApiLoadingStatus()
-  const [satellite, setSatellite] = useState(false)
   const [zoom, setZoom] = useState(17)
-  const satelliteId = useId()
   const { brief, visibility, mode } = session
   const editing = mode === 'edit'
   const interactive = tool.kind === 'idle'
-  const hint = editing ? placementHint(tool) : null
-  function handleMapClick(point: Position) {
-    if (!editing) return
-    if (tool.kind === 'project') {
-      dispatch({ type: 'update', update: (b) => ({ ...b, coordinates: point }) })
-      onToolChange(idleTool)
-    } else if (tool.kind === 'camera') {
-      if (brief.angles.length >= 1000) { onToolChange(idleTool); return }
-      let labelNumber = 1
-      const labels = new Set(brief.angles.map((angle) => angle.label))
-      while (labels.has(cameraLabels[tool.cameraType] + ' ' + labelNumber)) labelNumber++
-      const result = placeCamera(tool, point, crypto.randomUUID(), labelNumber)
-      if (result.angle) {
-        const angle = result.angle
-        dispatch({ type: 'update', update: (b) => ({ ...b, angles: [...b.angles, angle] }) })
-        onSelect(angle.id)
-      }
-      onToolChange(result.tool)
-    }
-  }
   const pendingAngle: CameraAngle | null = tool.kind === 'camera' && tool.position && tool.cameraType !== '360'
     ? { id: 'placement-preview', label: 'Choose direction', type: tool.cameraType, position: tool.position, directionDegrees: tool.directionDegrees }
     : null
@@ -59,10 +44,11 @@ function ConnectedMap({ session, dispatch, tool, onToolChange, selectedId, onSel
   return <>
     <Map defaultCenter={brief.coordinates} defaultZoom={brief.coordinates.lat === 59.9139 && brief.coordinates.lng === 10.7522 ? 10 : brief.coordinates.lat === 0 && brief.coordinates.lng === 0 ? 2 : 17}
       mapId={import.meta.env.VITE_GOOGLE_MAPS_MAP_ID || 'DEMO_MAP_ID'} disableDefaultUI
-      mapTypeId={satellite ? 'satellite' : 'roadmap'} tilt={0} gestureHandling="greedy"
+      tilt={0} heading={0} gestureHandling="greedy" isFractionalZoomEnabled
       draggableCursor={editing && !interactive ? 'crosshair' : undefined}
       onZoomChanged={(event) => setZoom(event.detail.zoom)}
-      onClick={(event) => { if (event.detail.latLng) handleMapClick(event.detail.latLng) }}
+      onCameraChanged={(event) => { if (active) onViewChange({ center: event.detail.center, zoom: event.detail.zoom }) }}
+      onClick={(event) => { if (event.detail.latLng) onMapClick(event.detail.latLng) }}
       onMousemove={(event) => { if (editing && event.detail.latLng && tool.kind === 'camera' && tool.position) onToolChange(aimPlacement(tool, event.detail.latLng)) }}>
       <AdvancedMarker position={brief.coordinates} title="Project location" zIndex={1}
         draggable={editing && interactive} style={{ pointerEvents: interactive ? 'auto' : 'none' }}
@@ -83,23 +69,7 @@ function ConnectedMap({ session, dispatch, tool, onToolChange, selectedId, onSel
       {pendingAngle && <CameraMarker angle={pendingAngle} editable={false} interactive={false} selected={false}
         pixelsToMeters={metersPerPixel(pendingAngle.position.lat, zoom)} onSelect={() => {}} onCommit={() => {}} />}
       {visibility.polygons && brief.polygons.map((polygon) => <Polygon key={polygon.id} paths={polygon.vertices} strokeColor="#b45309" fillColor="#d97706" fillOpacity={0.2} clickable={false} />)}
-      <MapControls brief={brief} />
-    <div className="pointer-events-none absolute inset-x-3 top-3 z-10 grid gap-2">
-      <div className="flex items-start justify-between gap-2">
-        <MapSearch />
-        <Label htmlFor={satelliteId} className="pointer-events-auto flex h-11 shrink-0 cursor-pointer items-center gap-2 rounded-lg border bg-card px-2 shadow-sm sm:px-3">
-          <Switch id={satelliteId} checked={satellite} onCheckedChange={setSatellite} />
-          <span>Satellite</span>
-        </Label>
-      </div>
-      <div className="flex flex-wrap items-start gap-2">
-      {editing && <Button variant={!interactive ? 'default' : 'secondary'} className="pointer-events-auto shadow-sm"
-        onClick={() => { onSelect(null); onToolChange(interactive ? { kind: 'project' } : idleTool) }}>
-        {interactive ? <MapPin /> : <X />}{interactive ? 'Set location' : 'Cancel placement'}
-      </Button>}
-      {hint && <Badge className="w-full whitespace-normal py-2" role="status">{hint}</Badge>}
-      </div>
-    </div>
+      <GoogleMapView active={active} satellite={satellite} view={view} />
     </Map>
   </>
 }
@@ -108,11 +78,82 @@ function MapMessage({ title, description }: { title: string; description: string
     <div className="max-w-sm text-center"><MapPin className="mx-auto mb-4 size-9 text-primary" /><h2 className="text-lg font-semibold">{title}</h2><p className="mt-2 text-sm leading-relaxed text-muted-foreground">{description}</p></div>
   </div>
 }
-export function MapPanel(props: Props) {
+function MapWorkspace(props: Props) {
+  const { session, dispatch, tool, onToolChange, onSelect } = props
+  const { brief, mode } = session
+  const editing = mode === 'edit'
+  const interactive = tool.kind === 'idle'
+  const hint = editing ? placementHint(tool) : null
   const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY?.trim()
+  const googleMap = useMap()
+  const [satellite, setSatellite] = useState(false)
+  const satelliteId = useId()
+  const [shadeStart, setShadeStart] = useState<MapView | null>(null)
+  const shadeActive = shadeStart !== null
+  const [shadeNavigation, setShadeNavigation] = useState<MapNavigation | null>(null)
+  const [minutes, setMinutes] = useState(() => {
+    const [hours, mins] = (brief.project.times[0] || '12:00').split(':').map(Number)
+    return hours * 60 + mins
+  })
+  const view = useRef<MapView>({ center: brief.coordinates, zoom: 10 })
+  const onViewChange = (next: MapView) => { view.current = next }
+  function handleMapClick(point: Position) {
+    if (!editing) return
+    if (tool.kind === 'project') {
+      dispatch({ type: 'update', update: (b) => ({ ...b, coordinates: point }) })
+      onToolChange(idleTool)
+    } else if (tool.kind === 'camera') {
+      if (brief.angles.length >= 1000) { onToolChange(idleTool); return }
+      let labelNumber = 1
+      const labels = new Set(brief.angles.map((angle) => angle.label))
+      while (labels.has(cameraLabels[tool.cameraType] + ' ' + labelNumber)) labelNumber++
+      const result = placeCamera(tool, point, crypto.randomUUID(), labelNumber)
+      if (result.angle) {
+        const angle = result.angle
+        dispatch({ type: 'update', update: (b) => ({ ...b, angles: [...b.angles, angle] }) })
+        onSelect(angle.id)
+      }
+      onToolChange(result.tool)
+    }
+  }
+
+  return <CardContent className="@container relative h-full min-h-0 p-0">
+    <div className="absolute inset-0" style={{ visibility: shadeActive ? 'hidden' : 'visible' }} aria-hidden={shadeActive} inert={shadeActive}>
+      {apiKey ? <ConnectedMap {...props} active={!shadeActive} view={view} satellite={satellite} onViewChange={onViewChange} onMapClick={handleMapClick} /> : <MapMessage title="Map setup pending" description="Google Maps will appear once connected. Your brief is still available." />}
+    </div>
+    {shadeActive && <Suspense fallback={<MapMessage title="Loading ShadeMap…" description="Preparing the shadow preview." />}>
+      <ShadeMapPanel session={session} initialView={shadeStart} onViewChange={onViewChange} minutes={minutes} onMinutesChange={setMinutes}
+        onNavigation={setShadeNavigation} tool={tool} onMapClick={handleMapClick}
+        onAim={(point) => { if (editing && tool.kind === 'camera' && tool.position) onToolChange(aimPlacement(tool, point)) }} />
+    </Suspense>}
+    <div className="pointer-events-none absolute inset-x-3 top-3 z-20 grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2">
+      <div className="col-span-2 min-w-0 @min-[550px]:col-span-1">
+        {apiKey && <MapSearch navigation={shadeActive ? shadeNavigation : googleMap} />}
+      </div>
+      <div className="col-start-2 row-start-2 flex flex-col items-end gap-2 @min-[550px]:row-start-1 @min-[550px]:row-span-2">
+        <ButtonGroup aria-label="Map provider" className="pointer-events-auto shadow-sm">
+          <Button size="sm" variant={!shadeActive ? 'default' : 'outline'} aria-pressed={!shadeActive} onClick={() => setShadeStart(null)}>Google Maps</Button>
+          <Button size="sm" variant={shadeActive ? 'default' : 'outline'} aria-pressed={shadeActive} onClick={() => { if (!shadeActive) setShadeStart(view.current) }}>ShadeMap</Button>
+        </ButtonGroup>
+        {!shadeActive && <Label htmlFor={satelliteId} className="pointer-events-auto flex h-10 cursor-pointer items-center gap-2 rounded-lg border bg-card px-3 shadow-sm">
+          <Switch id={satelliteId} checked={satellite} onCheckedChange={setSatellite} /><span>Satellite</span>
+        </Label>}
+      </div>
+      <div className="col-start-1 row-start-2 grid justify-items-start gap-2">
+        {editing && <Button variant={!interactive ? 'default' : 'secondary'} className="pointer-events-auto shadow-sm"
+          onClick={() => { onSelect(null); onToolChange(interactive ? { kind: 'project' } : idleTool) }}>
+          {interactive ? <MapPin /> : <X />}{interactive ? 'Set location' : 'Cancel placement'}
+        </Button>}
+        <ViewerLayers session={session} dispatch={dispatch} />
+      </div>
+      {hint && <Badge className="col-span-2 whitespace-normal py-2" role="status">{hint}</Badge>}
+    </div>
+    <MapControls brief={brief} navigation={shadeActive ? shadeNavigation : googleMap} shadeActive={shadeActive} />
+  </CardContent>
+}
+export function MapPanel(props: Props) {
+  const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY?.trim() || ''
   return <Card className="relative h-full min-h-0 min-w-0 overflow-hidden py-0" role="region" aria-label="Brief map">
-    <CardContent className="relative h-full min-h-0 p-0">
-      {apiKey ? <APIProvider apiKey={apiKey}><ConnectedMap {...props} /></APIProvider> : <MapMessage title="Map setup pending" description={props.session.mode === 'edit' ? 'Google Maps will appear once connected. You can already set project details, coordinates, and rig settings, then export your brief.' : 'Google Maps will appear once connected. You can view the project details and toggle the layers below.'} />}
-    </CardContent>
+    <APIProvider apiKey={apiKey}><MapWorkspace {...props} /></APIProvider>
   </Card>
 }

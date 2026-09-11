@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import App from '@/App'
 import { createBrief } from '@/features/briefs/model/brief'
@@ -64,8 +64,10 @@ it('loads a viewer and toggles layers without writing or replacing the local dra
   await user.click(screen.getByRole('button', { name: 'Camera heights' }))
   expect(screen.getByText('30, 60 m')).toBeVisible()
   await user.click(screen.getByRole('tab', { name: 'Layers' }))
-  await user.click(screen.getByRole('switch', { name: 'Circle rig' }))
-  expect(screen.getByRole('switch', { name: 'Circle rig' })).toHaveAttribute('aria-checked', 'false')
+  await user.click(within(screen.getByRole('region', { name: 'Brief map' })).getByRole('switch', { name: 'Circle rig' }))
+  for (const toggle of screen.getAllByRole('switch', { name: 'Circle rig' })) expect(toggle).toHaveAttribute('aria-checked', 'false')
+  await user.click(within(screen.getByRole('tabpanel', { name: 'Layers' })).getByRole('switch', { name: 'Circle rig' }))
+  for (const toggle of screen.getAllByRole('switch', { name: 'Circle rig' })) expect(toggle).toHaveAttribute('aria-checked', 'true')
   expect(screen.queryByText(/50 m radius/)).not.toBeInTheDocument()
   expect(writes).not.toHaveBeenCalled()
   expect(briefRepository.latest()?.id).toBe(own.id)

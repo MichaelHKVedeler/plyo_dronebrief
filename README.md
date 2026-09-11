@@ -37,7 +37,10 @@ npm run preview
 - Briefs automatically frame their cameras, complete rig outline, and polygons when opened. **Frame scene** repeats this at any time; edits, search, and visibility toggles do not trigger automatic reframing.
 - Shadcn accordion sections group project details, camera points, location, rig settings, and camera heights. Selecting a map object opens its settings; opening sections does not save the brief.
 - Street/location suggestions while typing (after three characters and a 350 ms pause), with Enter/search-button geocoding as a fallback. Search moves the view only and works in the viewer too.
-- Search and satellite share the top map toolbar.
+- One shared map toolbar keeps search and navigation available in both providers. The shadcn ButtonGroup sits above Satellite, which is shown only in Google Maps.
+- Label-free Google cloud style provided in `docs/google-map-no-labels.json`; publish and associate it with your map ID as described below. Project/camera labels and attribution remain visible.
+- A compact map layer menu below Set location toggles the rig and additional angles in editor and viewer, synchronized with the Layers panel.
+- ShadeMap shadow preview with the same WGS84 coordinates and matched zoom scale, terrain/building shadows, and a bottom-center time slider using the shoot date and viewed location's timezone.
 - Tests covering Unicode exports, malformed keys, persistence failures, and read-only behavior.
 
 Project and numeric fields commit on blur (clicking elsewhere or pressing Tab). New briefs start in Oslo (59.9139, 10.7522). Search to move the map, then use Set location or enter coordinates before adding a rig. Saved and imported briefs keep their stored location. A rig has its own position; moving project coordinates does not silently move an existing rig. Use **Move rig to project location**.
@@ -76,6 +79,34 @@ See [Google's JavaScript geocoding setup](https://developers.google.com/maps/doc
 A Maps JavaScript API key is browser-visible. Restrict its allowed referrers and API in Google Cloud; do not put a server secret in any VITE variable. A working Google Cloud configuration, including any required billing, is your responsibility. Verify live map loading on each deployment using its restricted key.
 
 Without a key, the map shows a clear placeholder. All application controls use shadcn/ui. The Google Maps canvas, attribution, and geographic shapes are the necessary mapping exception.
+
+## Hide Google basemap labels
+
+Google requires cloud styling when a map ID is present; the editor's advanced markers require a map ID. Inline styles and StyledMapType are therefore not used. In Google Cloud **Map Styles**, create a style using the JSON in `docs/google-map-no-labels.json`, save/publish it, and associate it with a JavaScript map ID. Put that ID in `VITE_GOOGLE_MAPS_MAP_ID` in `.env.local` and restart Vite. Alternatively, edit the existing associated cloud style to hide label text and icons. Google's DEMO_MAP_ID cannot be styled by this app. This Google Cloud configuration step is required before Google labels disappear.
+
+Reference: [Google cloud map styling](https://developers.google.com/maps/documentation/javascript/cloud-customization/map-styles).
+
+## ShadeMap setup
+
+The optional shadow preview uses MapLibre and the official ShadeMap SDK. OpenFreeMap provides the basemap and OpenStreetMap buildings; AWS Open Data supplies elevation tiles. No Mapbox or MapTiler key is needed. The renderer is loaded only when switching to ShadeMap.
+
+1. In the project root's ignored `.env.local`, fill in `VITE_SHADEMAP_API_KEY=your_key_here` (a blank entry is provided). Keep `.env.example` blank.
+2. Enable your development/production domains in your ShadeMap account as required by your key/plan.
+3. Restart Vite, open a brief, and select **ShadeMap**. Use **Google Maps** to switch back.
+
+The current center and scale transfer in both directions, including fractional zoom: Google's 256 px tile convention maps to MapLibre zoom minus one (512 px). Brief coordinates are never rounded or rewritten. Google Maps remains mounted while hidden so returning does not reframe the scene. Provider choice, shadow time, and map movement are temporary view settings; exports and autosave are unaffected.
+
+The slider spans 00:00–23:55 in five-minute steps on the brief's shoot date. Its displayed IANA timezone follows the viewed location, including daylight saving. For a nonexistent local clock time at a spring DST transition, the UI shows the resolved clock time and an adjustment notice. At the autumn repeated hour, the timezone library chooses one occurrence; this UI does not select between both occurrences.
+
+ShadeMap is a preview in both editor and viewer. Rig outlines, camera positions/direction lines, and polygons use the same brief data. Search, Set location, camera placement, zoom, framing, and layer toggles work over both maps. Google Maps owns object dragging and adjustment handles. Missing keys, failed map loading, and SDK license failures show a message while keeping the return control available.
+
+The adapter waits for map tiles before querying buildings, explicitly retains MapLibre geometry getters, and removes duplicate tile-buffer polygons before sending plain GeoJSON to ShadeMap. Development keys are not documented as using lower-quality shadow rendering; paid plans primarily change deployment and usage allowances.
+
+Building shadows depend on OpenStreetMap coverage and available height attributes; missing heights use a 3 m estimate, and buildings load at street-level zoom. Terrain resolution also limits detail. The preview is not a measured survey. Newbuild polygons currently have no height field and are outlines, not shadow-casting buildings. Image overlays remain unimplemented in both renderers.
+
+Like the Google browser key, this Vite-prefixed key is visible to browsers. `.env.local` keeps it out of Git; restrict permitted domains with the provider and use your hosting environment for production configuration. API keys are never included in brief JSON or shared keys.
+
+References: [ShadeMap SDK](https://github.com/ted-piotrowski/mapbox-gl-shadow-simulator), [OpenFreeMap](https://openfreemap.org/quick_start/).
 
 ## Persistence and export semantics
 

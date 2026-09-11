@@ -1,5 +1,6 @@
 import type { DroneBrief, Position } from '@/features/briefs/model/brief'
 import { destination, rigOutline } from './geometry'
+import type { MapNavigation } from './map-navigation'
 
 export function scenePoints(brief: DroneBrief): Position[] {
   const points = brief.angles.map((angle) => angle.position)
@@ -28,7 +29,7 @@ export function sceneBounds(points: Position[]): google.maps.LatLngBoundsLiteral
   return { north, south, east, west }
 }
 
-export function fitScene(map: google.maps.Map, brief: DroneBrief) {
+export function fitScene(map: MapNavigation, brief: DroneBrief) {
   if (!brief.angles.length && !brief.circleRig && !brief.polygons.length && brief.coordinates.lat === 59.9139 && brief.coordinates.lng === 10.7522) {
     map.moveCamera({ center: brief.coordinates, zoom: 10 }); return
   }
@@ -38,7 +39,7 @@ export function fitScene(map: google.maps.Map, brief: DroneBrief) {
   map.fitBounds(sceneBounds(scenePoints(brief)), mapPadding(map))
 }
 
-export function mapPadding(map: google.maps.Map) {
+export function mapPadding(map: Pick<MapNavigation, 'getDiv'>) {
   const { clientWidth: width, clientHeight: height } = map.getDiv()
   return { top: Math.min(145, height * 0.36), bottom: Math.min(110, height * 0.34), left: Math.min(100, width * 0.22), right: Math.min(100, width * 0.22) }
 }
