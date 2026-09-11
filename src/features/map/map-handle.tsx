@@ -23,7 +23,7 @@ export function MapHandle({ position, label, children, onStart, onPreview, onCom
   const [focused, setFocused] = useState(false)
   const handleClass = (bare
     ? 'touch-none border-0 bg-transparent text-primary shadow-none hover:bg-transparent disabled:opacity-100 '
-    : 'touch-none rounded-full border-2 border-primary bg-card text-primary shadow-md ') + className
+    : 'touch-none rounded-full border-2 border-primary bg-card text-primary shadow-md dark:bg-card dark:border-primary dark:hover:bg-secondary ') + className
   function drag(point: Position, commit: boolean) {
     if (!interactive) return
     const constrained = constrain ? constrain(point) : point

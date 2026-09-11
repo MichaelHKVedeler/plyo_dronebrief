@@ -5,10 +5,11 @@ import { Button } from '@/components/ui/button'
 import { MapHandle } from './map-handle'
 import { clamp, destination, reshapeRig, scaleAndRotateRig, rigOutline, type CircleRig } from './geometry'
 import { useHoverHandles } from './use-hover-handles'
+import { mapBrandColor } from './map-colors'
 
-type Props = { rig: CircleRig; satellite?: boolean; editable: boolean; selected: boolean; interactive: boolean; onSelect: () => void; onCommit: (rig: CircleRig) => void }
-export function RigObject({ rig, satellite = false, editable, selected, interactive, onSelect, onCommit }: Props) {
-  const color = satellite ? '#ffffff' : '#2958bb'
+type Props = { rig: CircleRig; dark?: boolean; editable: boolean; selected: boolean; interactive: boolean; onSelect: () => void; onCommit: (rig: CircleRig) => void }
+export function RigObject({ rig, dark = false, editable, selected, interactive, onSelect, onCommit }: Props) {
+  const color = mapBrandColor(dark)
   const hover = useHoverHandles(!interactive)
   const [draft, setDraft] = useState<{ source: CircleRig; value: CircleRig } | null>(null)
   const visible = draft?.source === rig ? draft.value : rig
@@ -34,7 +35,7 @@ export function RigObject({ rig, satellite = false, editable, selected, interact
       onDragStart={start}
       onDrag={(event) => { if (canEdit && event.latLng) setDraft({ source: rig, value: { ...rig, position: event.latLng.toJSON() } }) }}
       onDragEnd={(event) => { if (canEdit && event.latLng) commit({ ...rig, position: event.latLng.toJSON() }) }}>
-      <Button disabled={!canEdit} size="icon-sm" variant="outline" className="cursor-grab touch-none rounded-full border-primary text-primary shadow-md active:cursor-grabbing"
+      <Button disabled={!canEdit} size="icon-sm" variant="outline" className="cursor-grab touch-none rounded-full border-primary bg-card text-primary shadow-md active:cursor-grabbing dark:bg-card dark:border-primary dark:hover:bg-secondary"
         aria-label="Move circle rig" onFocus={hover.enter} onBlur={hover.leave}
         onClick={(event) => { event.stopPropagation(); onSelect() }}><Move /></Button>
     </AdvancedMarker>}

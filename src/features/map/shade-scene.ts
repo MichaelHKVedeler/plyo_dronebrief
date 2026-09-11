@@ -2,12 +2,13 @@ import type { Feature, FeatureCollection, LineString, Polygon } from 'geojson'
 import type { DroneBrief, LayerVisibility } from '@/features/briefs/model/brief'
 import { cameraAppearance } from '@/features/briefs/components/camera-appearance'
 import { destination, metersPerPixel, rigOutline } from './geometry'
+import { mapBrandColor } from './map-colors'
 
-export function shadeScene(brief: DroneBrief, visibility: LayerVisibility, googleZoom: number): FeatureCollection {
+export function shadeScene(brief: DroneBrief, visibility: LayerVisibility, googleZoom: number, dark = false): FeatureCollection {
   const features: Feature<LineString | Polygon>[] = []
   if (visibility.circleRig && brief.circleRig) {
     const ring = rigOutline(brief.circleRig).map((p) => [p.lng, p.lat])
-    features.push({ type: 'Feature', properties: { color: '#315dbb' }, geometry: { type: 'Polygon', coordinates: [[...ring, ring[0]]] } })
+    features.push({ type: 'Feature', properties: { color: mapBrandColor(dark) }, geometry: { type: 'Polygon', coordinates: [[...ring, ring[0]]] } })
   }
   if (visibility.angles) for (const angle of brief.angles) {
     if (angle.type === '360') continue
