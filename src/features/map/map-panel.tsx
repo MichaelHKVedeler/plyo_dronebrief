@@ -4,6 +4,7 @@ import { useDarkMode } from '@/lib/use-dark-mode'
 import type { MapNavigation } from './map-navigation'
 import { ViewerLayers } from './viewer-layers'
 import { GoogleMapView } from './google-map-view'
+import { BasemapDimmer } from './basemap-dimmer'
 import type { MapView } from './map-view'
 import { APIProvider, Map, Polygon, AdvancedMarker, useApiLoadingStatus, APILoadingStatus, useMap } from '@vis.gl/react-google-maps'
 import { MapPin, X } from 'lucide-react'
@@ -85,6 +86,7 @@ function ConnectedMap({ selectedCameraIds, onSelectCamera, session, dispatch, to
       {active && <MiddleMousePan onActiveChange={setMiddlePanning} />}
       {active && editing && <CameraPlacementGesture tool={tool} onToolChange={onToolChange} onPlace={onCameraPlace} />}
       <GoogleMapView active={active} satellite={satellite} view={view} />
+      <BasemapDimmer />
     </Map>
   </>
 }
