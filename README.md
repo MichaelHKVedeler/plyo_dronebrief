@@ -32,7 +32,7 @@ npm run preview
 - Optional Google Maps adapter: project location, circle/oval outlines, camera markers and polygons.
 - Map placement for 360, DSLR, and drone images, with distinct icons and camera directions.
 - Drag cameras and the circle rig to move them; rig handles adjust radius, rotation, and ovalness, and camera handles adjust direction.
-- Satellite toggle and mouse-wheel zoom without Ctrl in both editor and viewer. These view preferences do not modify the brief JSON.
+- Satellite toggle and mouse-wheel zoom without Ctrl in both editor and viewer. The editor opens in Satellite; the viewer opens in the normal map. These view preferences do not modify the brief JSON.
 - Editor/viewer fit the browser window. The details panel has its own shadcn scrollbar; on narrow screens it sits below the map.
 - Briefs automatically frame their cameras, complete rig outline, and polygons when opened. **Frame scene** repeats this at any time; edits, search, and visibility toggles do not trigger automatic reframing.
 - Shadcn accordion sections group project details, camera points, location, rig settings, and camera heights. Selecting a map object opens its settings; opening sections does not save the brief.
@@ -52,6 +52,12 @@ In Google Maps, choose **Add 360 point**, **Add DSLR point**, or **Add drone ima
 Drag a camera icon or the center move icon of the rig to reposition it. The rig interior can be clicked to select it, but cannot be dragged to move the rig. Hover or select the rig to reveal one edge dot for both scale and rotation, plus the oval handle on the minor-axis edge for ovalness. DSLR/drone direction arrows remain visible beside their camera icons. Drag an arrow to aim in the editor. Selecting an object keeps its handles visible. Drag the edge dot in/out to resize and around the center to rotate. Use the numeric settings in the sidebar for precise adjustments or keyboard input. Camera selection exposes its label, coordinates, direction where applicable, and removal action.
 
 Movement previews are temporary until the drag ends; committed changes autosave and are included in exports. Placement, selection, and hover state are not saved. Loaded briefs display the same geometry with editing and adjustment handles disabled.
+
+## Branding and appearance
+
+Plyo assets live in public/brand; use the supplied light-background and dark-background logo variants without recoloring them. Brand colors, neutral surfaces, focus colors and button roundness are defined in src/styles/globals.css. Keep styling changes there or at feature call sites, leaving vendored shadcn primitives intact.
+
+The small header theme button cycles System → Light → Dark → System. System is the initial default and follows OS appearance changes. Explicit preferences are stored separately under dronebrief:theme, never in brief JSON or export keys; returning to System removes the override. The page applies the preference before first paint and stays usable if storage is blocked. Google road maps follow the resolved app theme; satellite photography keeps its natural appearance. Opaque gizmos and theme-specific camera surfaces maintain contrast. Map instances are reused for each color scheme within the page to reduce repeated map initialization. Switching themes preserves the current map position and zoom.
 
 ## Google Maps setup
 

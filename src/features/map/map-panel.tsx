@@ -1,5 +1,6 @@
 import { lazy, Suspense, useId, useRef, useState, type RefObject } from 'react'
 import { ButtonGroup } from '@/components/ui/button-group'
+import { useDarkMode } from '@/lib/use-dark-mode'
 import type { MapNavigation } from './map-navigation'
 import { ViewerLayers } from './viewer-layers'
 import { GoogleMapView } from './google-map-view'
@@ -36,6 +37,7 @@ const ShadeMapPanel = lazy(() => import('./shade-map').then((module) => ({ defau
 type GoogleProps = Props & { active: boolean; view: RefObject<MapView>; onViewChange: (view: MapView) => void; satellite: boolean; onMapClick: (point: Position) => void; onCameraPlace: (tool: MapTool, point: Position) => void }
 function ConnectedMap({ selectedCameraIds, onSelectCamera, session, dispatch, tool, onToolChange, selectedId, onSelect, active, view, onViewChange, satellite, onMapClick, onCameraPlace }: GoogleProps) {
   const status = useApiLoadingStatus()
+  const dark = useDarkMode()
   const [zoom, setZoom] = useState(17)
   const [middlePanning, setMiddlePanning] = useState(false)
   const { brief, visibility, mode } = session
@@ -48,7 +50,7 @@ function ConnectedMap({ selectedCameraIds, onSelectCamera, session, dispatch, to
   if (status === APILoadingStatus.FAILED || status === APILoadingStatus.AUTH_FAILURE) return <MapMessage title="Map could not load" description="Check your map configuration and connection. The brief is still available." />
   if (status !== APILoadingStatus.LOADED) return <MapMessage title="Loading Google Maps…" description="Your brief is ready while the map connects." />
   return <>
-    <Map defaultCenter={brief.coordinates} defaultZoom={brief.coordinates.lat === 59.9139 && brief.coordinates.lng === 10.7522 ? 10 : brief.coordinates.lat === 0 && brief.coordinates.lng === 0 ? 2 : 17}
+    <Map defaultCenter={view.current.center} defaultZoom={view.current.zoom} colorScheme={dark ? 'DARK' : 'LIGHT'} reuseMaps
       mapId={import.meta.env.VITE_GOOGLE_MAPS_MAP_ID || 'DEMO_MAP_ID'} disableDefaultUI
       tilt={0} heading={0} gestureHandling={middlePanning || (editing && tool.kind === 'camera') ? 'none' : 'greedy'} isFractionalZoomEnabled
       draggableCursor={editing && !interactive ? 'crosshair' : undefined}
@@ -69,7 +71,7 @@ function ConnectedMap({ selectedCameraIds, onSelectCamera, session, dispatch, to
             dispatch({ type: 'update', update: (b) => ({ ...b, coordinates }) })
           }
         }}><MapPin className="size-7 fill-white text-primary" /></AdvancedMarker>
-      {visibility.circleRig && brief.circleRig && <RigObject rig={brief.circleRig} satellite={satellite} editable={editing} interactive={objectsInteractive}
+      {visibility.circleRig && brief.circleRig && <RigObject rig={brief.circleRig} dark={dark} editable={editing} interactive={objectsInteractive}
         selected={selectedId === brief.circleRig.id}
         onSelect={() => onSelect(brief.circleRig!.id)}
         onCommit={(rig) => dispatch({ type: 'update', update: (b) => ({ ...b, circleRig: b.circleRig?.id === rig.id ? rig : b.circleRig }) })} />}
@@ -99,7 +101,7 @@ function MapWorkspace(props: Props) {
   const hint = editing ? placementHint(tool) : null
   const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY?.trim()
   const googleMap = useMap()
-  const [satellite, setSatellite] = useState(false)
+  const [satellite, setSatellite] = useState(editing)
   const satelliteId = useId()
   const [shadeStart, setShadeStart] = useState<MapView | null>(null)
   const shadeActive = shadeStart !== null

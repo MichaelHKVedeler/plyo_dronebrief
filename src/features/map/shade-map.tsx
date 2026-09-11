@@ -13,14 +13,17 @@ import { cameraAppearance } from '@/features/briefs/components/camera-appearance
 import { fromShadeView, toShadeView, type MapView } from './map-view'
 import { shadeScene } from './shade-scene'
 import { shadowTime, timeLabel } from './shadow-time'
+import { useDarkMode } from '@/lib/use-dark-mode'
+import { mapBrandColor } from './map-colors'
 import 'maplibre-gl/dist/maplibre-gl.css'
 
 type Props = { session: BriefSession; initialView: MapView; onViewChange: (view: MapView) => void; minutes: number; onMinutesChange: (value: number) => void; onNavigation: (navigation: MapNavigation | null) => void; tool: MapTool; onMapClick: (point: Position) => void; onAim: (point: Position) => void }
 export function ShadeMapPanel({ session, initialView, onViewChange, minutes, onMinutesChange, onNavigation, tool, onMapClick, onAim }: Props) {
+  const dark = useDarkMode()
   const host = useRef<HTMLDivElement>(null)
   const shade = useRef<ShadeMap | null>(null)
-  const latest = useRef({ session, onViewChange, minutes, onNavigation, onMapClick, onAim })
-  useEffect(() => { latest.current = { session, onViewChange, minutes, onNavigation, onMapClick, onAim } }, [session, onViewChange, minutes, onNavigation, onMapClick, onAim])
+  const latest = useRef({ session, onViewChange, minutes, onNavigation, onMapClick, onAim, dark })
+  useEffect(() => { latest.current = { session, onViewChange, minutes, onNavigation, onMapClick, onAim, dark } }, [session, onViewChange, minutes, onNavigation, onMapClick, onAim, dark])
   const startView = useRef(initialView)
   const [map, setMap] = useState<LibreMap | null>(null)
   const [view, setView] = useState(initialView)
@@ -70,7 +73,7 @@ export function ShadeMapPanel({ session, initialView, onViewChange, minutes, onM
       if (!live) return
       // Hide base-map labels; brief labels and required attribution stay visible.
       for (const layer of instance.getStyle().layers) if (layer.type === 'symbol') instance.setLayoutProperty(layer.id, 'visibility', 'none')
-      instance.addSource('brief-scene', { type: 'geojson', data: shadeScene(latest.current.session.brief, latest.current.session.visibility, startView.current.zoom) })
+      instance.addSource('brief-scene', { type: 'geojson', data: shadeScene(latest.current.session.brief, latest.current.session.visibility, startView.current.zoom, latest.current.dark) })
       instance.addLayer({ id: 'brief-fill', type: 'fill', source: 'brief-scene', filter: ['==', '$type', 'Polygon'], paint: { 'fill-color': ['get', 'color'], 'fill-opacity': 0.08 } })
       instance.addLayer({ id: 'brief-outline', type: 'line', source: 'brief-scene', paint: { 'line-color': ['get', 'color'], 'line-width': 2 } })
       if (key) {
@@ -127,12 +130,12 @@ export function ShadeMapPanel({ session, initialView, onViewChange, minutes, onM
     const pending = tool.kind === 'camera' && tool.position && tool.cameraType !== '360'
       ? { id: 'pending', label: 'Choose direction', type: tool.cameraType, position: tool.position, directionDegrees: tool.directionDegrees } : null
     const brief = pending ? { ...session.brief, angles: [...session.brief.angles, pending] } : session.brief
-    if (map && ready) (map.getSource('brief-scene') as GeoJSONSource)?.setData(shadeScene(brief, session.visibility, view.zoom))
-  }, [map, ready, session.brief, session.visibility, view.zoom, tool])
+    if (map && ready) (map.getSource('brief-scene') as GeoJSONSource)?.setData(shadeScene(brief, session.visibility, view.zoom, dark))
+  }, [map, ready, session.brief, session.visibility, view.zoom, tool, dark])
   useEffect(() => { if (map) map.getCanvas().style.cursor = session.mode === 'edit' && tool.kind !== 'idle' ? 'crosshair' : '' }, [map, session.mode, tool.kind])
   useEffect(() => { shade.current?.setDate(new Date(timestamp)) }, [timestamp, ready])
   const markers = [
-    { id: 'project', label: 'Project location', position: session.brief.coordinates, Icon: MapPin, color: '#315dbb' },
+    { id: 'project', label: 'Project location', position: session.brief.coordinates, Icon: MapPin, color: mapBrandColor(dark) },
     ...(tool.kind === 'camera' && tool.position ? [{ id: 'pending', label: 'Choose direction', position: tool.position, Icon: cameraAppearance[tool.cameraType].Icon, color: cameraAppearance[tool.cameraType].color }] : []),
     ...(session.visibility.angles ? session.brief.angles.map((angle) => ({ ...angle, Icon: cameraAppearance[angle.type].Icon, color: cameraAppearance[angle.type].color })) : []),
   ]
