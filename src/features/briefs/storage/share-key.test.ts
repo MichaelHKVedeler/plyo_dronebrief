@@ -13,6 +13,13 @@ describe('portable brief keys', () => {
     expect(exportBriefKey(brief)).toMatch(/^DB2\./)
     expect(exportBriefKey(brief).length).toBeLessThan(legacy.length * 0.75)
   })
+  it('loads old DSLR snapshots and round-trips shared arrow settings in DB2', () => {
+    const legacy = { ...brief, typeSettings: { ...brief.typeSettings, dslr: { heightsMeters: [1.6, 2] } } }
+    const restored = importBriefKey('DB1.' + encoded(new TextEncoder().encode(JSON.stringify(legacy))))
+    expect(restored.typeSettings.dslr).toEqual({ heightsMeters: [1.6, 2], angleCount: 1, spacingDegrees: 30 })
+    restored.typeSettings.dslr = { ...restored.typeSettings.dslr, angleCount: 5, spacingDegrees: 45 }
+    expect(importBriefKey(exportBriefKey(restored))).toEqual(restored)
+  })
   it('rejects compressed payloads beyond the decompressed size limit and truncated streams', () => {
     const oversized = 'DB2.' + encoded(deflateSync(new TextEncoder().encode(' '.repeat(2_000_001))))
     expect(() => importBriefKey(oversized)).toThrow()

@@ -20,6 +20,16 @@ export const angleSchema = z.discriminatedUnion('type', [
   z.object({ ...angleBase, type: z.literal('dslr'), directionDegrees: heading }),
 ])
 const heights = z.object({ heightsMeters: z.array(z.number().finite().min(0).max(10000)).max(50) })
+export const maxDslrAngles = 12
+export const minDslrSpacing = 15
+export function maxDslrSpacing(angleCount: number) { return Math.floor(360 / angleCount) }
+// Additive v1 settings: old briefs retain one arrow and their original height data.
+const dslrSettings = heights.extend({
+  angleCount: z.number().int().min(1).max(maxDslrAngles).default(1),
+  spacingDegrees: z.number().int().min(minDslrSpacing).max(360).default(30),
+}).refine((settings) => settings.spacingDegrees <= maxDslrSpacing(settings.angleCount), {
+  message: 'DSLR arrows must leave room for every angle without overlapping.', path: ['spacingDegrees'],
+})
 export const briefSchema = z.object({
   schemaVersion: z.literal(1),
   id,
@@ -34,7 +44,7 @@ export const briefSchema = z.object({
     rotationDegrees: heading,
   }).nullable(),
   angles: z.array(angleSchema).max(1000),
-  typeSettings: z.object({ 'drone-image': heights, '360': heights, dslr: heights }),
+  typeSettings: z.object({ 'drone-image': heights, '360': heights, dslr: dslrSettings }),
   polygons: z.array(z.object({
     id, label: name, vertices: z.array(positionSchema).min(3).max(1000),
   })).max(100),

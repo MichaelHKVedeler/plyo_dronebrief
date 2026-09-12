@@ -1,3 +1,5 @@
+import { useCameraFocus } from './use-camera-focus'
+import { numberedCameras, nextCameraNumber } from '@/features/briefs/model/camera-numbers'
 import { lazy, Suspense, useId, useRef, useState, type RefObject } from 'react'
 import { ButtonGroup } from '@/components/ui/button-group'
 import { useDarkMode } from '@/lib/use-dark-mode'
@@ -9,7 +11,6 @@ import type { MapView } from './map-view'
 import { APIProvider, Map, Polygon, useApiLoadingStatus, APILoadingStatus, useMap } from '@vis.gl/react-google-maps'
 import { MapPin, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
@@ -22,9 +23,10 @@ import { MapSearch } from './map-search'
 import { CameraPlacementGesture } from './camera-placement-gesture'
 import { MiddleMousePan } from './middle-mouse-pan'
 import { metersPerPixel } from './geometry'
-import { idleTool, placeCamera, placementHint, type MapTool } from './placement'
+import { idleTool, placeCamera, type MapTool } from './placement'
 
 type Props = {
+  focusPosition?: Position | null
   onViewCenterChange?: (center: Position) => void
   selectedCameraIds: string[]
   onSelectCamera: (id: string, additive: boolean) => void
@@ -69,11 +71,13 @@ function ConnectedMap({ selectedCameraIds, onSelectCamera, session, dispatch, to
         selected={selectedId === brief.circleRig.id}
         onSelect={() => onSelect(brief.circleRig!.id)}
         onCommit={(rig) => dispatch({ type: 'update', update: (b) => ({ ...b, circleRig: b.circleRig?.id === rig.id ? rig : b.circleRig }) })} />}
-      {visibility.angles && brief.angles.map((angle) => <CameraMarker key={angle.id} angle={angle} editable={editing}
+      {visibility.angles && numberedCameras(brief.angles).map(({ angle, number }) => <CameraMarker key={angle.id} angle={angle} editable={editing}
+        number={number} dslrSettings={brief.typeSettings.dslr}
         interactive={objectsInteractive} selected={selectedCameraIds.includes(angle.id)} pixelsToMeters={metersPerPixel(angle.position.lat, zoom)}
         onSelect={(additive = false) => onSelectCamera(angle.id, additive)}
         onCommit={(updated) => dispatch({ type: 'update', update: (b) => ({ ...b, angles: b.angles.map((item) => item.id === updated.id ? updated : item) }) })} />)}
       {pendingAngle && <CameraMarker angle={pendingAngle} editable={false} interactive={false} selected={false}
+        number={nextCameraNumber(brief.angles, pendingAngle.type)} dslrSettings={brief.typeSettings.dslr}
         pixelsToMeters={metersPerPixel(pendingAngle.position.lat, zoom)} onSelect={() => {}} onCommit={() => {}} />}
       {visibility.polygons && brief.polygons.map((polygon) => <Polygon key={polygon.id} paths={polygon.vertices} strokeColor="#b45309" fillColor="#d97706" fillOpacity={0.2} clickable={false} />)}
       {active && <MiddleMousePan onActiveChange={setMiddlePanning} />}
@@ -93,7 +97,6 @@ function MapWorkspace(props: Props) {
   const { brief, mode } = session
   const editing = mode === 'edit'
   const interactive = tool.kind === 'idle'
-  const hint = editing ? placementHint(tool) : null
   const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY?.trim()
   const googleMap = useMap()
   const [satellite, setSatellite] = useState(editing)
@@ -101,6 +104,7 @@ function MapWorkspace(props: Props) {
   const [shadeStart, setShadeStart] = useState<MapView | null>(null)
   const shadeActive = shadeStart !== null
   const [shadeNavigation, setShadeNavigation] = useState<MapNavigation | null>(null)
+  useCameraFocus(props.focusPosition, shadeActive ? shadeNavigation : googleMap)
   const [minutes, setMinutes] = useState(() => {
     const [hours, mins] = (brief.project.times[0] || '12:00').split(':').map(Number)
     return hours * 60 + mins
@@ -154,7 +158,6 @@ function MapWorkspace(props: Props) {
         {editing && !interactive && <Button className="pointer-events-auto shadow-sm" onClick={() => onToolChange(idleTool)}><X />Cancel placement</Button>}
         <ViewerLayers session={session} dispatch={dispatch} />
       </div>
-      {hint && <Badge className="col-span-2 whitespace-normal py-2" role="status">{hint}</Badge>}
     </div>
     <MapControls brief={brief} navigation={shadeActive ? shadeNavigation : googleMap} shadeActive={shadeActive} />
   </CardContent>

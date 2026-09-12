@@ -22,6 +22,5 @@ export function ExportQr({ shareKey }: { shareKey: string }) {
       <img src={image} alt="QR code containing this brief’s export key" width={320} height={320} className="h-auto w-80 max-w-full" />
       <Button asChild variant="outline"><a href={image} download="dronebrief-qr.png"><Download /> Download QR code</a></Button>
     </> : <p role="status" className="text-sm">Creating QR code…</p>}
-    <p className="text-center text-xs text-muted-foreground">Scan to copy the key, then paste it into Load brief. The QR code contains the snapshot, not a website link.</p>
   </div>
 }
