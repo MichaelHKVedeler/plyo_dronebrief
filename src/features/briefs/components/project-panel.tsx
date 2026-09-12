@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Circle, Crosshair } from 'lucide-react'
 import { Accordion } from '@/components/ui/accordion'
 import { SettingsSection } from './settings-section'
 import { Input } from '@/components/ui/input'
@@ -7,12 +8,13 @@ import { Button } from '@/components/ui/button'
 import { cameraLabels, cameraTypes, type CameraAngle, type DroneBrief } from '../model/brief'
 import { CameraAddPanel } from './camera-add-panel'
 import { RigRadii } from './rig-radii'
+import { RigRadiusFields } from './rig-radius-fields'
+import { CameraGroups } from './camera-groups'
 import { CamerasPanel } from './cameras-panel'
-import { NumberField } from './number-field'
 import type { BriefSession } from '../state/brief-session'
 
-type Props = { onAddRig: () => void; selectedCameraIds: string[]; onSelectCamera: (id: string, range: boolean) => void; onRemoveCameras: (ids: string[]) => void; session: BriefSession; onUpdate: (update: (brief: DroneBrief) => DroneBrief) => void; selectedId: string | null; onSelect: (id: string | null) => void; onAddCamera: (type: CameraAngle['type']) => void }
-export function ProjectPanel({ onAddRig, selectedCameraIds, onSelectCamera, onRemoveCameras, session, onUpdate, selectedId, onSelect, onAddCamera }: Props) {
+type Props = { onCenterCamera: (angle: CameraAngle) => void; onAddRig: () => void; selectedCameraIds: string[]; onSelectCamera: (id: string, range: boolean) => void; onRemoveCameras: (ids: string[]) => void; session: BriefSession; onUpdate: (update: (brief: DroneBrief) => DroneBrief) => void; selectedId: string | null; onSelect: (id: string | null) => void; onAddCamera: (type: CameraAngle['type']) => void }
+export function ProjectPanel({ onCenterCamera, onAddRig, selectedCameraIds, onSelectCamera, onRemoveCameras, session, onUpdate, selectedId, onSelect, onAddCamera }: Props) {
   const { brief, mode } = session
   const [open, setOpen] = useState<string[]>(mode === 'edit' ? ['add-cameras', 'cameras'] : ['project'])
   const [lastSelected, setLastSelected] = useState<string | null>(null)
@@ -29,17 +31,17 @@ export function ProjectPanel({ onAddRig, selectedCameraIds, onSelectCamera, onRe
       <div><dt className="text-muted-foreground">Shoot times</dt><dd className="mt-1">{brief.project.times.join(', ')}</dd></div>
     </dl>
     </SettingsSection>
-    <SettingsSection value="cameras" title="Added camera points" count={brief.angles.length}>
-      {brief.angles.length ? brief.angles.map((angle) => <div key={angle.id} className="text-sm">
-        <p className="font-medium">{angle.label} · {cameraLabels[angle.type]}</p>
-        <p className="text-muted-foreground">{angle.position.lat.toFixed(6)}, {angle.position.lng.toFixed(6)}{angle.type !== '360' && ' · ' + angle.directionDegrees.toFixed(1) + '°'}</p>
-      </div>) : <p>No camera points in this brief.</p>}
-    </SettingsSection>
     <SettingsSection value="rig" title="Circle rig" count={brief.circleRig ? 1 : 0}>
       {brief.circleRig ? <RigRadii rig={brief.circleRig} /> : <p>No circle rig in this brief.</p>}
     </SettingsSection>
-    <SettingsSection value="heights" title="Camera heights">
-    {cameraTypes.map((type) => <div key={type}><p className="font-medium">{cameraLabels[type]}</p><p className="mt-1 text-muted-foreground">{brief.typeSettings[type].heightsMeters.join(', ') || 'None'} m</p></div>)}
+    <SettingsSection value="cameras" title="Added camera points" count={brief.angles.length}>
+      {brief.angles.length ? <CameraGroups angles={brief.angles}>{(points) => points.map((angle, index) => <div key={angle.id} className="text-sm">
+        <div className="flex items-center justify-between"><p className="font-medium">{index + 1}</p><Button variant="ghost" size="icon" aria-label={'Center on ' + cameraLabels[angle.type] + ' ' + (index + 1)} onClick={() => onCenterCamera(angle)}><Crosshair /></Button></div>
+        <p className="text-muted-foreground">{angle.position.lat.toFixed(6)}, {angle.position.lng.toFixed(6)}{angle.type !== '360' && ' · ' + angle.directionDegrees.toFixed(1) + '°'}</p>
+      </div>)}</CameraGroups> : <p>No camera points in this brief.</p>}
+    </SettingsSection>
+    <SettingsSection value="heights" title="Camera settings">
+    {cameraTypes.map((type) => <div key={type}><p className="font-medium">{cameraLabels[type]}</p><p className="mt-1 text-muted-foreground">{type === 'dslr' ? `${brief.typeSettings.dslr.angleCount} angles · ${brief.typeSettings.dslr.spacingDegrees}° spacing` : (brief.typeSettings[type].heightsMeters.join(', ') || 'None') + ' m'}</p></div>)}
     </SettingsSection>
   </Accordion>
   return <div>
@@ -53,18 +55,18 @@ export function ProjectPanel({ onAddRig, selectedCameraIds, onSelectCamera, onRe
     }} /></div>
     <p className="text-sm text-muted-foreground">{brief.project.clientName}<br />{brief.project.date} · {brief.project.times.join(', ')}</p>
     </SettingsSection>
+    <SettingsSection value="rig" title="Circle rig" count={brief.circleRig ? 1 : 0}>
+    {brief.circleRig ? <>
+      <Button variant="outline" onClick={() => onSelect(brief.circleRig!.id)}>Show rig handles</Button>
+      <RigRadiusFields rig={brief.circleRig} onUpdate={onUpdate} />
+      <Button variant="ghost" onClick={() => onUpdate((b) => ({ ...b, circleRig: null }))}>Remove rig</Button>
+    </> : <Button variant="outline" className="justify-start border-primary bg-primary/10 text-primary hover:bg-primary/20 hover:text-primary" onClick={onAddRig}><Circle />Add Circle Rig</Button>}
+    </SettingsSection>
     <SettingsSection value="add-cameras" title="Add camera points">
       <CameraAddPanel brief={brief} onAdd={onAddCamera} onUpdate={onUpdate} />
     </SettingsSection>
     <SettingsSection value="cameras" title="Added camera points" count={brief.angles.length}>
-    <CamerasPanel selectedCameraIds={selectedCameraIds} onSelectCamera={onSelectCamera} onRemoveCameras={onRemoveCameras} brief={brief} selectedId={selectedId} onUpdate={onUpdate} />
-    </SettingsSection>
-    <SettingsSection value="rig" title="Circle rig" count={brief.circleRig ? 1 : 0}>
-    {brief.circleRig ? <>
-      <Button variant="outline" onClick={() => onSelect(brief.circleRig!.id)}>Show rig handles</Button>
-      {brief.circleRig.ovalRatio < 1 ? <RigRadii rig={brief.circleRig} /> : <NumberField label="Radius (m)" value={brief.circleRig.radiusMeters} min={0.1} max={10000} onChange={(radiusMeters) => onUpdate((b) => ({ ...b, circleRig: { ...b.circleRig!, radiusMeters } }))} />}
-      <Button variant="ghost" onClick={() => onUpdate((b) => ({ ...b, circleRig: null }))}>Remove rig</Button>
-    </> : <Button variant="outline" onClick={onAddRig}>Add Circle Rig</Button>}
+    <CamerasPanel onCenterCamera={onCenterCamera} selectedCameraIds={selectedCameraIds} onSelectCamera={onSelectCamera} onRemoveCameras={onRemoveCameras} brief={brief} selectedId={selectedId} onUpdate={onUpdate} />
     </SettingsSection>
     </Accordion>
   </div>

@@ -1,3 +1,4 @@
+import { numberedCameras, nextCameraNumber } from '@/features/briefs/model/camera-numbers'
 import { attachShadePlacement } from './shade-placement'
 import { attachShadeMapPan } from './shade-map-pan'
 import { ShadeProjection } from './shade-projection'
@@ -157,11 +158,13 @@ export function ShadeMapPanel({ dispatch, selectedId, selectedCameraIds, onSelec
         {session.visibility.circleRig && session.brief.circleRig && <RigObject rig={session.brief.circleRig} dark={dark} editable={editable} interactive={interactive}
           selected={selectedId === session.brief.circleRig.id} onSelect={() => onSelect(session.brief.circleRig!.id)}
           onCommit={(rig) => dispatch({ type: 'update', update: (brief) => ({ ...brief, circleRig: brief.circleRig?.id === rig.id ? rig : brief.circleRig }) })} />}
-        {session.visibility.angles && session.brief.angles.map((angle) => <CameraMarker key={angle.id} angle={angle} editable={editable} interactive={interactive}
+        {session.visibility.angles && numberedCameras(session.brief.angles).map(({ angle, number }) => <CameraMarker key={angle.id} angle={angle} editable={editable} interactive={interactive}
+          number={number} dslrSettings={session.brief.typeSettings.dslr}
           selected={selectedCameraIds.includes(angle.id)} pixelsToMeters={metersPerPixel(angle.position.lat, view.zoom)}
           onSelect={(additive = false) => onSelectCamera(angle.id, additive)}
           onCommit={(updated) => dispatch({ type: 'update', update: (brief) => ({ ...brief, angles: brief.angles.map((item) => item.id === updated.id ? updated : item) }) })} />)}
         {pendingAngle && <CameraMarker angle={pendingAngle} editable={false} interactive={false} selected={false}
+          number={nextCameraNumber(session.brief.angles, pendingAngle.type)} dslrSettings={session.brief.typeSettings.dslr}
           pixelsToMeters={metersPerPixel(pendingAngle.position.lat, view.zoom)} onSelect={() => {}} onCommit={() => {}} />}
       </div>
     </ObjectRenderer></ShadeProjection>}

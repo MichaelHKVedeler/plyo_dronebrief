@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input'
 import { Slider } from '@/components/ui/slider'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { createBrief, projectSchema, type DroneBrief, type ProjectDetails } from '@/features/briefs/model/brief'
 
 export function CreateBriefPage({ onCreate, onCancel }: { onCreate: (brief: DroneBrief) => void; onCancel: () => void }) {
@@ -20,7 +20,7 @@ export function CreateBriefPage({ onCreate, onCancel }: { onCreate: (brief: Dron
   return <main className="mx-auto max-w-xl px-6 py-10">
     <Button variant="ghost" className="mb-5 -ml-3" onClick={onCancel}><ArrowLeft /> Back to home</Button>
     <Card>
-      <CardHeader><Badge variant="secondary" className="mb-2 w-fit">Step {step + 1} of 2</Badge><CardTitle className="text-2xl">{step === 0 ? 'Project details' : 'Shoot schedule'}</CardTitle><CardDescription>{step === 0 ? 'Who is this drone brief for?' : 'Choose a date and one or more shoot times.'}</CardDescription></CardHeader>
+      <CardHeader><Badge variant="secondary" className="mb-2 w-fit">Step {step + 1} of 2</Badge><CardTitle className="text-2xl">{step === 0 ? 'Project details' : 'Shoot schedule'}</CardTitle></CardHeader>
       <CardContent><form className="grid gap-5" onSubmit={(event) => {
         event.preventDefault()
         if (step === 0) {
@@ -56,7 +56,6 @@ export function CreateBriefPage({ onCreate, onCancel }: { onCreate: (brief: Dron
             </div>
           </div>)}
           <Button type="button" variant="outline" className="w-fit" disabled={project.times.length >= 24} onClick={() => update({ times: [...project.times, '12:00'] })}><Plus /> Add time</Button></div>
-          <p className="text-sm text-muted-foreground">Times are local to the shoot location.</p>
         </>}
         {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
         <div className="flex justify-between gap-3">{step === 1 && <Button type="button" variant="outline" onClick={() => { setStep(0); setError('') }}>Back</Button>}<Button type="submit" className="ml-auto">{step === 0 ? 'Continue' : 'Create brief'}</Button></div>

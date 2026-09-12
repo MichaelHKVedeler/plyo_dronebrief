@@ -11,7 +11,7 @@ The runtime contract is `src/features/briefs/model/brief.ts`. This document expl
 | coordinates | Project/map reference point {lat, lng}; new briefs default to Oslo (59.9139, 10.7522) |
 | circleRig | null or {id, position, radiusMeters, ovalRatio, rotationDegrees} |
 | angles | Discriminated camera-angle array |
-| typeSettings | Per-camera arrays of heightsMeters |
+| typeSettings | Drone/360 heightsMeters arrays; DSLR angleCount and spacingDegrees plus preserved legacy heightsMeters |
 | polygons | Newbuild polygons with id, label, and vertices[] |
 | imageOverlays | Durable image source and transform metadata |
 
@@ -50,9 +50,11 @@ Map geometry uses spherical distances and bearings with longitude wrapping. The 
 ]
 ```
 
-An angle uses the height list of its type. No direction field is used for 360.
+Drone and 360 points use the height list of their type. No direction field is used for 360. DSLR points use the shared `typeSettings.dslr.angleCount` (integer 1–12) and `spacingDegrees` (integer 15–floor(360 / angleCount)). The directions are symmetric around each point's saved `directionDegrees`; even counts straddle that bearing. Moving any aim handle rotates the fan together. The count/spacing applies to existing and future points, including placement previews and viewers. Renderers use a fixed 40-pixel screen radius for all drone-image and DSLR arrows regardless of count or spacing; dense fans may overlap. Camera number badges derive from array order within each camera type, starting at 1 and closing gaps after removal, and identify points in the UI. Reordering a category updates its positions within the angles array while preserving other categories. Legacy labels remain round-tripped for schema v1 compatibility but are not displayed or editable.
 
-360 placement commits with one map click. DSLR and drone-image placement commits after a position click and a second look-at click. Only the resulting bearing is stored; the direction handle's screen-sized line is not a stored distance or field of view. Map drags commit position or direction at drag end. Temporary placement previews and selections are excluded from JSON.
+This is an additive **schema v1** extension, with unchanged DB1/DB2 transport versions. Missing DSLR fields default to one arrow and 30° spacing, preserving the appearance of older snapshots. `dslr.heightsMeters` remains validated and round-tripped unchanged for compatibility; it is no longer exposed as an editable or displayed DSLR setting and is never reinterpreted as arrow count or spacing. New exports include both arrow settings. Older app builds ignore these new fields and display one arrow; re-exporting from an older build loses the fan settings. Use an updated app to retain the fan. Invalid count/spacing combinations are rejected at import and at the session mutation boundary.
+
+360 placement commits with one map click. DSLR and drone-image placement commits after pressing for the position, dragging to aim, and releasing. Only the resulting bearing is stored; the direction handle's screen-sized line is not a stored distance or field of view. Map drags commit position or direction at drag end. Temporary placement previews, selections, and layer visibility are excluded from JSON.
 
 ## Polygons and image overlays
 

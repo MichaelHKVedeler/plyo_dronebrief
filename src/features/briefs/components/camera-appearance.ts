@@ -2,7 +2,7 @@ import { Camera, Drone, Rotate3D } from 'lucide-react'
 import type { CameraAngle } from '../model/brief'
 
 export const cameraAppearance = {
-  'drone-image': { Icon: Drone, color: '#c2410c', className: 'border-orange-700 bg-orange-50 text-orange-800 hover:bg-orange-100 dark:border-orange-400 dark:bg-orange-950 dark:text-orange-200 dark:hover:bg-orange-900' },
-  dslr: { Icon: Camera, color: '#0369a1', className: 'border-sky-700 bg-sky-50 text-sky-800 hover:bg-sky-100 dark:border-sky-400 dark:bg-sky-950 dark:text-sky-200 dark:hover:bg-sky-900' },
-  '360': { Icon: Rotate3D, color: '#7e22ce', className: 'border-purple-700 bg-purple-50 text-purple-800 hover:bg-purple-100 dark:border-purple-400 dark:bg-purple-950 dark:text-purple-200 dark:hover:bg-purple-900' },
+  'drone-image': { Icon: Drone, color: '#c2410c', className: 'border-orange-700 bg-orange-50 text-orange-800 hover:bg-orange-100 hover:text-orange-800 dark:border-orange-400 dark:bg-orange-950 dark:text-orange-200 dark:hover:bg-orange-900 dark:hover:text-orange-200' },
+  dslr: { Icon: Camera, color: '#0369a1', className: 'border-sky-700 bg-sky-50 text-sky-800 hover:bg-sky-100 hover:text-sky-800 dark:border-sky-400 dark:bg-sky-950 dark:text-sky-200 dark:hover:bg-sky-900 dark:hover:text-sky-200' },
+  '360': { Icon: Rotate3D, color: '#7e22ce', className: 'border-purple-700 bg-purple-50 text-purple-800 hover:bg-purple-100 hover:text-purple-800 dark:border-purple-400 dark:bg-purple-950 dark:text-purple-200 dark:hover:bg-purple-900 dark:hover:text-purple-200' },
 } satisfies Record<CameraAngle['type'], unknown>
