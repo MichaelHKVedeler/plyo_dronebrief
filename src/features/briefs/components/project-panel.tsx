@@ -14,7 +14,7 @@ import { CamerasPanel } from './cameras-panel'
 import type { BriefSession } from '../state/brief-session'
 
 type Props = { onCenterCamera: (angle: CameraAngle) => void; onAddRig: () => void; selectedCameraIds: string[]; onSelectCamera: (id: string, range: boolean) => void; onRemoveCameras: (ids: string[]) => void; session: BriefSession; onUpdate: (update: (brief: DroneBrief) => DroneBrief) => void; selectedId: string | null; onSelect: (id: string | null) => void; onAddCamera: (type: CameraAngle['type']) => void }
-export function ProjectPanel({ onCenterCamera, onAddRig, selectedCameraIds, onSelectCamera, onRemoveCameras, session, onUpdate, selectedId, onSelect, onAddCamera }: Props) {
+export function ProjectPanel({ onCenterCamera, onAddRig, selectedCameraIds, onSelectCamera, onRemoveCameras, session, onUpdate, selectedId, onAddCamera }: Props) {
   const { brief, mode } = session
   const [open, setOpen] = useState<string[]>(mode === 'edit' ? ['add-cameras', 'cameras'] : ['project'])
   const [lastSelected, setLastSelected] = useState<string | null>(null)
@@ -56,11 +56,10 @@ export function ProjectPanel({ onCenterCamera, onAddRig, selectedCameraIds, onSe
     <p className="text-sm text-muted-foreground">{brief.project.clientName}<br />{brief.project.date} · {brief.project.times.join(', ')}</p>
     </SettingsSection>
     <SettingsSection value="rig" title="Circle rig" count={brief.circleRig ? 1 : 0}>
-    {brief.circleRig ? <>
-      <Button variant="outline" onClick={() => onSelect(brief.circleRig!.id)}>Show rig handles</Button>
-      <RigRadiusFields rig={brief.circleRig} onUpdate={onUpdate} />
-      <Button variant="ghost" onClick={() => onUpdate((b) => ({ ...b, circleRig: null }))}>Remove rig</Button>
-    </> : <Button variant="outline" className="justify-start border-primary bg-primary/10 text-primary hover:bg-primary/20 hover:text-primary" onClick={onAddRig}><Circle />Add Circle Rig</Button>}
+    {brief.circleRig && <RigRadiusFields rig={brief.circleRig} onUpdate={onUpdate} />}
+    {brief.circleRig
+      ? <Button variant="ghost" onClick={() => onUpdate((b) => ({ ...b, circleRig: null }))}>Remove rig</Button>
+      : <Button variant="outline" className="justify-start border-primary bg-primary/10 text-primary hover:bg-primary/20 hover:text-primary" onClick={onAddRig}><Circle />Add Circle Rig</Button>}
     </SettingsSection>
     <SettingsSection value="add-cameras" title="Add camera points">
       <CameraAddPanel brief={brief} onAdd={onAddCamera} onUpdate={onUpdate} />

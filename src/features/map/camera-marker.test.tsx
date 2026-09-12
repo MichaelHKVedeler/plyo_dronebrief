@@ -2,7 +2,9 @@ import type { ReactNode } from 'react'
 import { afterEach, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { CameraMarker } from './camera-marker'
-import { destination } from './geometry'
+import { destination, distanceMeters, metersPerPixel } from './geometry'
+import { MapObjectScale, mapObjectScale } from './map-object-scale'
+import type { Position } from '@/features/briefs/model/brief'
 import type { ObjectMarkerProps } from './object-renderer'
 const sdk = vi.hoisted(() => ({ dragStart: () => {}, markers: new Map<string, ObjectMarkerProps>() }))
 vi.mock('@vis.gl/react-google-maps', () => ({ Polygon: () => null, AdvancedMarker: (props: ObjectMarkerProps & { children: ReactNode }) => {
@@ -11,6 +13,28 @@ vi.mock('@vis.gl/react-google-maps', () => ({ Polygon: () => null, AdvancedMarke
   return <div>{props.children}</div>
 } }))
 afterEach(cleanup)
+it.each([true, false])('keeps arrows fixed on the ground while zooming without saving (editable: %s)', (editable) => {
+  const angle = { id: 'a', label: 'A', type: 'dslr' as const, position: { lat: 60, lng: 10 }, directionDegrees: 45 }
+  const commit = vi.fn()
+  const scene = (zoom: number) => <MapObjectScale value={mapObjectScale(zoom)}>
+    <CameraMarker angle={angle} editable={editable} selected={false} pixelsToMeters={metersPerPixel(angle.position.lat, zoom)}
+      dslrSettings={{ heightsMeters: [1.6], angleCount: 3, spacingDegrees: 35 }} onSelect={vi.fn()} onCommit={commit} />
+  </MapObjectScale>
+  const view = render(scene(17))
+  const names = [1, 2, 3].map((number) => 'Aim DSLR 1 angle ' + number)
+  const initial = names.map((name) => sdk.markers.get(name)!.position as Position)
+  for (const zoom of [16, 14.5, 10, 18.25]) {
+    view.rerender(scene(zoom))
+    names.forEach((name, index) => {
+      const arrow = sdk.markers.get(name)!
+      expect(distanceMeters(initial[index], arrow.position as Position)).toBeLessThan(0.001)
+      expect(arrow.draggable).toBe(editable)
+    })
+    expect(sdk.markers.get('DSLR 1')!.position).toEqual(angle.position)
+  }
+  expect(commit).not.toHaveBeenCalled()
+})
+
 it('preserves the group when a modifier click becomes a small drag', () => {
  const select = vi.fn()
  render(<CameraMarker angle={{ id: 'a', label: 'A', type: '360', position: { lat: 60, lng: 10 } }} editable selected={false} pixelsToMeters={1} onSelect={select} onCommit={vi.fn()} />)

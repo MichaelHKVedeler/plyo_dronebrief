@@ -70,5 +70,10 @@ export const ShadePolygon = forwardRef<google.maps.Polygon, PolygonProps>(functi
       onMouseEnter={(e) => props.onMouseOver?.({ domEvent: e.nativeEvent } as google.maps.MapMouseEvent)}
       onMouseLeave={(e) => props.onMouseOut?.({ domEvent: e.nativeEvent } as google.maps.MapMouseEvent)}
       onClick={(e) => { e.stopPropagation(); props.onClick?.({ domEvent: e.nativeEvent } as google.maps.MapMouseEvent) }} />
+    {props.clickable && <polygon data-shade-object data-rig-outline points={points} fill="none" stroke="transparent" strokeWidth={Math.max(12, props.strokeWeight ?? 0)}
+      style={{ pointerEvents: 'stroke', touchAction: 'none', cursor: 'pointer' }}
+      onMouseEnter={(e) => props.onMouseOver?.({ domEvent: e.nativeEvent } as google.maps.MapMouseEvent)}
+      onMouseLeave={(e) => props.onMouseOut?.({ domEvent: e.nativeEvent } as google.maps.MapMouseEvent)}
+      onClick={(e) => { e.stopPropagation(); props.onClick?.({ domEvent: e.nativeEvent } as google.maps.MapMouseEvent) }} />}
   </svg>
 })

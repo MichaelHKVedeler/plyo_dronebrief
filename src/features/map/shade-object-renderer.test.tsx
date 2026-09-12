@@ -9,8 +9,10 @@ import { RigObject } from './rig-object'
 import { ObjectRenderer } from './object-renderer'
 import { ShadeMarker, ShadePolygon } from './shade-object-renderer'
 import type { CircleRig } from './geometry'
+import { MapObjectScale } from './map-object-scale'
 
-const projection = { project: ([lng, lat]: number[]) => ({ x: lng, y: lat }), unproject: ([x, y]: number[]) => ({ lng: x, lat: y }) } as unknown as Map
+vi.mock('@vis.gl/react-google-maps', async (importOriginal) => ({ ...await importOriginal<typeof import('@vis.gl/react-google-maps')>(), useMap: () => null }))
+const projection = { getCanvas: () => document.querySelector('canvas'), getContainer: () => document.body.firstElementChild!, project: ([lng, lat]: number[]) => ({ x: lng, y: lat }), unproject: ([x, y]: number[]) => ({ lng: x, lat: y }) } as unknown as Map
 beforeAll(() => {
   vi.stubGlobal('PointerEvent', MouseEvent)
   Element.prototype.setPointerCapture = vi.fn()
@@ -21,6 +23,28 @@ function Surface({ children }: { children: ReactNode }) {
   return <ShadeProjection value={projection}><ObjectRenderer value={{ Marker: ShadeMarker, Polygon: ShadePolygon }}><div>{children}</div></ObjectRenderer></ShadeProjection>
 }
 const original: CameraAngle = { id: 'camera', label: 'Camera', type: 'dslr', position: { lat: 60, lng: 10 }, directionDegrees: 90 }
+it.each([true, false])('scales rig decorations with radius and zoom, independently of overlay size (editable: %s)', (editable) => {
+  const rig: CircleRig = { id: 'rig', position: { lat: 60, lng: 10 }, arrowCount: 10, radiusMeters: 100, ovalRatio: 0.6, rotationDegrees: 0 }
+  const commit = vi.fn()
+  const scene = (radiusMeters: number, pixelsToMeters: number, overlayScale: number) => <Surface><MapObjectScale value={overlayScale}>
+    <RigObject rig={{ ...rig, radiusMeters }} pixelsToMeters={pixelsToMeters} editable={editable} interactive selected onSelect={vi.fn()} onCommit={commit} />
+  </MapObjectScale></Surface>
+  const view = render(scene(100, 1, 0.25))
+  const sizes = () => [
+    Number(view.container.querySelector('polygon')!.getAttribute('stroke-width')),
+    Number(screen.getByRole('img', { name: 'Rig arrow 1, pointing toward center' }).style.zoom),
+    ...(editable ? [Number(screen.getByRole('button', { name: 'Scale and rotate circle rig' }).style.zoom)] : []),
+  ]
+  const initial = sizes()
+  view.rerender(scene(100, 1, 3))
+  expect(sizes()).toEqual(initial)
+  view.rerender(scene(200, 1, 3))
+  expect(sizes()).toEqual(initial.map((size) => size * 2))
+  view.rerender(scene(200, 2, 3))
+  expect(sizes()).toEqual(initial)
+  expect(commit).not.toHaveBeenCalled()
+})
+
 function Camera({ commit, editable = true }: { commit: (angle: CameraAngle) => void; editable?: boolean }) {
   const [angle, setAngle] = useState(original)
   const [selected, select] = useState(false)
@@ -66,15 +90,15 @@ it('supports keyboard aiming and leaves viewer arrows visible but disabled', () 
   fireEvent.keyDown(arrow, { key: 'ArrowRight' })
   expect(commit).not.toHaveBeenCalled()
 })
-it('selects the rig interior without moving it and commits center/shape handle edits', () => {
+it('leaves the rig interior to map navigation, omits the center icon and commits shape handle edits', () => {
   const rig: CircleRig = { id: 'rig', position: { lat: 60, lng: 10 }, arrowCount: 10, radiusMeters: 80, ovalRatio: 0.6, rotationDegrees: 0 }
   const select = vi.fn(), commit = vi.fn()
-  const { container } = render(<Surface><RigObject rig={rig} editable interactive selected onSelect={select} onCommit={commit} /></Surface>)
+  const { container } = render(<Surface><RigObject rig={rig} pixelsToMeters={1} editable interactive selected onSelect={select} onCommit={commit} /></Surface>)
   fireEvent.click(container.querySelector('polygon')!)
-  expect(select).toHaveBeenCalledOnce()
+  expect(container.querySelector('polygon')).toHaveStyle({ pointerEvents: 'none' })
+  expect(select).not.toHaveBeenCalled()
   expect(commit).not.toHaveBeenCalled()
-  drag(screen.getByRole('button', { name: 'Move circle rig' }))
-  expect(commit).toHaveBeenLastCalledWith({ ...rig, position: { lat: 64, lng: 12 } })
+  expect(screen.queryByRole('button', { name: 'Move circle rig' })).not.toBeInTheDocument()
   fireEvent.keyDown(screen.getByRole('button', { name: 'Adjust rig ovalness' }), { key: 'ArrowRight' })
   expect(commit).toHaveBeenLastCalledWith({ ...rig, ovalRatio: 0.65 })
   drag(screen.getByRole('button', { name: 'Scale and rotate circle rig' }))

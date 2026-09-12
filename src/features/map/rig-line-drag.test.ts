@@ -1,0 +1,93 @@
+import { afterEach, beforeAll, expect, it, vi } from 'vitest'
+import { fireEvent } from '@testing-library/react'
+import { rigOutline, type CircleRig } from './geometry'
+import { attachRigLineDrag, type RigLineDragProps, type RigProjection } from './rig-line-drag'
+
+beforeAll(() => vi.stubGlobal('PointerEvent', MouseEvent))
+let detach: (() => void) | undefined
+afterEach(() => { detach?.(); document.body.replaceChildren() })
+const rig: CircleRig = { id: 'rig', position: { lat: 0, lng: 0 }, radiusMeters: 100, ovalRatio: 0.6, rotationDegrees: 35, arrowCount: 10 }
+const projection: RigProjection = {
+  project: (p) => ({ x: 200 + p.lng * 111195, y: 200 - p.lat * 111195 }),
+  unproject: (p) => ({ lng: (p.x - 200) / 111195, lat: (200 - p.y) / 111195 }),
+}
+function setup(interactive = true) {
+  const surface = document.createElement('div')
+  surface.innerHTML = '<svg><polygon data-rig-outline data-shade-object /></svg><button>Handle</button>'
+  document.body.append(surface)
+  const props: RigLineDragProps = { rig, strokeWidth: 1, interactive, onStart: vi.fn(), onPreview: vi.fn(), onCommit: vi.fn(), onCancel: vi.fn() }
+  detach = attachRigLineDrag(surface, projection, () => props)
+  const edge = projection.project(rigOutline(rig)[16])!
+  const target = surface.querySelector('polygon')!
+  const down = (button = 0) => fireEvent.pointerDown(target, { button, clientX: edge.x, clientY: edge.y })
+  const move = () => fireEvent.pointerMove(window, { clientX: edge.x + 20, clientY: edge.y - 30 })
+  const up = () => fireEvent.pointerUp(window, { button: 0, clientX: edge.x + 20, clientY: edge.y - 30 })
+  return { surface, target, props, edge, down, move, up }
+}
+it('grabs the thin outline without snapping the center and saves only on release', () => {
+  const { props, down, move, up } = setup()
+  down(); move()
+  expect(props.onStart).toHaveBeenCalledOnce()
+  const expected = projection.unproject({ x: 220, y: 170 })!
+  const preview = vi.mocked(props.onPreview).mock.lastCall![0]
+  expect(preview.lat).toBeCloseTo(expected.lat, 12)
+  expect(preview.lng).toBeCloseTo(expected.lng, 12)
+  expect(props.onCommit).not.toHaveBeenCalled()
+  up()
+  expect(props.onCommit).toHaveBeenCalledExactlyOnceWith(preview)
+  expect(props.rig).toEqual(rig)
+})
+it.each(['Escape', 'pointercancel', 'blur'])('discards movement on %s', (event) => {
+  const { props, down, move, up } = setup()
+  down(); move()
+  if (event === 'Escape') fireEvent.keyDown(window, { key: 'Escape' })
+  else fireEvent(window, new Event(event))
+  up()
+  expect(props.onCancel).toHaveBeenCalledOnce()
+  expect(props.onCommit).not.toHaveBeenCalled()
+})
+it.each([1, 2])('leaves mouse button %s to map navigation', (button) => {
+  const { props, down, move, up } = setup()
+  down(button); move(); up()
+  expect(props.onPreview).not.toHaveBeenCalled()
+  expect(props.onCommit).not.toHaveBeenCalled()
+})
+it('does not move in view/placement mode or intercept the interior and adjustment controls', () => {
+  const { props, surface, target, edge, down, move, up } = setup(false)
+  down(); move(); up()
+  props.interactive = true
+  fireEvent.pointerDown(target, { button: 0, clientX: 200, clientY: 200 }); move(); up()
+  fireEvent.pointerDown(surface.querySelector('button')!, { button: 0, clientX: edge.x, clientY: edge.y }); move(); up()
+  expect(props.onPreview).not.toHaveBeenCalled()
+  expect(props.onCommit).not.toHaveBeenCalled()
+})
+it('selects on a line click without saving, and suppresses the subsequent map click', () => {
+  const { props, target, edge, down } = setup()
+  const click = vi.fn()
+  target.addEventListener('click', click)
+  down()
+  fireEvent.pointerUp(window, { button: 0, clientX: edge.x, clientY: edge.y })
+  fireEvent.click(target)
+  expect(props.onStart).toHaveBeenCalledOnce()
+  expect(props.onCommit).not.toHaveBeenCalled()
+  expect(click).not.toHaveBeenCalled()
+})
+
+it('signals movement only over the outline and clears feedback on exit and cancellation', () => {
+  const { surface, target, edge, props, down } = setup()
+  props.onHoverChange = vi.fn()
+  fireEvent.pointerMove(target, { buttons: 0, clientX: edge.x, clientY: edge.y })
+  expect(surface).toHaveAttribute('data-rig-move-cursor', 'grab')
+  expect(props.onHoverChange).toHaveBeenLastCalledWith(true)
+  fireEvent.pointerMove(target, { buttons: 0, clientX: 200, clientY: 200 })
+  expect(surface).not.toHaveAttribute('data-rig-move-cursor')
+  expect(props.onHoverChange).toHaveBeenLastCalledWith(false)
+  down()
+  expect(surface).toHaveAttribute('data-rig-move-cursor', 'grabbing')
+  fireEvent.keyDown(window, { key: 'Escape' })
+  expect(surface).not.toHaveAttribute('data-rig-move-cursor')
+  props.interactive = false
+  fireEvent.pointerMove(target, { buttons: 0, clientX: edge.x, clientY: edge.y })
+  expect(surface).not.toHaveAttribute('data-rig-move-cursor')
+  expect(props.onCommit).not.toHaveBeenCalled()
+})

@@ -10,6 +10,7 @@ export function MiddleMousePan({ onActiveChange }: { onActiveChange: (active: bo
     const stop = (event: Event) => { event.preventDefault(); event.stopImmediatePropagation() }
     const inside = (event: Event) => event.composedPath().includes(surface)
     const reset = () => {
+      surface.removeAttribute('data-map-panning')
       if (last) onActiveChange(false)
       last = null
     }
@@ -23,6 +24,7 @@ export function MiddleMousePan({ onActiveChange }: { onActiveChange: (active: bo
       if (!projection || !point || zoom === undefined) return
       last = { x: event.clientX, y: event.clientY, center: point, scale: 2 ** zoom, projection }
       onActiveChange(true)
+      surface.setAttribute('data-map-panning', '')
     }
     const move = (event: PointerEvent) => {
       if (!last) return

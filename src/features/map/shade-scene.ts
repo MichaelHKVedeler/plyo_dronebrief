@@ -3,6 +3,7 @@ import type { DroneBrief, LayerVisibility } from '@/features/briefs/model/brief'
 import { cameraAppearance } from '@/features/briefs/components/camera-appearance'
 import { destination, metersPerPixel, rigOutline } from './geometry'
 import { mapBrandColor } from './map-colors'
+import { mapObjectScale } from './map-object-scale'
 
 export function shadeScene(brief: DroneBrief, visibility: LayerVisibility, googleZoom: number, dark = false): FeatureCollection {
   const features: Feature<LineString | Polygon>[] = []
@@ -12,7 +13,7 @@ export function shadeScene(brief: DroneBrief, visibility: LayerVisibility, googl
   }
   if (visibility.angles) for (const angle of brief.angles) {
     if (angle.type === '360') continue
-    const target = destination(angle.position, metersPerPixel(angle.position.lat, googleZoom) * 64, angle.directionDegrees)
+    const target = destination(angle.position, metersPerPixel(angle.position.lat, googleZoom) * 64 * mapObjectScale(googleZoom), angle.directionDegrees)
     features.push({ type: 'Feature', properties: { color: cameraAppearance[angle.type].color }, geometry: { type: 'LineString', coordinates: [[angle.position.lng, angle.position.lat], [target.lng, target.lat]] } })
   }
   if (visibility.polygons) for (const polygon of brief.polygons) {

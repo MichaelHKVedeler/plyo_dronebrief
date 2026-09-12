@@ -9,6 +9,7 @@ import { bearingDegrees, destination, distanceMeters, normalizeHeading } from '.
 import { MapHandle } from './map-handle'
 import { useHoverHandles } from './use-hover-handles'
 import { cameraDirectionLayout } from './camera-directions'
+import { useMapObjectScale } from './map-object-scale'
 
 type Props = {
   angle: CameraAngle
@@ -24,6 +25,7 @@ type Props = {
 export function CameraMarker({ angle, editable, selected, pixelsToMeters, interactive = true, number = 1, dslrSettings, onSelect, onCommit }: Props) {
   const name = cameraLabels[angle.type] + ' ' + number
   const { Marker: AdvancedMarker } = useObjectRenderer()
+  const scale = useMapObjectScale()
   const hover = useHoverHandles(!interactive)
   const [draft, setDraft] = useState<{ source: CameraAngle; value: CameraAngle } | null>(null)
   const visible = draft?.source === angle ? draft.value : angle
@@ -31,6 +33,7 @@ export function CameraMarker({ angle, editable, selected, pixelsToMeters, intera
   const Icon = appearance.Icon
   const directional = visible.type !== '360'
   const { offsets, radiusPixels } = cameraDirectionLayout(angle.type === 'dslr' ? dslrSettings : undefined)
+  const directionRadius = pixelsToMeters * radiusPixels * scale
   function commit(value: CameraAngle) {
     setDraft(null); hover.leave()
     if (editable && interactive) onCommit(value)
@@ -44,9 +47,9 @@ export function CameraMarker({ angle, editable, selected, pixelsToMeters, intera
       onDragCancel={() => setDraft(null)} onDragStart={() => { if (editable && interactive) { onSelect(true); hover.enter() } }}
       onDrag={(event) => { if (editable && interactive && event.latLng) setDraft({ source: angle, value: { ...angle, position: event.latLng.toJSON() } }) }}
       onDragEnd={(event) => { if (editable && interactive && event.latLng) commit({ ...angle, position: event.latLng.toJSON() }) }}>
-      <div className="relative">
+      <div className="relative" style={{ zoom: scale }}>
         {editable ? <Button disabled={!interactive} size="icon" variant="outline" aria-label={'Move ' + name} title={name}
-          className={'cursor-grab touch-none rounded-full border-2 shadow-md active:cursor-grabbing ' + appearance.className + (selected ? ' ring-2 ring-primary ring-offset-2' : '')}
+          className={'cursor-pointer touch-none rounded-full border-2 shadow-md active:cursor-grabbing ' + appearance.className + (selected ? ' ring-2 ring-primary ring-offset-2' : '')}
           onFocus={hover.enter} onBlur={hover.leave}
           onPointerDownCapture={(event) => {
             if (event.button !== 0 || (!event.ctrlKey && !event.shiftKey)) return
@@ -64,9 +67,9 @@ export function CameraMarker({ angle, editable, selected, pixelsToMeters, intera
       </div>
     </AdvancedMarker>
     {directional && offsets.map((offset, index) => <MapHandle key={index} onCancel={() => setDraft(null)} bare interactive={editable && interactive}
-      position={destination(visible.position, pixelsToMeters * radiusPixels, normalizeHeading(visible.directionDegrees + offset))}
+      position={destination(visible.position, directionRadius, normalizeHeading(visible.directionDegrees + offset))}
       label={'Aim ' + name + (offsets.length > 1 ? ' angle ' + (index + 1) : '')} className="cursor-crosshair"
-      constrain={(point) => destination(visible.position, pixelsToMeters * radiusPixels,
+      constrain={(point) => destination(visible.position, directionRadius,
         distanceMeters(visible.position, point) > 0.01 ? bearingDegrees(visible.position, point) : normalizeHeading(visible.directionDegrees + offset))}
       onEnter={hover.enter} onLeave={hover.leave} onStart={() => { onSelect(true); hover.enter() }}
       onPreview={(point) => {

@@ -15,9 +15,11 @@ export function BriefPage({ session, dispatch, error }: { session: BriefSession;
   const [focusPosition, setFocusPosition] = useState<Position | null>(null)
   const pendingRig = useRef<string | null>(null)
   const viewCenter = useRef(session.brief.coordinates)
+  const rigPlacement = useRef<(() => { position: Position; radiusMeters: number }) | null>(null)
   function addRig() {
     if (session.mode !== 'edit') return
-    const rig = { id: crypto.randomUUID(), position: { ...viewCenter.current }, arrowCount: defaultRigArrowCount, radiusMeters: 50, ovalRatio: 1, rotationDegrees: 0 }
+    const placement = rigPlacement.current?.() ?? { position: { ...viewCenter.current }, radiusMeters: 50 }
+    const rig = { id: crypto.randomUUID(), ...placement, arrowCount: defaultRigArrowCount, ovalRatio: 1, rotationDegrees: 0 }
     pendingRig.current = rig.id
     dispatch({ type: 'update', update: (brief) => brief.circleRig ? brief : { ...brief, circleRig: rig } })
     setTool(idleTool)
@@ -78,7 +80,7 @@ export function BriefPage({ session, dispatch, error }: { session: BriefSession;
     <div className="mb-4 flex shrink-0 items-center gap-3"><h1 className="min-w-0 truncate text-xl font-semibold tracking-tight sm:text-2xl" title={session.brief.project.name}>{session.brief.project.name}</h1><Badge variant="secondary">{session.mode === 'edit' ? 'Editor' : 'Read-only'}</Badge></div>
     {error && <Alert variant="destructive" className="mb-4 max-h-28 shrink-0 overflow-y-auto"><AlertDescription>{error}</AlertDescription></Alert>}
     <div className="grid min-h-0 flex-1 grid-rows-[minmax(0,1fr)_minmax(0,1fr)] gap-4 lg:grid-cols-[minmax(0,1fr)_320px] lg:grid-rows-[minmax(0,1fr)]">
-      <MapPanel focusPosition={focusPosition} onViewCenterChange={(center) => { viewCenter.current = center }} selectedCameraIds={selectedCameraIds} onSelectCamera={selectCamera} session={session} dispatch={dispatch} tool={tool} onToolChange={setTool} selectedId={selectedId} onSelect={select} />
+      <MapPanel rigPlacementRef={rigPlacement} focusPosition={focusPosition} onViewCenterChange={(center) => { viewCenter.current = center }} selectedCameraIds={selectedCameraIds} onSelectCamera={selectCamera} session={session} dispatch={dispatch} tool={tool} onToolChange={setTool} selectedId={selectedId} onSelect={select} />
       <aside className="min-h-0 min-w-0" aria-label="Brief details">
         <Card className="h-full min-h-0 overflow-hidden py-0"><CardContent className="flex min-h-0 flex-1 flex-col px-0">
           <Tabs defaultValue="project" className="min-h-0 flex-1 gap-0">

@@ -23,7 +23,7 @@ export function MapControls({ brief, navigation }: { brief: DroneBrief; navigati
     frame()
     return () => observer.disconnect()
   }, [map, brief])
-  return <div className="absolute bottom-8 right-3 z-20 flex gap-1 rounded-lg border bg-card p-1 shadow-sm">
+  return <div className="pointer-events-auto ml-auto flex shrink-0 gap-1 rounded-lg border bg-card p-1 shadow-sm">
     <Button variant="ghost" size="icon" aria-label="Zoom in" disabled={!activeMap} onClick={() => activeMap?.setZoom((activeMap.getZoom() ?? 2) + 1)}><Plus /></Button>
     <Button variant="ghost" size="icon" aria-label="Zoom out" disabled={!activeMap} onClick={() => activeMap?.setZoom((activeMap.getZoom() ?? 2) - 1)}><Minus /></Button>
     <Button variant="ghost" size="icon" aria-label="Frame scene" title="Frame scene" disabled={!activeMap} onClick={() => { if (activeMap) fitScene(activeMap, brief) }}><Maximize /></Button>
