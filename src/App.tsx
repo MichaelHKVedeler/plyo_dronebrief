@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useLayoutEffect, useRef, useState } from 'react'
 import { ArrowLeft, Share2 } from 'lucide-react'
 import { AppHeader } from '@/components/layout/app-header'
 import { Button } from '@/components/ui/button'
@@ -14,6 +14,8 @@ import type { DroneBrief } from '@/features/briefs/model/brief'
 type Screen = { page: 'landing' } | { page: 'create' } | { page: 'brief'; session: BriefSession }
 export default function App() {
   const [screen, setScreen] = useState<Screen>({ page: 'landing' })
+  const currentScreen = useRef(screen)
+  useLayoutEffect(() => { currentScreen.current = screen }, [screen])
   const [draft, setDraft] = useState<DroneBrief | null>(() => {
     try { return briefRepository.latest() } catch { return null }
   })
@@ -40,10 +42,15 @@ export default function App() {
     if (mode === 'edit') saveBrief(brief)
   }
   function dispatch(action: BriefAction) {
-    if (screen.page !== 'brief') return
-    const session = reduceSession(screen.session, action)
-    setScreen({ page: 'brief', session })
-    if (session.brief !== screen.session.brief && session.mode === 'edit') saveBrief(session.brief)
+    // Upload completion may add an image and reveal its layer in the same turn.
+    // Reduce each action against the latest result, including async file reads.
+    const current = currentScreen.current
+    if (current.page !== 'brief' || screen.page !== 'brief' || current.session.brief.id !== screen.session.brief.id) return
+    const session = reduceSession(current.session, action)
+    const next: Screen = { page: 'brief', session }
+    currentScreen.current = next
+    setScreen(next)
+    if (session.brief !== current.session.brief && session.mode === 'edit') saveBrief(session.brief)
   }
   return <div className={screen.page === 'brief' ? 'flex h-dvh min-h-0 flex-col overflow-hidden' : 'min-h-svh'}>
     <AppHeader onHome={home}>{screen.page === 'brief' && <>
@@ -56,6 +63,6 @@ export default function App() {
     {screen.page === 'landing' && <LandingPage onCreate={() => { setError(null); setScreen({ page: 'create' }) }} onLoad={(brief) => openBrief(brief, 'view')} draft={draft} onResume={() => { if (draft) openBrief(draft, 'edit') }} error={error} />}
     {screen.page === 'create' && <CreateBriefPage onCreate={(brief) => openBrief(brief, 'edit')} onCancel={home} />}
     {screen.page === 'brief' && <BriefPage session={screen.session} dispatch={dispatch} error={error} />}
-    <ExportDialog shareKey={shareKey} onClose={() => setShareKey(null)} />
+    <ExportDialog shareKey={shareKey} hasLocalImages={screen.page === 'brief' && screen.session.brief.imageOverlays.some((image) => typeof image.source !== 'string')} onClose={() => setShareKey(null)} />
   </div>
 }

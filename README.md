@@ -29,6 +29,7 @@ npm run preview
 - JSON autosave in browser localStorage after every committed editor change.
 - Compressed snapshot keys and downloadable QR codes, with legacy key support, schema validation and size limits.
 - Layer visibility switches, kept separate from saved brief content.
+- Local JPG/PNG image overlays in Layers → Scene contents, with edge dragging, an adjustable anchor, combined scale/rotation, and a visibility slider in both maps.
 - Optional Google Maps adapter: circle/oval outlines, camera markers and polygons.
 - Map placement for 360, DSLR, and drone images, with distinct icons and camera directions.
 - Circle/oval rigs show numbered arrows pointing toward the center in both maps and the viewer. **Number of arrows** updates live from 1–50, defaults to 10, and is saved/exported with the rig.
@@ -58,6 +59,16 @@ In either map, choose **Add 360 point**, **Add DSLR point**, or **Add drone imag
 Drag a camera icon or grab the circle/oval outline to reposition it. The rig has no center move icon; its outline has an invisible 12-pixel minimum grab area. Hovering the movable outline thickens it and shows a pointing-hand cursor in both maps; dragging shows a grabbing cursor. The rig interior uses the regular map pointer; click the outline to select the rig. Dragging the interior pans the map; middle-button dragging pans over the map, rig, and camera icons. Outline movement previews live, preserves the radius and shape, and saves on release. Escape or pointer cancellation discards the move. Hover or select the rig to reveal one edge dot for both scale and rotation, plus the oval handle on the minor-axis edge for ovalness. DSLR/drone direction arrows remain visible beside their camera icons. Drag an arrow to aim in the editor. Selecting an object keeps its handles visible. Drag the edge dot in/out to resize and around the center to rotate. The sidebar retains a radius spinner for circles and side-by-side biggest/smallest radius spinners for ovals; map handles also control ovalness and rotation. Camera selection exposes coordinates, direction where applicable, and removal action.
 
 Movement previews are temporary until the drag ends; committed changes autosave and are included in exports. Placement, selection, and hover state are not saved. Loaded briefs display the same geometry with editing and adjustment handles disabled.
+
+### Local image overlays
+
+Open **Layers → Scene contents → Upload image** and choose a JPG or PNG (up to 30 MB and 100 million pixels, maximum ten images). The image starts at the current map center, sized to the viewport with its aspect ratio preserved. Grab an edge to move it. Right-click anywhere on the map to set the selected image’s anchor (shown as a red cross); dragging inside the image rotates and scales it together around that anchor. With no custom anchor, the image center is used. Select an image by clicking it or its name in Scene contents. Escape, pointer cancellation, or leaving the page cancels an unfinished drag. Middle-button panning and camera placement still work over images.
+
+Each image has a **Visibility** slider: 0% is transparent and 100% is opaque. It previews live and saves on release, like image geometry. The overall Image overlays switch only hides the layer for the session. Anchor positions and selection are temporary editing state. Frame scene includes complete rotated image bounds. Read-only briefs display images with editing disabled; reconnecting a file does not alter or save the brief.
+
+Images are read locally: no upload endpoint, server storage, or image bytes in new export keys. Where supported, the browser remembers a read-only file handle in IndexedDB, separately from brief JSON. Browsers do not expose a full filesystem path; the brief keeps a filename and stable local reference. On reopening, previously granted access restores the image; otherwise use **Allow file access** or **Reconnect image**. Browsers without persistent file handles require reconnecting after reopening. Moving/deleting the file, changing browser/site origin, or clearing site storage may also require reconnecting. Reconnection retains position, size, rotation, and opacity. The original file is never modified. Legacy embedded PNG/JPEG/WebP snapshots still render.
+
+Shared keys preserve image geometry and local references but do not carry the local image itself. Recipients must reconnect the matching file on their device; the export dialog explains this. Use an updated app to read the local-file source extension.
 
 ## Branding and appearance
 
@@ -114,7 +125,7 @@ ShadeMap provides shadow preview and object editing in the editor, with a read-o
 
 The adapter waits for map tiles before querying buildings, explicitly retains MapLibre geometry getters, and removes duplicate tile-buffer polygons before sending plain GeoJSON to ShadeMap. Development keys are not documented as using lower-quality shadow rendering; paid plans primarily change deployment and usage allowances.
 
-Building shadows depend on OpenStreetMap coverage and available height attributes; missing heights use a 3 m estimate, and buildings load at street-level zoom. Terrain resolution also limits detail. The preview is not a measured survey. Newbuild polygons currently have no height field and are outlines, not shadow-casting buildings. Image overlays remain unimplemented in both renderers.
+Building shadows depend on OpenStreetMap coverage and available height attributes; missing heights use a 3 m estimate, and buildings load at street-level zoom. Terrain resolution also limits detail. The preview is not a measured survey. Newbuild polygons currently have no height field and are outlines, not shadow-casting buildings. Local image overlays render above both basemaps/shadows and below camera and rig icons.
 
 Like the Google browser key, this Vite-prefixed key is visible to browsers. `.env.local` keeps it out of Git; restrict permitted domains with the provider and use your hosting environment for production configuration. API keys are never included in brief JSON or shared keys.
 
@@ -124,7 +135,7 @@ References: [ShadeMap SDK](https://github.com/ted-piotrowski/mapbox-gl-shadow-si
 
 This skeleton has no server, database, account system, or disk-file writer. JSON is serialized to browser storage under `dronebrief:draft:v1:<id>`. The last draft is offered on the landing page. Clearing browser storage removes drafts. Keep an export key to retain a portable copy.
 
-New export keys start with `DB2.` and contain the complete validated UTF-8 JSON snapshot, compressed with raw DEFLATE and encoded with base64url. Existing uncompressed `DB1.` keys still load. Brief JSON remains schema version 1. Older app versions cannot read DB2 keys. Compression preserves all values, including coordinate precision. Imports enforce the 2 MB JSON limit with a bounded decompression buffer. Embedded images can still produce large keys.
+New export keys start with `DB2.` and contain the complete validated UTF-8 JSON snapshot, compressed with raw DEFLATE and encoded with base64url. Existing uncompressed `DB1.` keys still load. Brief JSON remains schema version 1. Older app versions cannot read DB2 keys. Compression preserves all values, including coordinate precision. Imports enforce the 2 MB JSON limit with a bounded decompression buffer. Legacy embedded images can still produce large keys. Newly selected local images add only a file reference and geometry; their bytes are not included.
 
 The export dialog generates a QR code locally for keys up to 2,200 characters and offers a PNG download. Scan to copy the key and paste it into Load brief on another device running the updated app. It contains the snapshot itself, not a website link. Larger briefs show a Copy key fallback instead of truncating the snapshot. No brief data is sent to a QR service.
 

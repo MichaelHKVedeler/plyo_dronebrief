@@ -13,7 +13,7 @@ The runtime contract is `src/features/briefs/model/brief.ts`. This document expl
 | angles | Discriminated camera-angle array |
 | typeSettings | Drone/360 heightsMeters arrays; DSLR angleCount and spacingDegrees plus preserved legacy heightsMeters |
 | polygons | Newbuild polygons with id, label, and vertices[] |
-| imageOverlays | Durable image source and transform metadata |
+| imageOverlays | Legacy embedded source or local file reference, plus transform metadata |
 
 Position coordinates use WGS84. Height is a requested photography height in meters, not a compliance limit or terrain-adjusted flight altitude. Schedule dates and times are wall-clock values at the shoot location; there is no timezone conversion in v1.
 
@@ -62,9 +62,15 @@ This is an additive **schema v1** extension, with unchanged DB1/DB2 transport ve
 
 A polygon has at least three WGS84 vertices; the map renderer closes the ring. Polygon editing, geometry validity checks, and self-intersection handling are not yet implemented.
 
-Image overlays reserve `id`, `name`, `source`, `position`, `widthMeters`, `heightMeters`, `rotationDegrees`, and `opacity`. Position is the image center, rotation is clockwise, and opacity is in [0, 1]. v1 accepts only embedded PNG/JPEG/WebP base64 data URLs, not temporary blob URLs, arbitrary remote URLs, or SVG. Uploading, aligning, and rendering the image overlay are not implemented in this skeleton. The schema preserves imported overlay metadata and the layers panel lists it.
+Image overlays use `id`, `name`, `source`, `position`, `widthMeters`, `heightMeters`, `rotationDegrees`, and `opacity`. Position is the image center; zero rotation puts its top edge north, positive rotation is clockwise, dimensions are meters (up to 10,000 on either side), and opacity is in [0, 1]. Both providers render the same rectangle in their locked top view. Geometry uses Web Mercator with local latitude compensation so an arbitrary anchor remains fixed during simultaneous rotation/scaling, including anchors outside the image. Edge movement preserves dimensions and rotation. Transform steps exceeding the dimension limits are rejected. Scene framing includes all four rotated corners.
 
-The whole JSON must fit within the 2 MB share-key limit. Future remote asset storage will require a deliberate contract and import-validation update.
+`source` is either the original embedded PNG/JPEG/WebP base64 data URL or `{ kind: "local-file", fileId: UUID, fileName: string }`. New selections accept JPG/PNG only, validate their signature and decoded dimensions, and use the local-file variant. Temporary blob URLs, file URLs, arbitrary remote URLs, and SVG are rejected by the JSON schema. Runtime object URLs are released when replaced, removed, or the brief closes. Browser read-only FileSystemFileHandles are stored separately in IndexedDB under the UUID, never in JSON. No image bytes are uploaded, copied into persistent browser storage, or included in a new local-image export. A plain browser cannot reveal the absolute local path. File access may require a permission gesture or reselection after reopening; recipients reconnect the file on their device.
+
+**Version decision:** this is an additive schema v1 source variant; DB1/DB2 transport and all legacy source values retain their existing meaning. No migration is required for previously valid briefs. Older builds reject briefs containing local-file sources, so new local-image snapshots require an updated app. Legacy embedded snapshots continue to round-trip unchanged. Invalid local reference IDs are rejected. Do not silently convert local references into embedded data or remote sources.
+
+Per-image opacity is an authored image setting, saved through the reducer after slider release. Layer visibility, opacity previews, selected image, and per-image editing anchor are session state and are not exported. A viewer can reconnect files and toggle the image layer without mutating its brief or writing a draft.
+
+The whole JSON must fit within the existing 2 MB share-key limit. A local reference is device-specific rather than a portable image asset; export UI explicitly tells recipients to reconnect the matching file. Remote asset storage would require a separate deliberate contract decision.
 
 ShadeMap consumes the same WGS84 positions and rig outline geometry without changing the JSON. Map renderer, center/zoom, and the shadow slider are ephemeral view state. Shadows use the project's shoot date plus the selected time in the viewed location's timezone. Newbuild polygons have no height and do not cast simulated shadows.
 

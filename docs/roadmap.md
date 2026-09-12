@@ -13,10 +13,10 @@ The skeleton intentionally includes the workflow and data boundaries, not the co
 | 360 | Repeated one-click position-only placement and draggable panorama icon | Optional panorama coverage preview |
 | DSLR | Repeated press-drag-release placement, camera icon, shared live arrow count/spacing, fixed-distance arrow fans, draggable position and fan aim handles | Optional lens settings |
 | Newbuild polygons | Contract and imported polygon rendering | Drawing, vertex editing, geometry validation |
-| Image overlays | Contract and layer list only | Upload, bitmap rendering, move/scale/rotate/opacity tools |
+| Image overlays | Local JPG/PNG selection, remembered file handles where supported, reconnect flow, rendering in both maps below icons, edge move, right-click anchor, combined rotate/scale, opacity, framing, viewer | Portable image packaging only if explicitly needed; no server storage |
 | Viewer | UI and state-level read-only, on-map rig/angle visibility switches synchronized with sidebar, shadow preview | Backend permissions if stronger access control is needed |
 | Navigation | In-memory screens; reload goes home | Router/deep links only when product needs them |
 
 Implement each map tool under src/features/map and send updates through the brief session reducer. Do not write Google Maps objects to the JSON or bypass view-mode guards.
 
-Recommended sequence: add polygon drawing, then add image overlay uploads and transforms. Consider backend storage before enabling large image uploads: embedding images in a copied key does not scale well.
+Recommended next step: polygon drawing. Local image files stay on the user’s device; shared keys contain their references and geometry, so another device must reconnect the files.

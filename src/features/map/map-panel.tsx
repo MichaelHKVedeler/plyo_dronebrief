@@ -1,3 +1,6 @@
+import { ImageLayer } from './image-layer'
+import type { ImageLayerState } from './image-interaction'
+import type { LocalImages } from '@/features/briefs/state/use-local-images'
 import { useCameraFocus } from './use-camera-focus'
 import { numberedCameras, nextCameraNumber } from '@/features/briefs/model/camera-numbers'
 import { lazy, Suspense, useId, useImperativeHandle, useRef, useState, type RefObject } from 'react'
@@ -30,6 +33,7 @@ import { MapObjectScale, mapObjectScale } from './map-object-scale'
 import { idleTool, placeCamera, type MapTool } from './placement'
 
 type Props = {
+  images: LocalImages
   rigPlacementRef?: RefObject<(() => { position: Position; radiusMeters: number }) | null>
   focusPosition?: Position | null
   onViewCenterChange?: (center: Position) => void
@@ -43,8 +47,8 @@ type Props = {
   onSelect: (id: string | null) => void
 }
 const ShadeMapPanel = lazy(() => import('./shade-map').then((module) => ({ default: module.ShadeMapPanel })))
-type GoogleProps = Props & { active: boolean; dimOpacity: number; objectSizePercent: number; view: RefObject<MapView>; onViewChange: (view: MapView) => void; satellite: boolean; onMapClick: (point: Position) => void; onCameraPlace: (tool: MapTool, point: Position) => void }
-function ConnectedMap({ selectedCameraIds, onSelectCamera, session, dispatch, tool, onToolChange, selectedId, onSelect, active, dimOpacity, objectSizePercent, view, onViewChange, satellite, onMapClick, onCameraPlace }: GoogleProps) {
+type GoogleProps = Props & { imageLayer: ImageLayerState; active: boolean; dimOpacity: number; objectSizePercent: number; view: RefObject<MapView>; onViewChange: (view: MapView) => void; satellite: boolean; onMapClick: (point: Position) => void; onCameraPlace: (tool: MapTool, point: Position) => void }
+function ConnectedMap({ imageLayer, selectedCameraIds, onSelectCamera, session, dispatch, tool, onToolChange, selectedId, onSelect, active, dimOpacity, objectSizePercent, view, onViewChange, satellite, onMapClick, onCameraPlace }: GoogleProps) {
   const status = useApiLoadingStatus()
   const dark = useDarkMode()
   const [zoom, setZoom] = useState(view.current.zoom)
@@ -90,6 +94,7 @@ function ConnectedMap({ selectedCameraIds, onSelectCamera, session, dispatch, to
       </MapObjectScale>
       {active && <MiddleMousePan onActiveChange={setMiddlePanning} />}
       {active && editing && <CameraPlacementGesture tool={tool} onToolChange={onToolChange} onPlace={onCameraPlace} />}
+      <ImageLayer {...imageLayer} interactive={imageLayer.interactive && active && !middlePanning} />
       <GoogleMapView active={active} satellite={satellite} view={view} />
       <BasemapDimmer opacity={dimOpacity} />
     </Map>
@@ -107,6 +112,7 @@ function MapWorkspace(props: Props) {
   const interactive = tool.kind === 'idle'
   const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY?.trim()
   const googleMap = useMap()
+  const [anchors, setAnchors] = useState<Record<string, Position>>({})
   const [dimOpacity, setDimOpacity] = useState(15)
   const [objectSizePercent, setObjectSizePercent] = useState(100)
   const [satellite, setSatellite] = useState(editing)
@@ -125,6 +131,12 @@ function MapWorkspace(props: Props) {
     position: { ...view.current.center },
     radiusMeters: initialRigRadius(view.current, viewport.current?.clientWidth ?? 0, viewport.current?.clientHeight ?? 0),
   }), [])
+  const imageLayer: ImageLayerState = {
+    images: session.visibility.imageOverlays ? brief.imageOverlays.map((image) => ({ ...image, opacity: props.images.opacityOverrides[image.id] ?? image.opacity })) : [], selectedId: props.selectedId,
+    editable: editing, interactive, anchors, sourceUrl: props.images.sourceUrl,
+    onSelect: props.onSelect, onAnchor: (id, point) => setAnchors((previous) => ({ ...previous, [id]: point })),
+    onCommit: (image) => dispatch({ type: 'update', update: (b) => ({ ...b, imageOverlays: b.imageOverlays.map((item) => item.id === image.id ? image : item) }) }),
+  }
   const onViewChange = (next: MapView) => { view.current = next; props.onViewCenterChange?.(next.center) }
   function handleMapClick(point: Position) {
     if (!editing) return
@@ -149,10 +161,10 @@ function MapWorkspace(props: Props) {
 
   return <CardContent ref={viewport} className="@container relative h-full min-h-0 p-0">
     <div className="absolute inset-0" style={{ visibility: shadeActive ? 'hidden' : 'visible' }} aria-hidden={shadeActive} inert={shadeActive}>
-      {apiKey ? <ConnectedMap {...props} dimOpacity={dimOpacity} objectSizePercent={objectSizePercent} active={!shadeActive} view={view} satellite={satellite} onViewChange={onViewChange} onMapClick={handleMapClick} onCameraPlace={handleCameraPlace} /> : <MapMessage title="Map setup pending" description="Google Maps will appear once connected. Your brief is still available." />}
+      {apiKey ? <ConnectedMap {...props} imageLayer={imageLayer} dimOpacity={dimOpacity} objectSizePercent={objectSizePercent} active={!shadeActive} view={view} satellite={satellite} onViewChange={onViewChange} onMapClick={handleMapClick} onCameraPlace={handleCameraPlace} /> : <MapMessage title="Map setup pending" description="Google Maps will appear once connected. Your brief is still available." />}
     </div>
     {shadeActive && <Suspense fallback={<MapMessage title="Loading ShadeMap…" description="Preparing the shadow preview." />}>
-      <ShadeMapPanel dimOpacity={dimOpacity} objectSizePercent={objectSizePercent} dispatch={dispatch} selectedId={props.selectedId} selectedCameraIds={props.selectedCameraIds} onSelect={onSelect} onSelectCamera={props.onSelectCamera} session={session} initialView={shadeStart} onViewChange={onViewChange} minutes={minutes} onMinutesChange={setMinutes}
+      <ShadeMapPanel imageLayer={imageLayer} dimOpacity={dimOpacity} objectSizePercent={objectSizePercent} dispatch={dispatch} selectedId={props.selectedId} selectedCameraIds={props.selectedCameraIds} onSelect={onSelect} onSelectCamera={props.onSelectCamera} session={session} initialView={shadeStart} onViewChange={onViewChange} minutes={minutes} onMinutesChange={setMinutes}
         onNavigation={setShadeNavigation} tool={tool} onMapClick={handleMapClick}
         onToolChange={onToolChange} onCameraPlace={handleCameraPlace} />
     </Suspense>}

@@ -53,7 +53,11 @@ export const briefSchema = z.object({
   })).max(100),
   imageOverlays: z.array(z.object({
     id, name,
-    source: z.string().max(1_500_000).regex(/^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/]+=*$/),
+    // Additive v1 source variant. Existing embedded sources retain their meaning.
+    source: z.union([
+      z.string().max(1_500_000).regex(/^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/]+=*$/),
+      z.object({ kind: z.literal('local-file'), fileId: z.uuid(), fileName: z.string().min(1).max(255) }),
+    ]),
     position: positionSchema,
     widthMeters: z.number().finite().positive().max(10000),
     heightMeters: z.number().finite().positive().max(10000),
@@ -63,6 +67,7 @@ export const briefSchema = z.object({
 })
 
 export type DroneBrief = z.infer<typeof briefSchema>
+export type ImageOverlay = DroneBrief['imageOverlays'][number]
 export type ProjectDetails = z.infer<typeof projectSchema>
 export type Position = z.infer<typeof positionSchema>
 export type CameraAngle = z.infer<typeof angleSchema>

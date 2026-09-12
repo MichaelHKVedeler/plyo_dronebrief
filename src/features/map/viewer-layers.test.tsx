@@ -6,15 +6,17 @@ import { createBrief } from '@/features/briefs/model/brief'
 import { openSession, reduceSession } from '@/features/briefs/state/brief-session'
 import { LayersPanel } from '@/features/briefs/components/layers-panel'
 import { ViewerLayers } from './viewer-layers'
+import { useLocalImages } from '@/features/briefs/state/use-local-images'
 
 it('shares visibility state with the sidebar without changing a read-only brief', async () => {
   const brief = createBrief({ name: 'Viewer', clientName: 'Test', date: '2026-09-11', times: ['09:00'] })
   let current = openSession(brief, 'view')
   function Fixture() {
     const [session, setSession] = useState(current)
+    const images = useLocalImages(session.brief.imageOverlays)
     useEffect(() => { current = session }, [session])
     return <><div data-testid="overlay"><ViewerLayers session={session} dispatch={(action) => setSession((s) => reduceSession(s, action))} /></div>
-      <div data-testid="sidebar"><LayersPanel session={session} onToggle={(layer, visible) => setSession((s) => reduceSession(s, { type: 'visibility', layer, visible }))} /></div></>
+      <div data-testid="sidebar"><LayersPanel session={session} images={images} selectedId={null} onSelect={() => {}} onShow={() => {}} onUpdate={() => {}} placement={() => ({ position: brief.coordinates, radiusMeters: 50 })} onToggle={(layer, visible) => setSession((s) => reduceSession(s, { type: 'visibility', layer, visible }))} /></div></>
   }
   const user = userEvent.setup(); const view = render(<Fixture />)
   await user.click(within(view.getByTestId('overlay')).getByRole('switch', { name: 'Circle rig' }))
