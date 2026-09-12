@@ -74,7 +74,7 @@ export function CameraMarker({ angle, editable, selected, pixelsToMeters, intera
       }}
       onCommit={(point) => commit({ ...visible, directionDegrees: distanceMeters(visible.position, point) > 0.01 ? normalizeHeading(bearingDegrees(visible.position, point) - offset) : visible.directionDegrees })}
       onStep={(delta) => commit({ ...visible, directionDegrees: normalizeHeading(visible.directionDegrees + delta * 5) })}>
-      <Navigation className="size-7 fill-current drop-shadow-[0_1px_2px_white]" strokeWidth={2.5} style={{ color: appearance.color, transform: 'rotate(' + (visible.directionDegrees + offset - 45) + 'deg)' }} />
+      <Navigation className="size-7 fill-white" size={28} strokeWidth={2} absoluteStrokeWidth style={{ color: appearance.color, transform: 'rotate(' + (visible.directionDegrees + offset - 45) + 'deg)' }} />
     </MapHandle>)}
   </>
 }

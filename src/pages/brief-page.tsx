@@ -1,4 +1,4 @@
-import type { Position } from '@/features/briefs/model/brief'
+import { defaultRigArrowCount, type Position } from '@/features/briefs/model/brief'
 import { useEffect, useRef, useState } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -17,7 +17,7 @@ export function BriefPage({ session, dispatch, error }: { session: BriefSession;
   const viewCenter = useRef(session.brief.coordinates)
   function addRig() {
     if (session.mode !== 'edit') return
-    const rig = { id: crypto.randomUUID(), position: { ...viewCenter.current }, radiusMeters: 50, ovalRatio: 1, rotationDegrees: 0 }
+    const rig = { id: crypto.randomUUID(), position: { ...viewCenter.current }, arrowCount: defaultRigArrowCount, radiusMeters: 50, ovalRatio: 1, rotationDegrees: 0 }
     pendingRig.current = rig.id
     dispatch({ type: 'update', update: (brief) => brief.circleRig ? brief : { ...brief, circleRig: rig } })
     setTool(idleTool)

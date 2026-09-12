@@ -67,7 +67,7 @@ it('supports keyboard aiming and leaves viewer arrows visible but disabled', () 
   expect(commit).not.toHaveBeenCalled()
 })
 it('selects the rig interior without moving it and commits center/shape handle edits', () => {
-  const rig: CircleRig = { id: 'rig', position: { lat: 60, lng: 10 }, radiusMeters: 80, ovalRatio: 0.6, rotationDegrees: 0 }
+  const rig: CircleRig = { id: 'rig', position: { lat: 60, lng: 10 }, arrowCount: 10, radiusMeters: 80, ovalRatio: 0.6, rotationDegrees: 0 }
   const select = vi.fn(), commit = vi.fn()
   const { container } = render(<Surface><RigObject rig={rig} editable interactive selected onSelect={select} onCommit={commit} /></Surface>)
   fireEvent.click(container.querySelector('polygon')!)

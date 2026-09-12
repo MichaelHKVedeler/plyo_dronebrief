@@ -11,7 +11,7 @@ describe('scene framing', () => {
     expect(points).toEqual([{ lat: 59, lng: 10 }])
   })
   it('includes the entire rotated rig, all cameras, and polygon vertices', () => {
-    const rig = { id: 'r', position: { lat: 59, lng: 10 }, radiusMeters: 400, ovalRatio: 0.6, rotationDegrees: 40 }
+    const rig = { id: 'r', position: { lat: 59, lng: 10 }, arrowCount: 10, radiusMeters: 400, ovalRatio: 0.6, rotationDegrees: 40 }
     const scene = { ...brief, circleRig: rig, angles: [{ id: 'a', label: 'A', type: '360' as const, position: { lat: 60, lng: 11 } }], polygons: [{ id: 'p', label: 'P', vertices: [{ lat: 58, lng: 9 }, { lat: 58.1, lng: 9.1 }, { lat: 58.2, lng: 9.2 }] }] }
     const points = scenePoints(scene)
     expect(points).toEqual(expect.arrayContaining(rigOutline(rig)))

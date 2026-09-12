@@ -1,9 +1,10 @@
 import { useMemo, useState } from 'react'
 import { useObjectRenderer } from './object-renderer'
-import { Circle, Move } from 'lucide-react'
+import { Circle, Move, Navigation } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { MapHandle } from './map-handle'
-import { clamp, destination, reshapeRig, scaleAndRotateRig, rigOutline, type CircleRig } from './geometry'
+import { clamp, destination, reshapeRig, scaleAndRotateRig, rigOutline, rigArrows, rigRadiusHandle, type CircleRig } from './geometry'
 import { useHoverHandles } from './use-hover-handles'
 import { mapBrandColor } from './map-colors'
 
@@ -12,12 +13,13 @@ export function RigObject({ rig, dark = false, editable, selected, interactive, 
   const { Marker: AdvancedMarker, Polygon } = useObjectRenderer()
   const color = mapBrandColor(dark)
   const hover = useHoverHandles(!interactive)
+  const strokeWeight = selected || hover.hovered ? 4 : 3
   const [draft, setDraft] = useState<{ source: CircleRig; value: CircleRig } | null>(null)
   const visible = draft?.source === rig ? draft.value : rig
   const path = useMemo(() => rigOutline(visible), [visible])
   const canEdit = editable && interactive
   const handles = editable && (selected || hover.hovered || draft !== null)
-  const radiusPoint = destination(visible.position, visible.radiusMeters, visible.rotationDegrees)
+  const radiusPoint = rigRadiusHandle(visible)
   const ovalPoint = destination(visible.position, visible.radiusMeters * visible.ovalRatio, visible.rotationDegrees + 90)
   function commit(value: CircleRig) {
     setDraft(null); hover.leave()
@@ -26,10 +28,23 @@ export function RigObject({ rig, dark = false, editable, selected, interactive, 
   function start() { if (canEdit) { onSelect(); hover.enter() } }
   return <>
     <Polygon paths={path} draggable={false} clickable={canEdit}
-      strokeColor={color} strokeWeight={selected || hover.hovered ? 3 : 2}
-      fillColor={color} fillOpacity={selected || hover.hovered ? 0.18 : 0.1}
+      strokeColor={color} strokeWeight={strokeWeight}
+      fillOpacity={0}
       onMouseOver={hover.enter} onMouseOut={hover.leave}
       onClick={(event) => { event.domEvent?.stopPropagation(); if (canEdit) onSelect() }} />
+    {rigArrows(visible).map((arrow) => <AdvancedMarker key={arrow.number} position={arrow.position}
+      anchorLeft="-50%" anchorTop="-50%" title={'Rig arrow ' + arrow.number} zIndex={10}
+      clickable={false} style={{ pointerEvents: 'none' }}>
+      <div className="relative size-8" role="img" aria-label={'Rig arrow ' + arrow.number + ', pointing toward center'}>
+        <div className="absolute inset-0"
+        style={{ transform: `translate(${Math.sin(arrow.directionDegrees * Math.PI / 180) * 36}px, ${-Math.cos(arrow.directionDegrees * Math.PI / 180) * 36}px)` }}
+        >
+        <Navigation className="size-8 fill-white" size={32} strokeWidth={2} absoluteStrokeWidth
+          style={{ color, transform: 'rotate(' + (arrow.directionDegrees - 45) + 'deg)' }} />
+        </div>
+        <Badge variant="outline" style={{ borderColor: color, borderWidth: strokeWeight, color }} className="bg-white absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 size-7 justify-center rounded-full p-0 text-xs tabular-nums">{arrow.number}</Badge>
+      </div>
+    </AdvancedMarker>)}
     {editable && <AdvancedMarker position={visible.position} anchorLeft="-50%" anchorTop="-50%" title="Move circle rig"
       zIndex={15} draggable={canEdit} clickable={canEdit} style={{ pointerEvents: canEdit ? 'auto' : 'none' }}
       onMouseEnter={hover.enter} onMouseLeave={hover.leave}

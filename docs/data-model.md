@@ -9,7 +9,7 @@ The runtime contract is `src/features/briefs/model/brief.ts`. This document expl
 | createdAt, updatedAt | UTC ISO timestamps |
 | project | name, clientName, calendar date YYYY-MM-DD, times HH:mm[] |
 | coordinates | Project/map reference point {lat, lng}; new briefs default to Oslo (59.9139, 10.7522) |
-| circleRig | null or {id, position, radiusMeters, ovalRatio, rotationDegrees} |
+| circleRig | null or {id, position, radiusMeters, ovalRatio, rotationDegrees, arrowCount} |
 | angles | Discriminated camera-angle array |
 | typeSettings | Drone/360 heightsMeters arrays; DSLR angleCount and spacingDegrees plus preserved legacy heightsMeters |
 | polygons | Newbuild polygons with id, label, and vertices[] |
@@ -21,7 +21,9 @@ Position coordinates use WGS84. Height is a requested photography height in mete
 
 `radiusMeters` is the semi-major axis. `ovalRatio` is minor/major axis, 0.1–1; 1 is a circle. `rotationDegrees` rotates the major axis clockwise from north, in [0, 360). The rig's own position is independent of the project's reference coordinates.
 
-Map geometry uses spherical distances and bearings with longitude wrapping. The rig outline has 64 vertices. The combined edge dot changes the semi-major axis and its bearing together: distance from the center determines radius, and direction from the center determines rotation. The dot stays on the major-axis endpoint while the center and oval ratio remain fixed. The oval handle sits halfway along the minor axis and changes the ratio without changing the major radius. These are planning graphics, not survey geometry.
+Map geometry uses spherical distances and bearings with longitude wrapping. The rig outline has 64 vertices. The combined edge dot sits half a numbered-point interval after point 1, between badges. Dragging changes the semi-major axis and rotation together, compensating for the handle’s angular offset and oval ratio so it stays under the pointer. The center and oval ratio remain fixed. The oval handle sits halfway along the minor axis and changes the ratio without changing the major radius. These are planning graphics, not survey geometry.
+
+`arrowCount` is an integer from 1–50, defaulting to 10 for new rigs and imported rigs missing the field. Numbered arrows follow clockwise parametric intervals around the circle/oval edge, starting at the rotated major-axis endpoint, and aim toward the center. Arrow symbols are offset 36 screen pixels toward the center; numbered badges are centered on the outline. Arrows have white fills and crisp 2-pixel colored strokes without shadows. They follow rig movement, rotation, and reshaping in both maps. This is an additive schema v1 extension; DB1/DB2 transport versions are unchanged. Older app builds ignore the field and lose it on re-export.
 
 ## Angles
 

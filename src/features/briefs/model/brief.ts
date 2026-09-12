@@ -20,6 +20,8 @@ export const angleSchema = z.discriminatedUnion('type', [
   z.object({ ...angleBase, type: z.literal('dslr'), directionDegrees: heading }),
 ])
 const heights = z.object({ heightsMeters: z.array(z.number().finite().min(0).max(10000)).max(50) })
+export const defaultRigArrowCount = 10
+export const maxRigArrows = 50
 export const maxDslrAngles = 12
 export const minDslrSpacing = 15
 export function maxDslrSpacing(angleCount: number) { return Math.floor(360 / angleCount) }
@@ -39,6 +41,7 @@ export const briefSchema = z.object({
   coordinates: positionSchema,
   circleRig: z.object({
     id, position: positionSchema,
+    arrowCount: z.number().int().min(1).max(maxRigArrows).default(defaultRigArrowCount),
     radiusMeters: z.number().finite().positive().max(10000),
     ovalRatio: z.number().finite().min(0.1).max(1),
     rotationDegrees: heading,

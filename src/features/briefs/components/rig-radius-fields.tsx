@@ -1,4 +1,4 @@
-import type { DroneBrief } from '../model/brief'
+import { maxRigArrows, type DroneBrief } from '../model/brief'
 import { NumberField } from './number-field'
 
 export function RigRadiusFields({ rig, onUpdate }: { rig: NonNullable<DroneBrief['circleRig']>; onUpdate: (update: (brief: DroneBrief) => DroneBrief) => void }) {
@@ -19,6 +19,11 @@ export function RigRadiusFields({ rig, onUpdate }: { rig: NonNullable<DroneBrief
         if (!current || current.id !== rig.id) return brief
         return { ...brief, circleRig: { ...current, ovalRatio: Math.max(0.1, Math.min(1, radiusMeters / current.radiusMeters)) } }
       })} />}
+    <NumberField label="Number of arrows" value={rig.arrowCount} min={1} max={maxRigArrows} step={1} live
+      onChange={(arrowCount) => onUpdate((brief) => {
+        const current = brief.circleRig
+        return current?.id === rig.id ? { ...brief, circleRig: { ...current, arrowCount } } : brief
+      })} />
   </div>
 }
 

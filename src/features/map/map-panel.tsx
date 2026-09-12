@@ -6,6 +6,7 @@ import { useDarkMode } from '@/lib/use-dark-mode'
 import type { MapNavigation } from './map-navigation'
 import { ViewerLayers } from './viewer-layers'
 import { GoogleMapView } from './google-map-view'
+import { MapDimmerControl } from './map-dimmer-control'
 import { BasemapDimmer } from './basemap-dimmer'
 import type { MapView } from './map-view'
 import { APIProvider, Map, Polygon, useApiLoadingStatus, APILoadingStatus, useMap } from '@vis.gl/react-google-maps'
@@ -38,8 +39,8 @@ type Props = {
   onSelect: (id: string | null) => void
 }
 const ShadeMapPanel = lazy(() => import('./shade-map').then((module) => ({ default: module.ShadeMapPanel })))
-type GoogleProps = Props & { active: boolean; view: RefObject<MapView>; onViewChange: (view: MapView) => void; satellite: boolean; onMapClick: (point: Position) => void; onCameraPlace: (tool: MapTool, point: Position) => void }
-function ConnectedMap({ selectedCameraIds, onSelectCamera, session, dispatch, tool, onToolChange, selectedId, onSelect, active, view, onViewChange, satellite, onMapClick, onCameraPlace }: GoogleProps) {
+type GoogleProps = Props & { active: boolean; dimOpacity: number; view: RefObject<MapView>; onViewChange: (view: MapView) => void; satellite: boolean; onMapClick: (point: Position) => void; onCameraPlace: (tool: MapTool, point: Position) => void }
+function ConnectedMap({ selectedCameraIds, onSelectCamera, session, dispatch, tool, onToolChange, selectedId, onSelect, active, dimOpacity, view, onViewChange, satellite, onMapClick, onCameraPlace }: GoogleProps) {
   const status = useApiLoadingStatus()
   const dark = useDarkMode()
   const [zoom, setZoom] = useState(17)
@@ -83,7 +84,7 @@ function ConnectedMap({ selectedCameraIds, onSelectCamera, session, dispatch, to
       {active && <MiddleMousePan onActiveChange={setMiddlePanning} />}
       {active && editing && <CameraPlacementGesture tool={tool} onToolChange={onToolChange} onPlace={onCameraPlace} />}
       <GoogleMapView active={active} satellite={satellite} view={view} />
-      <BasemapDimmer />
+      <BasemapDimmer opacity={dimOpacity} />
     </Map>
   </>
 }
@@ -99,6 +100,7 @@ function MapWorkspace(props: Props) {
   const interactive = tool.kind === 'idle'
   const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY?.trim()
   const googleMap = useMap()
+  const [dimOpacity, setDimOpacity] = useState(15)
   const [satellite, setSatellite] = useState(editing)
   const satelliteId = useId()
   const [shadeStart, setShadeStart] = useState<MapView | null>(null)
@@ -134,10 +136,10 @@ function MapWorkspace(props: Props) {
 
   return <CardContent className="@container relative h-full min-h-0 p-0">
     <div className="absolute inset-0" style={{ visibility: shadeActive ? 'hidden' : 'visible' }} aria-hidden={shadeActive} inert={shadeActive}>
-      {apiKey ? <ConnectedMap {...props} active={!shadeActive} view={view} satellite={satellite} onViewChange={onViewChange} onMapClick={handleMapClick} onCameraPlace={handleCameraPlace} /> : <MapMessage title="Map setup pending" description="Google Maps will appear once connected. Your brief is still available." />}
+      {apiKey ? <ConnectedMap {...props} dimOpacity={dimOpacity} active={!shadeActive} view={view} satellite={satellite} onViewChange={onViewChange} onMapClick={handleMapClick} onCameraPlace={handleCameraPlace} /> : <MapMessage title="Map setup pending" description="Google Maps will appear once connected. Your brief is still available." />}
     </div>
     {shadeActive && <Suspense fallback={<MapMessage title="Loading ShadeMap…" description="Preparing the shadow preview." />}>
-      <ShadeMapPanel dispatch={dispatch} selectedId={props.selectedId} selectedCameraIds={props.selectedCameraIds} onSelect={onSelect} onSelectCamera={props.onSelectCamera} session={session} initialView={shadeStart} onViewChange={onViewChange} minutes={minutes} onMinutesChange={setMinutes}
+      <ShadeMapPanel dimOpacity={dimOpacity} dispatch={dispatch} selectedId={props.selectedId} selectedCameraIds={props.selectedCameraIds} onSelect={onSelect} onSelectCamera={props.onSelectCamera} session={session} initialView={shadeStart} onViewChange={onViewChange} minutes={minutes} onMinutesChange={setMinutes}
         onNavigation={setShadeNavigation} tool={tool} onMapClick={handleMapClick}
         onToolChange={onToolChange} onCameraPlace={handleCameraPlace} />
     </Suspense>}
@@ -159,7 +161,8 @@ function MapWorkspace(props: Props) {
         <ViewerLayers session={session} dispatch={dispatch} />
       </div>
     </div>
-    <MapControls brief={brief} navigation={shadeActive ? shadeNavigation : googleMap} shadeActive={shadeActive} />
+    <MapDimmerControl value={dimOpacity} onChange={setDimOpacity} />
+    <MapControls brief={brief} navigation={shadeActive ? shadeNavigation : googleMap} />
   </CardContent>
 }
 export function MapPanel(props: Props) {

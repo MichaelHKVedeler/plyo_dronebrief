@@ -1,16 +1,16 @@
 import { describe, expect, it } from 'vitest'
-import { bearingDegrees, destination, distanceMeters, normalizeHeading, pathCenter, reshapeRig, resizeRig, rigOutline, rotateRig, scaleAndRotateRig, type CircleRig } from './geometry'
+import { bearingDegrees, destination, distanceMeters, normalizeHeading, pathCenter, reshapeRig, resizeRig, rigOutline, rigArrows, rigRadiusHandle, rotateRig, scaleAndRotateRig, type CircleRig } from './geometry'
 
-const rig: CircleRig = { id: 'rig', position: { lat: 59.9, lng: 10.7 }, radiusMeters: 100, ovalRatio: 0.5, rotationDegrees: 35 }
+const rig: CircleRig = { id: 'rig', position: { lat: 59.9, lng: 10.7 }, arrowCount: 10, radiusMeters: 100, ovalRatio: 0.5, rotationDegrees: 35 }
 describe('map transform geometry', () => {
   it('anchors the combined scale/rotate handle to the dragged edge point', () => {
-    const target = destination(rig.position, 240, 125)
+    const target = rigRadiusHandle({ ...rig, radiusMeters: 240, rotationDegrees: 125 })
     const changed = scaleAndRotateRig(rig, target)
     expect(changed.radiusMeters).toBeCloseTo(240)
     expect(changed.rotationDegrees).toBeCloseTo(125)
     expect(changed.position).toEqual(rig.position)
     expect(changed.ovalRatio).toBe(rig.ovalRatio)
-    expect(distanceMeters(rigOutline(changed)[0], target)).toBeLessThan(0.001)
+    expect(distanceMeters(rigRadiusHandle(changed), target)).toBeLessThan(0.001)
   })
   it('keeps a valid radius and stable heading when the combined handle reaches the center', () => {
     const changed = scaleAndRotateRig(rig, rig.position)
@@ -64,4 +64,34 @@ describe('map transform geometry', () => {
     const moved = { ...rig, position: destination(rig.position, 250, 50) }
     expect(distanceMeters(moved.position, pathCenter(rigOutline(moved)))).toBeLessThan(0.001)
   })
+})
+
+ it.each([1, 10, 50])('numbers %s rig arrows clockwise on the oval and aims each at its center', (arrowCount) => {
+  const arrows = rigArrows({ ...rig, arrowCount })
+  expect(arrows).toHaveLength(arrowCount)
+  for (const [index, arrow] of arrows.entries()) {
+    expect(arrow.number).toBe(index + 1)
+    const distance = distanceMeters(arrow.position, rig.position)
+    expect(distance).toBeGreaterThanOrEqual(rig.radiusMeters * rig.ovalRatio - 0.001)
+    expect(distance).toBeLessThanOrEqual(rig.radiusMeters + 0.001)
+    expect(distanceMeters(destination(arrow.position, distance, arrow.directionDegrees), rig.position)).toBeLessThan(0.001)
+  }
+  expect(distanceMeters(arrows[0].position, rigOutline(rig)[0])).toBeLessThan(0.001)
+})
+
+it.each([1, 2, 10, 17, 50])('keeps the radius handle between numbered points with %s arrows through repeated drags', (arrowCount) => {
+  for (const ovalRatio of [0.1, 0.5, 1]) {
+    const current = { ...rig, arrowCount, ovalRatio }
+    const handle = rigRadiusHandle(current)
+    for (const arrow of rigArrows(current)) expect(distanceMeters(handle, arrow.position)).toBeGreaterThan(0.01)
+    const unchanged = scaleAndRotateRig(current, handle)
+    expect(unchanged.radiusMeters).toBeCloseTo(current.radiusMeters, 5)
+    expect(unchanged.rotationDegrees).toBeCloseTo(current.rotationDegrees, 5)
+    const target = destination(current.position, 140, 355)
+    const changed = scaleAndRotateRig(current, target)
+    const repeated = scaleAndRotateRig(changed, target)
+    expect(distanceMeters(rigRadiusHandle(repeated), target)).toBeLessThan(0.001)
+    expect(repeated.radiusMeters).toBeCloseTo(changed.radiusMeters, 5)
+    expect(repeated.rotationDegrees).toBeCloseTo(changed.rotationDegrees, 5)
+  }
 })

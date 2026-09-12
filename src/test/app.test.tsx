@@ -54,7 +54,7 @@ it('loads a viewer and toggles layers without writing or replacing the local dra
   const own = createBrief({ name: 'My draft', clientName: 'Owner', date: '2026-09-11', times: ['09:00'] })
   briefRepository.save(own)
   const shared = createBrief({ name: 'Shared shoot', clientName: 'Other client', date: '2026-09-12', times: ['10:00'] })
-  shared.circleRig = { id: 'rig', position: shared.coordinates, radiusMeters: 50, ovalRatio: 1, rotationDegrees: 0 }
+  shared.circleRig = { id: 'rig', position: shared.coordinates, arrowCount: 10, radiusMeters: 50, ovalRatio: 1, rotationDegrees: 0 }
   const writes = vi.spyOn(Storage.prototype, 'setItem')
   const user = userEvent.setup()
   render(<App />)
@@ -103,7 +103,7 @@ it('saves live DSLR settings for existing and future points, clamps spacing, and
 
 it('saves each oval radius independently and rejects values outside the oval limits', async () => {
   const brief = createBrief({ name: 'Oval', clientName: 'Test', date: '2026-09-12', times: ['12:00'] })
-  brief.circleRig = { id: 'rig', position: brief.coordinates, radiusMeters: 100, ovalRatio: 0.5, rotationDegrees: 30 }
+  brief.circleRig = { id: 'rig', position: brief.coordinates, arrowCount: 10, radiusMeters: 100, ovalRatio: 0.5, rotationDegrees: 30 }
   briefRepository.save(brief)
   const user = userEvent.setup()
   render(<App />)
@@ -234,4 +234,24 @@ it.each(['X', 'Delete'])('removes modifier-selected cameras with %s and preserve
   expect(briefRepository.latest()?.angles.map((angle) => angle.id)).toEqual(['B'])
   expect(screen.getByRole('button', { name: '360 1' })).toHaveAttribute('aria-pressed', 'false')
   expect(screen.queryByRole('checkbox')).not.toBeInTheDocument()
+})
+
+it('saves valid rig arrow counts live and restores invalid or empty input on blur', async () => {
+  const brief = createBrief({ name: 'Arrows', clientName: 'Test', date: '2026-09-12', times: ['12:00'] })
+  brief.circleRig = { id: 'rig', position: brief.coordinates, arrowCount: 10, radiusMeters: 50, ovalRatio: 1, rotationDegrees: 0 }
+  briefRepository.save(brief)
+  const user = userEvent.setup()
+  render(<App />)
+  await user.click(screen.getByRole('button', { name: 'Resume editing' }))
+  await user.click(screen.getByRole('button', { name: 'Circle rig' }))
+  const count = screen.getByRole('spinbutton', { name: 'Number of arrows' })
+  expect(count).toHaveValue(10)
+  fireEvent.change(count, { target: { value: '16' } })
+  expect(briefRepository.latest()?.circleRig?.arrowCount).toBe(16)
+  for (const value of ['', '0', '51', '2.5']) {
+    fireEvent.change(count, { target: { value } })
+    expect(briefRepository.latest()?.circleRig?.arrowCount).toBe(16)
+    fireEvent.blur(count)
+    expect(count).toHaveValue(16)
+  }
 })

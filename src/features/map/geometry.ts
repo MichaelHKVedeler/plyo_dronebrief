@@ -37,12 +37,21 @@ export function localOffset(origin: Position, point: Position) {
   return { east: Math.sin(bearing) * distance, north: Math.cos(bearing) * distance }
 }
 
+function rigEdgePoint(rig: CircleRig, fraction: number): Position {
+  const angle = fraction * 2 * Math.PI
+  const east = Math.sin(angle) * rig.radiusMeters * rig.ovalRatio
+  const north = Math.cos(angle) * rig.radiusMeters
+  return destination(rig.position, Math.hypot(east, north), rig.rotationDegrees + degrees(Math.atan2(east, north)))
+}
+
 export function rigOutline(rig: CircleRig): Position[] {
-  return Array.from({ length: 64 }, (_, index) => {
-    const angle = index / 64 * 2 * Math.PI
-    const east = Math.sin(angle) * rig.radiusMeters * rig.ovalRatio
-    const north = Math.cos(angle) * rig.radiusMeters
-    return destination(rig.position, Math.hypot(east, north), rig.rotationDegrees + degrees(Math.atan2(east, north)))
+  return Array.from({ length: 64 }, (_, index) => rigEdgePoint(rig, index / 64))
+}
+
+export function rigArrows(rig: CircleRig) {
+  return Array.from({ length: rig.arrowCount }, (_, index) => {
+    const position = rigEdgePoint(rig, index / rig.arrowCount)
+    return { number: index + 1, position, directionDegrees: bearingDegrees(position, rig.position) }
   })
 }
 
@@ -64,9 +73,22 @@ export function rotateRig(rig: CircleRig, point: Position): CircleRig {
   return distanceMeters(rig.position, point) < 0.01 ? rig : { ...rig, rotationDegrees: bearingDegrees(rig.position, point) }
 }
 
-// A single major-axis edge point controls both radius and heading.
+// Half a numbered-point interval keeps the scale/rotation handle between badges.
+export function rigRadiusHandle(rig: CircleRig): Position {
+  return rigEdgePoint(rig, 0.5 / rig.arrowCount)
+}
+
 export function scaleAndRotateRig(rig: CircleRig, point: Position): CircleRig {
-  return rotateRig(resizeRig(rig, point), point)
+  const angle = Math.PI / rig.arrowCount
+  const east = Math.sin(angle) * rig.ovalRatio
+  const north = Math.cos(angle)
+  const distance = distanceMeters(rig.position, point)
+  return {
+    ...rig,
+    radiusMeters: clamp(distance / Math.hypot(east, north), 0.1, 10000),
+    rotationDegrees: distance < 0.01 ? rig.rotationDegrees
+      : normalizeHeading(bearingDegrees(rig.position, point) - degrees(Math.atan2(east, north))),
+  }
 }
 
 // The oval handle sits on the minor-axis edge of the rig.

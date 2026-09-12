@@ -22,8 +22,8 @@ import { shadowTime, timeLabel } from './shadow-time'
 import { useDarkMode } from '@/lib/use-dark-mode'
 import 'maplibre-gl/dist/maplibre-gl.css'
 
-type Props = { dispatch: (action: BriefAction) => void; selectedId: string | null; selectedCameraIds: string[]; onSelect: (id: string | null) => void; onSelectCamera: (id: string, additive: boolean) => void; session: BriefSession; initialView: MapView; onViewChange: (view: MapView) => void; minutes: number; onMinutesChange: (value: number) => void; onNavigation: (navigation: MapNavigation | null) => void; tool: MapTool; onMapClick: (point: Position) => void; onToolChange: (tool: MapTool) => void; onCameraPlace: (tool: MapTool, point: Position) => void }
-export function ShadeMapPanel({ dispatch, selectedId, selectedCameraIds, onSelect, onSelectCamera, session, initialView, onViewChange, minutes, onMinutesChange, onNavigation, tool, onMapClick, onToolChange, onCameraPlace }: Props) {
+type Props = { dimOpacity: number; dispatch: (action: BriefAction) => void; selectedId: string | null; selectedCameraIds: string[]; onSelect: (id: string | null) => void; onSelectCamera: (id: string, additive: boolean) => void; session: BriefSession; initialView: MapView; onViewChange: (view: MapView) => void; minutes: number; onMinutesChange: (value: number) => void; onNavigation: (navigation: MapNavigation | null) => void; tool: MapTool; onMapClick: (point: Position) => void; onToolChange: (tool: MapTool) => void; onCameraPlace: (tool: MapTool, point: Position) => void }
+export function ShadeMapPanel({ dimOpacity, dispatch, selectedId, selectedCameraIds, onSelect, onSelectCamera, session, initialView, onViewChange, minutes, onMinutesChange, onNavigation, tool, onMapClick, onToolChange, onCameraPlace }: Props) {
   const dark = useDarkMode()
   const host = useRef<HTMLDivElement>(null)
   const shade = useRef<ShadeMap | null>(null)
@@ -153,6 +153,7 @@ export function ShadeMapPanel({ dispatch, selectedId, selectedCameraIds, onSelec
     ? { id: 'pending', label: 'Choose direction', type: tool.cameraType, position: tool.position, directionDegrees: tool.directionDegrees } : null
   return <div className="absolute inset-0 isolate bg-muted" aria-label="ShadeMap preview" onContextMenu={(event) => { event.preventDefault(); if (editable) onToolChange(idleTool) }}>
     <div ref={host} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }} />
+    <div aria-hidden="true" className="pointer-events-none absolute inset-0" style={{ background: '#282828', opacity: dimOpacity / 100 }} />
     {ready && map && <ShadeProjection value={map}><ObjectRenderer value={{ Marker: ShadeMarker, Polygon: ShadePolygon }}>
       <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden" aria-label="Brief objects">
         {session.visibility.circleRig && session.brief.circleRig && <RigObject rig={session.brief.circleRig} dark={dark} editable={editable} interactive={interactive}
@@ -171,7 +172,7 @@ export function ShadeMapPanel({ dispatch, selectedId, selectedCameraIds, onSelec
     {(!key || error || !ready) && <p role="status" className="absolute inset-x-3 top-28 z-10 mx-auto max-w-md rounded-md border bg-card p-3 text-sm shadow-sm">
       {!key ? 'Add VITE_SHADEMAP_API_KEY to .env.local and restart Vite to enable shadows.' : error || 'Loading shadow map…'}
     </p>}
-    <div className="absolute bottom-7 left-1/2 z-10 grid w-[calc(100%-24px)] max-w-sm -translate-x-1/2 gap-2 rounded-lg border bg-card p-3 shadow-sm">
+    <div className="absolute bottom-28 @min-[750px]:bottom-8 left-1/2 z-10 grid w-[calc(100%-24px)] @min-[750px]:w-[calc(100%-384px)] max-w-sm -translate-x-1/2 gap-2 rounded-lg border bg-card p-3 shadow-sm">
       <div className="flex justify-between gap-2 text-sm"><span>Shadow time</span><strong>{time.actualTime}</strong></div>
       <Slider value={[minutes]} min={0} max={1435} step={5} onValueChange={([value]) => onMinutesChange(value)} thumbProps={{ 'aria-label': 'Shadow time', 'aria-valuetext': `${timeLabel(minutes)} ${time.zone}` }} />
       <p className="text-xs text-muted-foreground">{session.brief.project.date} · {time.zone}{time.adjusted ? ' · adjusted for daylight saving' : ''}</p>

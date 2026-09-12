@@ -1,18 +1,20 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { useMap } from '@vis.gl/react-google-maps'
 
-export function BasemapDimmer() {
+export function BasemapDimmer({ opacity }: { opacity: number }) {
   const map = useMap()
+  const tintRef = useRef<HTMLDivElement | null>(null)
   useEffect(() => {
     if (!map) return
     const surface = map.getDiv()
     const tint = document.createElement('div')
+    tintRef.current = tint
     tint.dataset.basemapDimmer = ''
     tint.setAttribute('aria-hidden', 'true')
     Object.assign(tint.style, {
       position: 'absolute',
       pointerEvents: 'none',
-      background: 'rgba(10, 12, 14, 0.15)',
+      background: '#282828',
     })
     class Dimmer extends google.maps.OverlayView {
       onAdd() {
@@ -40,5 +42,6 @@ export function BasemapDimmer() {
     resize.observe(surface)
     return () => { resize.disconnect(); overlay.setMap(null) }
   }, [map])
+  useEffect(() => { if (tintRef.current) tintRef.current.style.opacity = String(opacity / 100) }, [map, opacity])
   return null
 }

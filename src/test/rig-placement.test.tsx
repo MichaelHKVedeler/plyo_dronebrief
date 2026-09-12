@@ -27,7 +27,7 @@ it('places a new rig at the current view center without changing the legacy coor
 
 it('shows the two oval radii in the read-only brief without exposing rig creation', () => {
   const brief = createBrief({ name: 'Oval', clientName: 'Test', date: '2026-09-11', times: ['09:00'] })
-  brief.circleRig = { id: 'rig', position: brief.coordinates, radiusMeters: 80, ovalRatio: 0.5, rotationDegrees: 30 }
+  brief.circleRig = { id: 'rig', position: brief.coordinates, arrowCount: 10, radiusMeters: 80, ovalRatio: 0.5, rotationDegrees: 30 }
   const dispatch = vi.fn()
   render(<BriefPage session={openSession(brief, 'view')} dispatch={dispatch} error={null} />)
   fireEvent.click(screen.getByRole('button', { name: 'Circle rig' }))

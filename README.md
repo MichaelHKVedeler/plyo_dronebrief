@@ -31,9 +31,10 @@ npm run preview
 - Layer visibility switches, kept separate from saved brief content.
 - Optional Google Maps adapter: circle/oval outlines, camera markers and polygons.
 - Map placement for 360, DSLR, and drone images, with distinct icons and camera directions.
+- Circle/oval rigs show numbered arrows pointing toward the center in both maps and the viewer. **Number of arrows** updates live from 1â€“50, defaults to 10, and is saved/exported with the rig.
 - Drag cameras and the circle rig to move them; rig handles adjust radius, rotation, and ovalness, and camera handles adjust direction.
 - Satellite toggle and mouse-wheel zoom without Ctrl in both editor and viewer. The editor opens in Satellite; the viewer opens in the normal map. These view preferences do not modify the brief JSON.
-- A subtle 15% ink overlay dims the Google basemap beneath the rig and camera objects. It does not intercept gestures or dim app controls and attribution, and makes no extra map requests.
+- An adjustable dark grey overlay (15% by default) dims both basemaps beneath the rig and camera objects. It does not intercept gestures or dim app controls and attribution, and makes no extra map requests. The bottom Map dimming slider adjusts opacity from 0–100%, shared across providers for the current session without saving to the brief.
 - Editor/viewer fit the browser window. The details panel has its own shadcn scrollbar; on narrow screens it sits below the map.
 - Briefs automatically frame their cameras, complete rig outline, and polygons when opened. **Frame scene** repeats this at any time; edits, search, and visibility toggles do not trigger automatic reframing.
 - Shadcn accordion sections group project details, rig settings above camera creation, indented per-type settings, and added camera points. Selecting a map object opens its settings; opening sections does not save the brief.
