@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest'
-import { shadowTime } from './shadow-time'
+import { shadowTime, timeMinutes } from './shadow-time'
 
 it('uses shoot date and location timezone independently of the browser timezone', () => {
   const oslo = { lat: 59.91, lng: 10.75 }
@@ -11,4 +11,9 @@ it('reports a daylight-saving adjustment rather than mislabelling a nonexistent 
   const time = shadowTime('2026-03-29', 150, { lat: 59.91, lng: 10.75 })
   expect(time.adjusted).toBe(true)
   expect(time.actualTime).not.toBe('02:30')
+})
+it('converts clock labels to minutes for the shadow sliders', () => {
+  expect(timeMinutes('00:00')).toBe(0)
+  expect(timeMinutes('09:00')).toBe(540)
+  expect(timeMinutes('23:55')).toBe(1435)
 })

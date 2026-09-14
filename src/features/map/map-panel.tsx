@@ -21,7 +21,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import type { BriefAction, BriefSession } from '@/features/briefs/state/brief-session'
-import { cameraLabels, type CameraAngle, type Position } from '@/features/briefs/model/brief'
+import { cameraLabels, projectWithShoots, shootSlots, type CameraAngle, type Position, type ShootSlot } from '@/features/briefs/model/brief'
 import { CameraMarker } from './camera-marker'
 import { RigObject } from './rig-object'
 import { MapControls } from './map-controls'
@@ -31,6 +31,7 @@ import { MiddleMousePan } from './middle-mouse-pan'
 import { metersPerPixel } from './geometry'
 import { MapObjectScale, mapObjectScale } from './map-object-scale'
 import { idleTool, placeCamera, type MapTool } from './placement'
+import { ShadowTimeControl } from './shadow-time-control'
 
 type Props = {
   images: LocalImages
@@ -121,10 +122,19 @@ function MapWorkspace(props: Props) {
   const shadeActive = shadeStart !== null
   const [shadeNavigation, setShadeNavigation] = useState<MapNavigation | null>(null)
   useCameraFocus(props.focusPosition, shadeActive ? shadeNavigation : googleMap)
-  const [minutes, setMinutes] = useState(() => {
-    const [hours, mins] = (brief.project.times[0] || '12:00').split(':').map(Number)
-    return hours * 60 + mins
-  })
+  const [slots, setSlots] = useState(() => shootSlots(brief.project))
+  const [activeSlot, setActiveSlot] = useState(0)
+  const sourceId = useRef(brief.id)
+  if (sourceId.current !== brief.id) {
+    sourceId.current = brief.id
+    setSlots(shootSlots(brief.project))
+    setActiveSlot(0)
+  }
+  const shownSlot = slots[Math.min(activeSlot, Math.max(slots.length - 1, 0))] ?? { date: brief.project.date, time: brief.project.times[0] ?? '09:00' }
+  function commitSlots(next: ShootSlot[]) {
+    setSlots(next)
+    if (mode === 'edit') dispatch({ type: 'update', update: (b) => ({ ...b, project: projectWithShoots(b.project, next) }) })
+  }
   const view = useRef<MapView>({ center: brief.coordinates, zoom: 10 })
   const viewport = useRef<HTMLDivElement>(null)
   useImperativeHandle(props.rigPlacementRef, () => () => ({
@@ -164,7 +174,7 @@ function MapWorkspace(props: Props) {
       {apiKey ? <ConnectedMap {...props} imageLayer={imageLayer} dimOpacity={dimOpacity} objectSizePercent={objectSizePercent} active={!shadeActive} view={view} satellite={satellite} onViewChange={onViewChange} onMapClick={handleMapClick} onCameraPlace={handleCameraPlace} /> : <MapMessage title="Map setup pending" description="Google Maps will appear once connected. Your brief is still available." />}
     </div>
     {shadeActive && <Suspense fallback={<MapMessage title="Loading ShadeMap…" description="Preparing the shadow preview." />}>
-      <ShadeMapPanel imageLayer={imageLayer} dimOpacity={dimOpacity} objectSizePercent={objectSizePercent} dispatch={dispatch} selectedId={props.selectedId} selectedCameraIds={props.selectedCameraIds} onSelect={onSelect} onSelectCamera={props.onSelectCamera} session={session} initialView={shadeStart} onViewChange={onViewChange} minutes={minutes} onMinutesChange={setMinutes}
+      <ShadeMapPanel imageLayer={imageLayer} dimOpacity={dimOpacity} objectSizePercent={objectSizePercent} dispatch={dispatch} selectedId={props.selectedId} selectedCameraIds={props.selectedCameraIds} onSelect={onSelect} onSelectCamera={props.onSelectCamera} session={session} initialView={shadeStart} onViewChange={onViewChange} slot={shownSlot}
         onNavigation={setShadeNavigation} tool={tool} onMapClick={handleMapClick}
         onToolChange={onToolChange} onCameraPlace={handleCameraPlace} />
     </Suspense>}
@@ -185,6 +195,9 @@ function MapWorkspace(props: Props) {
         {editing && !interactive && <Button className="pointer-events-auto shadow-sm" onClick={() => onToolChange(idleTool)}><X />Cancel placement</Button>}
         <ViewerLayers session={session} dispatch={dispatch} />
       </div>
+    </div>
+    <div className="pointer-events-auto absolute right-3 bottom-[5.5rem] z-20 grid w-[calc(100%-196px)] max-w-sm gap-1 rounded-lg border bg-card p-2 shadow-sm @min-[750px]:right-auto @min-[750px]:bottom-8 @min-[750px]:left-1/2 @min-[750px]:w-[calc(100%-384px)] @min-[750px]:-translate-x-1/2 @min-[750px]:p-3">
+      <ShadowTimeControl slots={slots} activeIndex={Math.min(activeSlot, slots.length - 1)} onActivate={setActiveSlot} onChange={setSlots} onCommit={commitSlots} position={view.current.center} />
     </div>
     <div className="pointer-events-none absolute inset-x-3 bottom-8 z-20 flex items-end gap-2">
       <div className="pointer-events-auto grid min-w-0 max-w-40 flex-1 gap-2">

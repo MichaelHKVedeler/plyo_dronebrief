@@ -7,7 +7,7 @@ The runtime contract is `src/features/briefs/model/brief.ts`. This document expl
 | schemaVersion | 1 |
 | id | Stable brief ID |
 | createdAt, updatedAt | UTC ISO timestamps |
-| project | name, clientName, calendar date YYYY-MM-DD, times HH:mm[] |
+| project | name, clientName, calendar date YYYY-MM-DD, times HH:mm[], optional shoots[{date, time}] (max 3) |
 | coordinates | Project/map reference point {lat, lng}; new briefs default to Oslo (59.9139, 10.7522) |
 | circleRig | null or {id, position, radiusMeters, ovalRatio, rotationDegrees, arrowCount} |
 | angles | Discriminated camera-angle array |
@@ -15,7 +15,7 @@ The runtime contract is `src/features/briefs/model/brief.ts`. This document expl
 | polygons | Newbuild polygons with id, label, and vertices[] |
 | imageOverlays | Legacy embedded source or local file reference, plus transform metadata |
 
-Position coordinates use WGS84. Height is a requested photography height in meters, not a compliance limit or terrain-adjusted flight altitude. Schedule dates and times are wall-clock values at the shoot location; there is no timezone conversion in v1.
+Position coordinates use WGS84. Height is a requested photography height in meters, not a compliance limit or terrain-adjusted flight altitude. Schedule dates and times are wall-clock values at the shoot location; there is no timezone conversion in v1. `shoots` is an additive schema v1 array of up to three independent `{date, time}` pairs used by the stacked map sliders. Older snapshots omit it; the UI then uses `date` plus the first three `times`. Saving from the sliders writes `shoots` and keeps `date`/`times` in sync so older readers still see the first date and the slot times. Extra times beyond three from older snapshots are dropped only after a slot edit. DB1/DB2 transport versions are unchanged.
 
 ## Circle and oval
 
@@ -72,7 +72,7 @@ Per-image opacity is an authored image setting, saved through the reducer after 
 
 The whole JSON must fit within the existing 2 MB share-key limit. A local reference is device-specific rather than a portable image asset; export UI explicitly tells recipients to reconnect the matching file. Remote asset storage would require a separate deliberate contract decision.
 
-ShadeMap consumes the same WGS84 positions and rig outline geometry without changing the JSON. Map renderer, center/zoom, and the shadow slider are ephemeral view state. Shadows use the project's shoot date plus the selected time in the viewed location's timezone. Newbuild polygons have no height and do not cast simulated shadows.
+ShadeMap consumes the same WGS84 positions and rig outline geometry without changing the JSON. Map renderer, center/zoom, and provider choice are ephemeral view state. Shadows use the currently active shoot slot in the viewed location's timezone. Newbuild polygons have no height and do not cast simulated shadows.
 
 ## Compatibility and validation
 

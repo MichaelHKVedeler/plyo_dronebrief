@@ -67,7 +67,6 @@ it('reconnects local images in a viewer without saving or permitting edits', asy
   await user.click(screen.getByLabelText('Export key')); await user.paste(exportBriefKey(shared))
   await user.click(screen.getByRole('button', { name: 'Open read-only brief' }))
   await user.click(screen.getByRole('tab', { name: 'Layers' }))
-  await user.click(screen.getByRole('button', { name: 'Scene contents' }))
   expect(screen.queryByRole('button', { name: 'Upload image' })).not.toBeInTheDocument()
   expect(screen.queryByRole('button', { name: 'Remove plan.png' })).not.toBeInTheDocument()
   expect(screen.getByRole('slider', { name: 'plan.png visibility' })).toHaveAttribute('data-disabled')

@@ -23,7 +23,7 @@ npm run preview
 - Vite + React + strict TypeScript + Tailwind CSS v4.
 - Official shadcn/ui components, installed through its CLI; no second UI kit.
 - Landing page with create, load, and resume-last-local-draft actions.
-- Two-step wizard: project/client, then date and multiple times. The date defaults to today, with half-hour time sliders.
+- One-step wizard for project and client names. Shoot dates and times are set on the map, not during setup.
 - Separate editor and read-only viewer modes.
 - Basic editor: rename project, add rigs at the current map center, adjust rigs on the map, set drone/360 height arrays, and set the number and spacing of DSLR arrows.
 - JSON autosave in browser localStorage after every committed editor change.
@@ -38,12 +38,12 @@ npm run preview
 - An adjustable dark grey overlay (15% by default) dims both basemaps beneath the rig and camera objects. It does not intercept gestures or dim app controls and attribution, and makes no extra map requests. The bottom Map dimming slider adjusts opacity from 0�100%, shared across providers for the current session without saving to the brief.
 - Editor/viewer fit the browser window. The details panel has its own shadcn scrollbar; on narrow screens it sits below the map.
 - Briefs automatically frame their cameras, complete rig outline, and polygons when opened. **Frame scene** repeats this at any time; edits, search, and visibility toggles do not trigger automatic reframing.
-- Shadcn accordion sections group project details, rig settings above camera creation, indented per-type settings, and added camera points. Selecting a map object opens its settings; opening sections does not save the brief.
+- Shadcn accordion sections group project details, rig settings above camera creation, indented per-type settings, and added camera points. Sections start expanded. Project name and client name are editable in Project details; shoot times from the map sliders are listed there. Selecting a map object opens its settings; opening sections does not save the brief.
 - Street/location suggestions while typing (after three characters and a 350 ms pause), with Enter/search-button geocoding as a fallback. Search moves the view only and works in the viewer too.
 - One shared map toolbar keeps search and navigation available in both providers. The shadcn ButtonGroup sits above Satellite, which is shown only in Google Maps.
 - Label-free Google cloud style provided in `docs/google-map-no-labels.json`; publish and associate it with your map ID as described below. Camera labels and attribution remain visible.
 - A compact map layer menu under search toggles the rig and additional angles in editor and viewer, synchronized with the Layers panel.
-- ShadeMap shadow preview with the same WGS84 coordinates and matched zoom scale, terrain/building shadows, and a bottom-center time slider using the shoot date and viewed location's timezone.
+- ShadeMap shadow preview with the same WGS84 coordinates and matched zoom scale, terrain/building shadows, and up to three stacked time sliders with dates. The sliders stay visible in Google Maps and ShadeMap. Only the slider being moved is shown as ShadeMap shadows.
 - ShadeMap uses a locked top view with flat building footprints; original building heights remain available for shadow calculations.
 - ShadeMap camera icons and rig overlays update in the map's render frame during navigation, including zoom scaling.
 - Tests covering Unicode exports, malformed keys, persistence failures, and read-only behavior.
@@ -117,9 +117,9 @@ The optional shadow preview uses MapLibre and the official ShadeMap SDK. OpenFre
 2. Enable your development/production domains in your ShadeMap account as required by your key/plan.
 3. Restart Vite, open a brief, and select **ShadeMap**. Use **Google Maps** to switch back.
 
-The current center and scale transfer in both directions, including fractional zoom: Google's 256 px tile convention maps to MapLibre zoom minus one (512 px). Brief coordinates are never rounded or rewritten. Google Maps remains mounted while hidden so returning does not reframe the scene. Provider choice, shadow time, and map movement are temporary view settings; exports and autosave are unaffected.
+The current center and scale transfer in both directions, including fractional zoom: Google's 256 px tile convention maps to MapLibre zoom minus one (512 px). Brief coordinates are never rounded or rewritten. Google Maps remains mounted while hidden so returning does not reframe the scene. Provider choice and map movement are temporary view settings; exports and autosave are unaffected. In the editor, shadow date/time slots save as brief schedule data.
 
-The slider spans 00:00–23:55 in five-minute steps on the brief's shoot date. Its displayed IANA timezone follows the viewed location, including daylight saving. For a nonexistent local clock time at a spring DST transition, the UI shows the resolved clock time and an adjustment notice. At the autumn repeated hour, the timezone library chooses one occurrence; this UI does not select between both occurrences.
+Up to three stacked sliders sit at the bottom of both maps. Each has a 00:00–23:45 control in 15-minute steps. Clicking an inactive slider's track activates it without moving the time; once it is active, clicking the track or dragging the knob changes the time. The date is shown as text with a calendar picker, not a type-in field. A chevron collapses the panel to the slot dates and times. New briefs start at today 09:00; **Add time** stacks another slider 15 minutes after the last slot, on that slot's date. Only one slot is previewed at a time: dragging a knob, choosing a date, clicking a slot's date or track, or adding a slot shows that time on ShadeMap. The displayed IANA timezone follows the viewed location, including daylight saving. For a nonexistent local clock time at a spring DST transition, the UI shows the resolved clock time and an adjustment notice. At the autumn repeated hour, the timezone library chooses one occurrence; this UI does not select between both occurrences. Viewer adjustments preview shadows without writing the draft.
 
 ShadeMap provides shadow preview and object editing in the editor, with a read-only viewer. Both maps share camera icons, direction arrows, selection highlights, rig outlines, and adjustment controls. Search, camera placement, zoom, framing, and layer toggles work over both maps. Both maps use repeated press-drag-release placement for DSLR/drone cameras and one-click placement for 360 points; right-click, Escape, or Cancel placement stops and discards any unfinished point. Both maps support camera selection and dragging, arrow dragging to aim, rig outline dragging, and scale/rotation/oval handles. ShadeMap drags commit on release; Escape or pointer cancellation discards the preview. Missing keys, failed map loading, and SDK license failures show a message while keeping the return control available.
 

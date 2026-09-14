@@ -7,11 +7,16 @@ export const positionSchema = z.object({
 const heading = z.number().finite().min(0).lt(360)
 const name = z.string().trim().min(1).max(200)
 const id = z.string().min(1).max(100)
+const clockTime = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/)
+export const maxShootSlots = 3
+// Additive v1: independent date+time pairs for stacked map shadows. Older snapshots omit this.
+export const shootSchema = z.object({ date: z.iso.date(), time: clockTime })
 export const projectSchema = z.object({
   name,
   clientName: name,
   date: z.iso.date(),
-  times: z.array(z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/)).min(1).max(24),
+  times: z.array(clockTime).min(1).max(24),
+  shoots: z.array(shootSchema).max(maxShootSlots).optional(),
 })
 const angleBase = { id, label: name, position: positionSchema }
 export const angleSchema = z.discriminatedUnion('type', [
@@ -69,6 +74,7 @@ export const briefSchema = z.object({
 export type DroneBrief = z.infer<typeof briefSchema>
 export type ImageOverlay = DroneBrief['imageOverlays'][number]
 export type ProjectDetails = z.infer<typeof projectSchema>
+export type ShootSlot = z.infer<typeof shootSchema>
 export type Position = z.infer<typeof positionSchema>
 export type CameraAngle = z.infer<typeof angleSchema>
 export type BriefMode = 'edit' | 'view'
@@ -77,11 +83,35 @@ export const defaultVisibility: LayerVisibility = { circleRig: true, angles: tru
 export const cameraTypes = ['drone-image', '360', 'dslr'] as const
 export const cameraLabels = { 'drone-image': 'Drone image', '360': '360', dslr: 'DSLR' }
 
-export function createBrief(project: ProjectDetails): DroneBrief {
+export function todayIsoDate(now = new Date()) {
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+}
+
+export function shootSlots(project: ProjectDetails): ShootSlot[] {
+  if (project.shoots?.length) return project.shoots.slice(0, maxShootSlots)
+  return project.times.slice(0, maxShootSlots).map((time) => ({ date: project.date, time }))
+}
+
+export function projectWithShoots(project: ProjectDetails, shoots: ShootSlot[]): ProjectDetails {
+  const next = shoots.slice(0, maxShootSlots)
+  if (!next.length) return project
+  return { ...project, date: next[0].date, times: next.map((shoot) => shoot.time), shoots: next }
+}
+
+export function nextShootSlot(slots: ShootSlot[]): ShootSlot {
+  const last = slots.at(-1)
+  const [hours, minutes] = (last?.time ?? '09:00').split(':').map(Number)
+  const next = Math.min(hours * 60 + minutes + 15, 23 * 60 + 45)
+  const time = `${String(Math.floor(next / 60)).padStart(2, '0')}:${String(next % 60).padStart(2, '0')}`
+  return { date: last?.date ?? todayIsoDate(), time }
+}
+
+export function createBrief(project: Pick<ProjectDetails, 'name' | 'clientName'> & Partial<ProjectDetails>): DroneBrief {
   const now = new Date().toISOString()
   return briefSchema.parse({
     schemaVersion: 1, id: crypto.randomUUID(), createdAt: now, updatedAt: now,
-    project, coordinates: { lat: 59.9139, lng: 10.7522 }, circleRig: null,
+    project: { date: todayIsoDate(), times: ['09:00'], ...project },
+    coordinates: { lat: 59.9139, lng: 10.7522 }, circleRig: null,
     angles: [], typeSettings: {
       'drone-image': { heightsMeters: [30, 60] },
       '360': { heightsMeters: [30] }, dslr: { heightsMeters: [1.6] },
