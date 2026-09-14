@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 
 // Keep handles reachable when the pointer crosses the gap outside an object.
-export function useHoverHandles(frozen = false) {
+export function useHoverHandles(frozen = false, leaveDelay = 450) {
   const [hovered, setHovered] = useState(false)
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
   function enter() {
@@ -12,7 +12,8 @@ export function useHoverHandles(frozen = false) {
   function leave() {
     if (frozen) return
     if (timer.current) clearTimeout(timer.current)
-    timer.current = setTimeout(() => setHovered(false), 450)
+    if (leaveDelay === 0) setHovered(false)
+    else timer.current = setTimeout(() => setHovered(false), leaveDelay)
   }
   useEffect(() => {
     if (frozen && timer.current) clearTimeout(timer.current)

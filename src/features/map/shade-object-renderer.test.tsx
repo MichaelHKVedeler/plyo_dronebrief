@@ -1,6 +1,6 @@
 import { ShadeProjection } from './shade-projection'
 import { useState, type ReactNode } from 'react'
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeAll, expect, it, vi } from 'vitest'
 import type { Map } from 'maplibre-gl'
 import type { CameraAngle } from '@/features/briefs/model/brief'
@@ -33,7 +33,6 @@ it.each([true, false])('scales rig decorations with radius and zoom, independent
   const sizes = () => [
     Number(view.container.querySelector('polygon')!.getAttribute('stroke-width')),
     Number(screen.getByRole('img', { name: 'Rig arrow 1, pointing toward center' }).style.zoom),
-    ...(editable ? [Number(screen.getByRole('button', { name: 'Scale and rotate circle rig' }).style.zoom)] : []),
   ]
   const initial = sizes()
   view.rerender(scene(100, 1, 3))
@@ -43,6 +42,44 @@ it.each([true, false])('scales rig decorations with radius and zoom, independent
   view.rerender(scene(200, 2, 3))
   expect(sizes()).toEqual(initial)
   expect(commit).not.toHaveBeenCalled()
+})
+
+it.each(['Scale and rotate circle rig', 'Adjust rig ovalness'])('keeps the outline highlighted when moving onto %s', (label) => {
+  vi.useFakeTimers()
+  try {
+    const rig: CircleRig = { id: 'rig', position: { lat: 60, lng: 10 }, arrowCount: 10, radiusMeters: 400, ovalRatio: 0.6, rotationDegrees: 0 }
+    const commit = vi.fn()
+    const { container } = render(<Surface><canvas /><RigObject rig={rig} pixelsToMeters={1} editable interactive selected onSelect={vi.fn()} onCommit={commit} /></Surface>)
+    const outline = container.querySelector('polygon')!
+    const initial = outline.getAttribute('stroke-width')
+    expect(screen.queryByRole('button', { name: label })).not.toBeInTheDocument()
+    fireEvent.pointerMove(container.querySelector('canvas')!, { clientX: 10, clientY: 60 })
+    const highlighted = outline.getAttribute('stroke-width')
+    expect(Number(highlighted)).toBeGreaterThan(Number(initial))
+    const control = screen.getByRole('button', { name: label })
+    fireEvent.mouseEnter(control)
+    fireEvent.pointerMove(control, { clientX: 10, clientY: 60 })
+    act(() => vi.advanceTimersByTime(500))
+    expect(outline).toHaveAttribute('stroke-width', highlighted)
+    fireEvent.mouseLeave(control)
+    expect(outline).toHaveAttribute('stroke-width', initial)
+    expect(screen.queryByRole('button', { name: label })).not.toBeInTheDocument()
+    fireEvent.pointerMove(container.querySelector('canvas')!, { clientX: 10, clientY: 60 })
+    fireEvent.focus(screen.getByRole('button', { name: label }))
+    fireEvent.pointerMove(container.querySelector('canvas')!, { clientX: 100, clientY: 100 })
+    expect(outline).toHaveAttribute('stroke-width', highlighted)
+    fireEvent.blur(screen.getByRole('button', { name: label }))
+    expect(outline).toHaveAttribute('stroke-width', initial)
+    expect(screen.queryByRole('button', { name: label })).not.toBeInTheDocument()
+    fireEvent.pointerMove(container.querySelector('canvas')!, { clientX: 10, clientY: 60 })
+    fireEvent.pointerMove(container.querySelector('canvas')!, { clientX: 100, clientY: 100 })
+    expect(outline).toHaveAttribute('stroke-width', initial)
+    expect(screen.queryByRole('button', { name: label })).not.toBeInTheDocument()
+    expect(commit).not.toHaveBeenCalled()
+  } finally {
+    cleanup()
+    vi.useRealTimers()
+  }
 })
 
 function Camera({ commit, editable = true }: { commit: (angle: CameraAngle) => void; editable?: boolean }) {
@@ -93,14 +130,17 @@ it('supports keyboard aiming and leaves viewer arrows visible but disabled', () 
 it('leaves the rig interior to map navigation, omits the center icon and commits shape handle edits', () => {
   const rig: CircleRig = { id: 'rig', position: { lat: 60, lng: 10 }, arrowCount: 10, radiusMeters: 80, ovalRatio: 0.6, rotationDegrees: 0 }
   const select = vi.fn(), commit = vi.fn()
-  const { container } = render(<Surface><RigObject rig={rig} pixelsToMeters={1} editable interactive selected onSelect={select} onCommit={commit} /></Surface>)
+  const { container } = render(<Surface><canvas /><RigObject rig={rig} pixelsToMeters={1} editable interactive selected onSelect={select} onCommit={commit} /></Surface>)
   fireEvent.click(container.querySelector('polygon')!)
   expect(container.querySelector('polygon')).toHaveStyle({ pointerEvents: 'none' })
   expect(select).not.toHaveBeenCalled()
   expect(commit).not.toHaveBeenCalled()
   expect(screen.queryByRole('button', { name: 'Move circle rig' })).not.toBeInTheDocument()
+  fireEvent.pointerMove(container.querySelector('canvas')!, { clientX: 10, clientY: 60 })
   fireEvent.keyDown(screen.getByRole('button', { name: 'Adjust rig ovalness' }), { key: 'ArrowRight' })
   expect(commit).toHaveBeenLastCalledWith({ ...rig, ovalRatio: 0.65 })
+  fireEvent.pointerMove(container.querySelector('canvas')!, { clientX: 100, clientY: 100 })
+  fireEvent.pointerMove(container.querySelector('canvas')!, { clientX: 10, clientY: 60 })
   drag(screen.getByRole('button', { name: 'Scale and rotate circle rig' }))
   expect(commit.mock.lastCall![0].radiusMeters).not.toBe(80)
 })

@@ -10,12 +10,14 @@ import { mapBrandColor } from './map-colors'
 import { MapObjectScale } from './map-object-scale'
 
 type Props = { rig: CircleRig; pixelsToMeters: number; dark?: boolean; editable: boolean; selected: boolean; interactive: boolean; onSelect: () => void; onCommit: (rig: CircleRig) => void }
-export function RigObject({ rig, pixelsToMeters, dark = false, editable, selected, interactive, onSelect, onCommit }: Props) {
+export function RigObject({ rig, pixelsToMeters, dark = false, editable, interactive, onSelect, onCommit }: Props) {
   const { Marker: AdvancedMarker, Polygon } = useObjectRenderer()
   const color = mapBrandColor(dark)
-  const hover = useHoverHandles(!interactive)
-  const [outlineHovered, setOutlineHovered] = useState(false)
-  const strokeWeight = selected || hover.hovered ? 4 : 3
+  // Leaving the outline must not clear a control's active hover or focus.
+  const hover = useHoverHandles(!interactive, 0)
+  const controlHover = useHoverHandles(!interactive, 0)
+  const rigHovered = hover.hovered || controlHover.hovered
+  const strokeWeight = rigHovered ? 4 : 3
   const [draft, setDraft] = useState<{ source: CircleRig; value: CircleRig } | null>(null)
   const visible = draft?.source === rig ? draft.value : rig
   // All rig decorations keep a fixed proportion of its projected major radius.
@@ -23,17 +25,17 @@ export function RigObject({ rig, pixelsToMeters, dark = false, editable, selecte
   const scale = visible.radiusMeters / pixelsToMeters / 400
   const path = useMemo(() => rigOutline(visible), [visible])
   const canEdit = editable && interactive
-  const handles = editable && (selected || hover.hovered || draft !== null)
+  const handles = editable && (rigHovered || draft !== null)
   const radiusPoint = rigRadiusHandle(visible)
   const ovalPoint = destination(visible.position, visible.radiusMeters * visible.ovalRatio, visible.rotationDegrees + 90)
   function commit(value: CircleRig) {
     setDraft(null); hover.leave()
     if (canEdit) onCommit(value)
   }
-  function start() { if (canEdit) { onSelect(); hover.enter() } }
+  function start() { if (canEdit) onSelect() }
   return <MapObjectScale value={scale}>
     <Polygon paths={path} draggable={false} clickable={false}
-      strokeColor={color} strokeWeight={canEdit && outlineHovered ? Math.max(4, 6 * scale) : strokeWeight * scale}
+      strokeColor={color} strokeWeight={canEdit && (rigHovered || draft !== null) ? Math.max(4, 6 * scale) : strokeWeight * scale}
       fillOpacity={0} />
     {rigArrows(visible).map((arrow) => <AdvancedMarker key={arrow.number} position={arrow.position}
       anchorLeft="-50%" anchorTop="-50%" title={'Rig arrow ' + arrow.number} zIndex={10}
@@ -45,17 +47,17 @@ export function RigObject({ rig, pixelsToMeters, dark = false, editable, selecte
         <Navigation className="size-8 fill-white" size={32} strokeWidth={2} absoluteStrokeWidth
           style={{ color, transform: 'rotate(' + (arrow.directionDegrees - 45) + 'deg)' }} />
         </div>
-        <Badge variant="outline" style={{ borderColor: color, borderWidth: strokeWeight, color }} className="bg-white absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 size-7 justify-center rounded-full p-0 text-xs tabular-nums">{arrow.number}</Badge>
+        <Badge variant="outline" style={{ borderColor: color, borderWidth: strokeWeight, color }} className="bg-white absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 size-10 justify-center rounded-full p-0 text-lg font-semibold leading-none tabular-nums">{arrow.number}</Badge>
       </div>
     </AdvancedMarker>)}
     <RigLineDragController rig={visible} interactive={canEdit} strokeWidth={strokeWeight * scale}
-      onHoverChange={(hovered) => { setOutlineHovered(hovered); if (hovered) hover.enter(); else hover.leave() }}
+      onHoverChange={(hovered) => { if (hovered) hover.enter(); else hover.leave() }}
       onStart={start} onCancel={() => { setDraft(null); hover.leave() }}
       onPreview={(position) => setDraft({ source: rig, value: { ...rig, position } })}
       onCommit={(position) => commit({ ...rig, position })} />
     {handles && <>
       <MapHandle onCancel={() => setDraft(null)} interactive={canEdit} position={radiusPoint} label="Scale and rotate circle rig" className="cursor-crosshair"
-        onEnter={hover.enter} onLeave={hover.leave} onStart={start}
+        onEnter={controlHover.enter} onLeave={controlHover.leave} onStart={start}
         onPreview={(point) => setDraft({ source: rig, value: scaleAndRotateRig(visible, point) })}
         onCommit={(point) => commit(scaleAndRotateRig(visible, point))}>
         <Circle className="size-3 fill-current" />
@@ -65,7 +67,7 @@ export function RigObject({ rig, pixelsToMeters, dark = false, editable, selecte
           const shaped = reshapeRig(visible, point)
           return destination(shaped.position, shaped.radiusMeters * shaped.ovalRatio, shaped.rotationDegrees + 90)
         }}
-        onEnter={hover.enter} onLeave={hover.leave} onStart={start}
+        onEnter={controlHover.enter} onLeave={controlHover.leave} onStart={start}
         onPreview={(point) => setDraft({ source: rig, value: reshapeRig(visible, point) })}
         onCommit={(point) => commit(reshapeRig(visible, point))}
         onStep={(delta) => commit({ ...visible, ovalRatio: clamp(visible.ovalRatio + delta * 0.05, 0.1, 1) })}>
