@@ -78,22 +78,22 @@ export function BriefPage({ session, dispatch, error }: { session: BriefSession;
     setSelectedCameraIds([])
     setTool(startCameraPlacement(type))
   }
-  return <main className="mx-auto flex min-h-0 w-full max-w-screen-2xl flex-1 flex-col px-4 py-4 sm:px-6">
+  return <main className="flex min-h-0 w-full min-w-0 flex-1 flex-col px-4 py-4 sm:px-6">
     <div className="mb-4 flex shrink-0 items-center gap-3"><h1 className="min-w-0 truncate text-xl font-semibold tracking-tight sm:text-2xl" title={session.brief.project.name}>{session.brief.project.name}</h1><Badge variant="secondary">{session.mode === 'edit' ? 'Editor' : 'Read-only'}</Badge></div>
     {error && <Alert variant="destructive" className="mb-4 max-h-28 shrink-0 overflow-y-auto"><AlertDescription>{error}</AlertDescription></Alert>}
-    <div className="grid min-h-0 flex-1 grid-rows-[minmax(0,1fr)_minmax(0,1fr)] gap-4 lg:grid-cols-[minmax(0,1fr)_320px] lg:grid-rows-[minmax(0,1fr)]">
+    <div className="grid min-h-0 flex-1 grid-rows-[minmax(0,1fr)_minmax(0,1fr)] gap-4 lg:grid-cols-[minmax(0,1fr)_360px] lg:grid-rows-[minmax(0,1fr)]">
       <MapPanel images={images} rigPlacementRef={rigPlacement} focusPosition={focusPosition} onViewCenterChange={(center) => { viewCenter.current = center }} selectedCameraIds={selectedCameraIds} onSelectCamera={selectCamera} session={session} dispatch={dispatch} tool={tool} onToolChange={setTool} selectedId={selectedId} onSelect={select} />
       <aside className="min-h-0 min-w-0" aria-label="Brief details">
         <Card className="h-full min-h-0 overflow-hidden py-0"><CardContent className="flex min-h-0 flex-1 flex-col px-0">
           <Tabs defaultValue="project" className="min-h-0 flex-1 gap-0">
-            <TabsList className="mx-4 my-4 w-auto shrink-0"><TabsTrigger value="project">Project</TabsTrigger><TabsTrigger value="layers">Layers</TabsTrigger></TabsList>
+            <TabsList className="mx-4 my-4 w-auto shrink-0"><TabsTrigger value="project">Project</TabsTrigger><TabsTrigger value="contents">Contents</TabsTrigger></TabsList>
             <ScrollArea type="always" className="min-h-0 flex-1 [&_[data-slot=scroll-area-viewport]]:overscroll-contain">
               <div className="px-4 pb-4">
                 <TabsContent value="project"><ProjectPanel onCenterCamera={(angle) => setFocusPosition({ ...angle.position })} onAddRig={addRig} selectedCameraIds={selectedCameraIds} onSelectCamera={selectCamera} onRemoveCameras={removeCameras} session={session} selectedId={selectedId} onSelect={select} onAddCamera={addCamera} onUpdate={(update) => dispatch({ type: 'update', update })} /></TabsContent>
-                <TabsContent value="layers"><LayersPanel session={session} images={images} selectedId={selectedId} onSelect={(id) => { select(id); setTool(idleTool) }}
+                <TabsContent value="contents"><LayersPanel session={session} images={images} selectedId={selectedId} onSelect={(id) => { select(id); setTool(idleTool) }}
                   placement={() => rigPlacement.current?.() ?? { position: viewCenter.current, radiusMeters: 50 }}
                   onUpdate={(update) => dispatch({ type: 'update', update })}
-                  onShow={() => dispatch({ type: 'visibility', layer: 'imageOverlays', visible: true })} onToggle={(layer, visible) => dispatch({ type: 'visibility', layer, visible })} /></TabsContent>
+                  onShow={() => dispatch({ type: 'visibility', layer: 'imageOverlays', visible: true })} /></TabsContent>
               </div>
             </ScrollArea>
           </Tabs>

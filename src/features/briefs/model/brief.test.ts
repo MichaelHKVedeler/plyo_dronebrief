@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest'
-import { briefSchema, createBrief, nextShootSlot, projectWithShoots, shootSlots, todayIsoDate } from './brief'
+import { briefSchema, createBrief, next360FloorHeight, nextShootSlot, parseHeightsMeters, projectWithShoots, shootSlots, todayIsoDate } from './brief'
 
 const brief = createBrief({ name: 'Arrows', clientName: 'Test', date: '2026-09-12', times: ['12:00'] })
 
@@ -23,8 +23,24 @@ it.each([
 
 it('creates a brief with today and 09:00 when the wizard omits a schedule', () => {
   const created = createBrief({ name: 'Riverside', clientName: 'Client A' })
-  expect(created.project).toMatchObject({ name: 'Riverside', clientName: 'Client A', date: todayIsoDate(), times: ['09:00'] })
+  expect(created.project).toMatchObject({ name: 'Riverside', clientName: 'Client A', description: '', instructions: '', date: todayIsoDate(), times: ['09:00'] })
   expect(created.project.shoots).toBeUndefined()
+  expect(created.typeSettings['drone-image'].heightsMeters).toEqual([40, 60])
+  expect(created.typeSettings['360'].heightsMeters).toEqual([2, 5, 8])
+})
+
+it('appends 360 floors 3 m above the last height, starting at 2 m when empty', () => {
+  expect(next360FloorHeight([])).toBe(2)
+  expect(next360FloorHeight([2, 5, 8])).toBe(11)
+  expect(next360FloorHeight([8])).toBe(11)
+})
+
+it('parses height lists and ignores a trailing comma while typing', () => {
+  expect(parseHeightsMeters('')).toEqual([])
+  expect(parseHeightsMeters('2, 5, 8')).toEqual([2, 5, 8])
+  expect(parseHeightsMeters('2, 5,')).toEqual([2, 5])
+  expect(parseHeightsMeters('2,,5')).toBeNull()
+  expect(parseHeightsMeters('nope')).toBeNull()
 })
 
 it('derives up to three shadow slots from a legacy date and times list', () => {
@@ -42,6 +58,15 @@ it('round-trips independent shoot dates while keeping date and times in sync for
   expect(shootSlots(briefSchema.parse({ ...next, project: { ...next.project, shoots: undefined } }).project)).toEqual([
     { date: '2026-06-01', time: '09:00' }, { date: '2026-06-01', time: '17:00' },
   ])
+})
+
+it('defaults missing project notes and round-trips authored description and instructions', () => {
+  const { name, clientName, date, times } = brief.project
+  const parsed = briefSchema.parse({ ...brief, project: { name, clientName, date, times } }).project
+  expect(parsed.description).toBe('')
+  expect(parsed.instructions).toBe('')
+  expect(briefSchema.parse({ ...brief, project: { ...brief.project, description: 'South facade.', instructions: 'Use the rear gate.' } }).project)
+    .toMatchObject({ description: 'South facade.', instructions: 'Use the rear gate.' })
 })
 
 it('picks unused default times when stacking shadow sliders', () => {

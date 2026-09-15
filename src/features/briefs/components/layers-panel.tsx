@@ -1,30 +1,36 @@
-import { numberedCameras } from '../model/camera-numbers'
-import { cameraLabels } from '../model/brief'
-import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
-import { Badge } from '@/components/ui/badge'
+import { Textarea } from '@/components/ui/textarea'
 import { Accordion } from '@/components/ui/accordion'
 import { SettingsSection } from './settings-section'
-import type { LayerVisibility } from '../model/brief'
 import { ImageOverlayControls, type ImageControlsProps } from './image-overlay-controls'
 import type { BriefSession } from '../state/brief-session'
 
-export function LayersPanel({ session, onToggle, ...imageControls }: ImageControlsProps & { session: BriefSession; onToggle: (layer: keyof LayerVisibility, visible: boolean) => void }) {
-  const { brief, visibility } = session
-  const layers: { key: keyof LayerVisibility; label: string; count: number }[] = [
-    { key: 'circleRig', label: 'Circle rig', count: brief.circleRig ? 1 : 0 },
-    { key: 'angles', label: 'Camera angles', count: brief.angles.length },
-    { key: 'polygons', label: 'Newbuild polygons', count: brief.polygons.length },
-    { key: 'imageOverlays', label: 'Image overlays', count: brief.imageOverlays.length },
-  ]
-  return <div className="grid gap-5">
-    {layers.map((layer) => <div className="flex items-center gap-3" key={layer.key}><Switch id={'layer-' + layer.key} checked={visibility[layer.key]} onCheckedChange={(checked) => onToggle(layer.key, checked)} /><Label htmlFor={'layer-' + layer.key} className="flex-1">{layer.label}</Label><Badge variant="secondary">{layer.count}</Badge></div>)}
-    <Accordion type="multiple" defaultValue={['contents']}><SettingsSection value="contents" title="Scene contents"><div className="grid gap-3 text-sm">
-      <ImageOverlayControls {...imageControls} overlays={brief.imageOverlays} editable={session.mode === 'edit'} />
-      {visibility.circleRig && brief.circleRig && <p>Rig · {brief.circleRig.radiusMeters} m radius · {brief.circleRig.ovalRatio === 1 ? 'Circle' : 'Oval'}</p>}
-      {visibility.angles && numberedCameras(brief.angles).map(({ angle, number }) => <p key={angle.id}>{cameraLabels[angle.type]} {number}</p>)}
-      {visibility.polygons && brief.polygons.map((polygon) => <p key={polygon.id}>{polygon.label} · {polygon.vertices.length} vertices</p>)}
-
-    </div></SettingsSection></Accordion>
-  </div>
+export function LayersPanel({ session, ...imageControls }: ImageControlsProps & { session: BriefSession }) {
+  const { brief } = session
+  const editing = session.mode === 'edit'
+  function commit(field: 'description' | 'instructions', value: string) {
+    if (value !== brief.project[field]) imageControls.onUpdate((current) => ({ ...current, project: { ...current.project, [field]: value } }))
+  }
+  return <Accordion type="multiple" defaultValue={['description', 'floor-plan']}>
+    <SettingsSection value="description" title="Description">
+      {editing
+        ? <>
+          <div className="grid gap-2"><Label htmlFor="property-information">Property information</Label>
+            <Textarea id="property-information" key={brief.id + '-description'} defaultValue={brief.project.description} maxLength={2000}
+              placeholder="Notes about this property" onBlur={(event) => commit('description', event.target.value)} /></div>
+          <div className="grid gap-2"><Label htmlFor="instructions">Instructions</Label>
+            <Textarea id="instructions" key={brief.id + '-instructions'} defaultValue={brief.project.instructions} maxLength={2000}
+              placeholder="Notes for the shoot" onBlur={(event) => commit('instructions', event.target.value)} /></div>
+        </>
+        : <>
+          <div><p className="text-sm font-medium">Property information</p>
+            <p className="mt-1 whitespace-pre-wrap text-sm text-muted-foreground">{brief.project.description || 'No property information.'}</p></div>
+          <div><p className="text-sm font-medium">Instructions</p>
+            <p className="mt-1 whitespace-pre-wrap text-sm text-muted-foreground">{brief.project.instructions || 'No instructions.'}</p></div>
+        </>}
+    </SettingsSection>
+    <SettingsSection value="floor-plan" title="Floor plan">
+      <ImageOverlayControls {...imageControls} overlays={brief.imageOverlays} editable={editing} />
+    </SettingsSection>
+  </Accordion>
 }

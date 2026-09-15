@@ -44,6 +44,9 @@ function rigEdgePoint(rig: CircleRig, fraction: number): Position {
   return destination(rig.position, Math.hypot(east, north), rig.rotationDegrees + degrees(Math.atan2(east, north)))
 }
 
+// Invisible grab band around the visible outline. ShadeMap's hit stroke is twice this.
+export const rigOutlineHitRadius = 10
+
 export function rigOutline(rig: CircleRig): Position[] {
   return Array.from({ length: 64 }, (_, index) => rigEdgePoint(rig, index / 64))
 }

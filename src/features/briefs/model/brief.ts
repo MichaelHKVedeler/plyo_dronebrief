@@ -14,6 +14,8 @@ export const shootSchema = z.object({ date: z.iso.date(), time: clockTime })
 export const projectSchema = z.object({
   name,
   clientName: name,
+  description: z.string().max(2000).default(''),
+  instructions: z.string().max(2000).default(''),
   date: z.iso.date(),
   times: z.array(clockTime).min(1).max(24),
   shoots: z.array(shootSchema).max(maxShootSlots).optional(),
@@ -98,6 +100,28 @@ export function projectWithShoots(project: ProjectDetails, shoots: ShootSlot[]):
   return { ...project, date: next[0].date, times: next.map((shoot) => shoot.time), shoots: next }
 }
 
+export const floorHeightMeters = 3
+export const defaultDroneHeights = [40, 60]
+export const default360Heights = [2, 5, 8]
+
+export function next360FloorHeight(heights: number[]) {
+  return (heights.at(-1) ?? default360Heights[0] - floorHeightMeters) + floorHeightMeters
+}
+
+export function parseHeightsMeters(text: string) {
+  const trimmed = text.trim()
+  if (!trimmed) return []
+  const tokens = trimmed.split(',').map((item) => item.trim())
+  while (tokens.at(-1) === '') tokens.pop()
+  const heightsMeters = tokens.map((item) => item ? Number(item) : NaN)
+  if (heightsMeters.length > 50 || heightsMeters.some((value) => !Number.isFinite(value) || value < 0 || value > 10000)) return null
+  return heightsMeters
+}
+
+export function formatHeightsMeters(heights: number[]) {
+  return heights.join(', ')
+}
+
 export function nextShootSlot(slots: ShootSlot[]): ShootSlot {
   const last = slots.at(-1)
   const [hours, minutes] = (last?.time ?? '09:00').split(':').map(Number)
@@ -113,8 +137,8 @@ export function createBrief(project: Pick<ProjectDetails, 'name' | 'clientName'>
     project: { date: todayIsoDate(), times: ['09:00'], ...project },
     coordinates: { lat: 59.9139, lng: 10.7522 }, circleRig: null,
     angles: [], typeSettings: {
-      'drone-image': { heightsMeters: [30, 60] },
-      '360': { heightsMeters: [30] }, dslr: { heightsMeters: [1.6] },
+      'drone-image': { heightsMeters: defaultDroneHeights },
+      '360': { heightsMeters: default360Heights }, dslr: { heightsMeters: [1.6] },
     },
     polygons: [], imageOverlays: [],
   })

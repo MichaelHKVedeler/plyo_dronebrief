@@ -1,5 +1,5 @@
 import type { Position } from '@/features/briefs/model/brief'
-import { rigOutline, type CircleRig } from './geometry'
+import { rigOutline, rigOutlineHitRadius, type CircleRig } from './geometry'
 
 type Pixel = { x: number; y: number }
 export type RigLineDragProps = {
@@ -50,7 +50,7 @@ export function attachRigLineDrag(surface: HTMLElement, projection: RigProjectio
     const rect = surface.getBoundingClientRect()
     const pointer = { x: event.clientX - rect.left, y: event.clientY - rect.top }
     const path = rigOutline(props.rig).map(projection.project)
-    return !path.some((p) => !p) && path.some((p, i) => segmentDistance(pointer, p!, path[(i + 1) % path.length]!) <= Math.max(6, props.strokeWidth / 2))
+    return !path.some((p) => !p) && path.some((p, i) => segmentDistance(pointer, p!, path[(i + 1) % path.length]!) <= Math.max(rigOutlineHitRadius, props.strokeWidth / 2))
   }
   const down = (event: PointerEvent) => {
     if (!inside(event)) return

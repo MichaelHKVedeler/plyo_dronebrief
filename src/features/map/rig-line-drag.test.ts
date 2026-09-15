@@ -73,6 +73,17 @@ it('selects on a line click without saving, and suppresses the subsequent map cl
   expect(click).not.toHaveBeenCalled()
 })
 
+it('thickens the outline when the pointer is a little beside the line', () => {
+  const { surface, target, edge, props } = setup()
+  props.onHoverChange = vi.fn()
+  fireEvent.pointerMove(target, { buttons: 0, clientX: edge.x + 8, clientY: edge.y })
+  expect(surface).toHaveAttribute('data-rig-move-cursor', 'grab')
+  expect(props.onHoverChange).toHaveBeenLastCalledWith(true)
+  fireEvent.pointerMove(target, { buttons: 0, clientX: 200, clientY: 200 })
+  expect(surface).not.toHaveAttribute('data-rig-move-cursor')
+  expect(props.onHoverChange).toHaveBeenLastCalledWith(false)
+})
+
 it('signals movement only over the outline and clears feedback on exit and cancellation', () => {
   const { surface, target, edge, props, down } = setup()
   props.onHoverChange = vi.fn()

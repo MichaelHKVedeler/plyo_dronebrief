@@ -3,7 +3,7 @@ import type { ImageLayerState } from './image-interaction'
 import type { LocalImages } from '@/features/briefs/state/use-local-images'
 import { useCameraFocus } from './use-camera-focus'
 import { numberedCameras, nextCameraNumber } from '@/features/briefs/model/camera-numbers'
-import { lazy, Suspense, useId, useImperativeHandle, useRef, useState, type RefObject } from 'react'
+import { lazy, Suspense, useId, useImperativeHandle, useLayoutEffect, useRef, useState, type RefObject } from 'react'
 import { initialRigRadius } from './initial-rig-radius'
 import { ButtonGroup } from '@/components/ui/button-group'
 import { useDarkMode } from '@/lib/use-dark-mode'
@@ -13,7 +13,7 @@ import { GoogleMapView } from './google-map-view'
 import { MapDimmerControl } from './map-dimmer-control'
 import { MapObjectSizeControl } from './map-object-size-control'
 import { BasemapDimmer } from './basemap-dimmer'
-import type { MapView } from './map-view'
+import { overlayZoomAfterGoogleRestore, type MapView } from './map-view'
 import { APIProvider, Map, Polygon, useApiLoadingStatus, APILoadingStatus, useMap } from '@vis.gl/react-google-maps'
 import { MapPin, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -48,12 +48,13 @@ type Props = {
   onSelect: (id: string | null) => void
 }
 const ShadeMapPanel = lazy(() => import('./shade-map').then((module) => ({ default: module.ShadeMapPanel })))
-type GoogleProps = Props & { imageLayer: ImageLayerState; active: boolean; dimOpacity: number; objectSizePercent: number; view: RefObject<MapView>; onViewChange: (view: MapView) => void; satellite: boolean; onMapClick: (point: Position) => void; onCameraPlace: (tool: MapTool, point: Position) => void }
-function ConnectedMap({ imageLayer, selectedCameraIds, onSelectCamera, session, dispatch, tool, onToolChange, selectedId, onSelect, active, dimOpacity, objectSizePercent, view, onViewChange, satellite, onMapClick, onCameraPlace }: GoogleProps) {
+type GoogleProps = Props & { imageLayer: ImageLayerState; active: boolean; dimOpacity: number; objectSizePercent: number; zoom: number; view: RefObject<MapView>; onViewChange: (view: MapView) => void; satellite: boolean; onMapClick: (point: Position) => void; onCameraPlace: (tool: MapTool, point: Position) => void }
+function ConnectedMap({ imageLayer, selectedCameraIds, onSelectCamera, session, dispatch, tool, onToolChange, selectedId, onSelect, active, dimOpacity, objectSizePercent, zoom, view, onViewChange, satellite, onMapClick, onCameraPlace }: GoogleProps) {
   const status = useApiLoadingStatus()
   const dark = useDarkMode()
-  const [zoom, setZoom] = useState(view.current.zoom)
   const objectScale = mapObjectScale(zoom, objectSizePercent)
+  const googleRestore = useRef({ holding: false, baseline: null as number | null })
+  useLayoutEffect(() => { if (!active) googleRestore.current = { holding: true, baseline: null } }, [active])
   const [middlePanning, setMiddlePanning] = useState(false)
   const { brief, visibility, mode } = session
   const editing = mode === 'edit'
@@ -69,8 +70,18 @@ function ConnectedMap({ imageLayer, selectedCameraIds, onSelectCamera, session, 
       mapId={import.meta.env.VITE_GOOGLE_MAPS_MAP_ID || 'DEMO_MAP_ID'} disableDefaultUI
       tilt={0} heading={0} gestureHandling={middlePanning || (editing && tool.kind === 'camera') ? 'none' : 'greedy'} isFractionalZoomEnabled
       draggableCursor={middlePanning ? 'move' : editing && !interactive ? 'crosshair' : 'default'} draggingCursor="move"
-      onZoomChanged={(event) => setZoom(event.detail.zoom)}
-      onCameraChanged={(event) => { if (active) onViewChange({ center: event.detail.center, zoom: event.detail.zoom }) }}
+      onCameraChanged={(event) => {
+        if (!active) return
+        const restore = googleRestore.current
+        if (restore.holding) {
+          const next = overlayZoomAfterGoogleRestore(view.current.zoom, event.detail.zoom, restore.baseline)
+          restore.baseline = next.baseline
+          restore.holding = next.baseline !== null
+          onViewChange({ center: restore.holding ? view.current.center : event.detail.center, zoom: next.zoom })
+          return
+        }
+        onViewChange({ center: event.detail.center, zoom: event.detail.zoom })
+      }}
       onClick={(event) => {
         if (!active || middlePanning || tool.kind === 'camera') return
         const source = event.domEvent
@@ -136,6 +147,7 @@ function MapWorkspace(props: Props) {
     if (mode === 'edit') dispatch({ type: 'update', update: (b) => ({ ...b, project: projectWithShoots(b.project, next) }) })
   }
   const view = useRef<MapView>({ center: brief.coordinates, zoom: 10 })
+  const [zoom, setZoom] = useState(view.current.zoom)
   const viewport = useRef<HTMLDivElement>(null)
   useImperativeHandle(props.rigPlacementRef, () => () => ({
     position: { ...view.current.center },
@@ -147,7 +159,7 @@ function MapWorkspace(props: Props) {
     onSelect: props.onSelect, onAnchor: (id, point) => setAnchors((previous) => ({ ...previous, [id]: point })),
     onCommit: (image) => dispatch({ type: 'update', update: (b) => ({ ...b, imageOverlays: b.imageOverlays.map((item) => item.id === image.id ? image : item) }) }),
   }
-  const onViewChange = (next: MapView) => { view.current = next; props.onViewCenterChange?.(next.center) }
+  const onViewChange = (next: MapView) => { view.current = next; setZoom(next.zoom); props.onViewCenterChange?.(next.center) }
   function handleMapClick(point: Position) {
     if (!editing) return
     if (tool.kind === 'idle') { onSelect(null); return }
@@ -171,7 +183,7 @@ function MapWorkspace(props: Props) {
 
   return <CardContent ref={viewport} className="@container relative h-full min-h-0 p-0">
     <div className="absolute inset-0" style={{ visibility: shadeActive ? 'hidden' : 'visible' }} aria-hidden={shadeActive} inert={shadeActive}>
-      {apiKey ? <ConnectedMap {...props} imageLayer={imageLayer} dimOpacity={dimOpacity} objectSizePercent={objectSizePercent} active={!shadeActive} view={view} satellite={satellite} onViewChange={onViewChange} onMapClick={handleMapClick} onCameraPlace={handleCameraPlace} /> : <MapMessage title="Map setup pending" description="Google Maps will appear once connected. Your brief is still available." />}
+      {apiKey ? <ConnectedMap {...props} imageLayer={imageLayer} dimOpacity={dimOpacity} objectSizePercent={objectSizePercent} zoom={zoom} active={!shadeActive} view={view} satellite={satellite} onViewChange={onViewChange} onMapClick={handleMapClick} onCameraPlace={handleCameraPlace} /> : <MapMessage title="Map setup pending" description="Google Maps will appear once connected. Your brief is still available." />}
     </div>
     {shadeActive && <Suspense fallback={<MapMessage title="Loading ShadeMap…" description="Preparing the shadow preview." />}>
       <ShadeMapPanel imageLayer={imageLayer} dimOpacity={dimOpacity} objectSizePercent={objectSizePercent} dispatch={dispatch} selectedId={props.selectedId} selectedCameraIds={props.selectedCameraIds} onSelect={onSelect} onSelectCamera={props.onSelectCamera} session={session} initialView={shadeStart} onViewChange={onViewChange} slot={shownSlot}
@@ -182,14 +194,16 @@ function MapWorkspace(props: Props) {
       <div className="col-span-2 min-w-0 @min-[550px]:col-span-1">
         {apiKey && <MapSearch navigation={shadeActive ? shadeNavigation : googleMap} />}
       </div>
-      <div className="col-start-2 row-start-2 flex flex-col items-end gap-2 @min-[550px]:row-start-1 @min-[550px]:row-span-2">
-        <ButtonGroup aria-label="Map provider" className="pointer-events-auto shadow-sm">
-          <Button size="sm" variant={!shadeActive ? 'default' : 'outline'} aria-pressed={!shadeActive} onClick={() => setShadeStart(null)}>Google Maps</Button>
-          <Button size="sm" variant={shadeActive ? 'default' : 'outline'} aria-pressed={shadeActive} onClick={() => { if (!shadeActive) setShadeStart(view.current) }}>ShadeMap</Button>
-        </ButtonGroup>
-        {!shadeActive && <Label htmlFor={satelliteId} className="pointer-events-auto flex h-10 cursor-pointer items-center gap-2 rounded-lg border bg-card px-3 shadow-sm">
-          <Switch id={satelliteId} checked={satellite} onCheckedChange={setSatellite} /><span>Satellite</span>
-        </Label>}
+      <div className="col-start-2 row-start-2 flex flex-col items-end @min-[550px]:row-start-1 @min-[550px]:row-span-2">
+        <div className="pointer-events-auto grid w-fit grid-cols-[auto_auto] gap-y-2">
+          <ButtonGroup aria-label="Map provider" className="col-span-2 grid !grid grid-cols-subgrid overflow-hidden rounded-lg bg-card shadow-sm">
+            <Button size="sm" className="h-10 !rounded-none" variant={!shadeActive ? 'default' : 'ghost'} aria-pressed={!shadeActive} onClick={() => setShadeStart(null)}>Google Maps</Button>
+            <Button size="sm" className="h-10 w-full !rounded-none" variant={shadeActive ? 'default' : 'ghost'} aria-pressed={shadeActive} onClick={() => { if (!shadeActive) setShadeStart(view.current) }}>ShadeMap</Button>
+          </ButtonGroup>
+          <Label htmlFor={satelliteId} aria-hidden={shadeActive} inert={shadeActive} className={'col-start-2 flex h-10 w-full cursor-pointer items-center gap-2 rounded-lg border bg-card px-3 shadow-sm' + (shadeActive ? ' invisible pointer-events-none' : '')}>
+            <Switch id={satelliteId} checked={satellite} onCheckedChange={setSatellite} /><span>Satellite</span>
+          </Label>
+        </div>
       </div>
       <div className="col-start-1 row-start-2 grid justify-items-start gap-2">
         {editing && !interactive && <Button className="pointer-events-auto shadow-sm" onClick={() => onToolChange(idleTool)}><X />Cancel placement</Button>}

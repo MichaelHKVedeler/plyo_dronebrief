@@ -7,15 +7,15 @@ The runtime contract is `src/features/briefs/model/brief.ts`. This document expl
 | schemaVersion | 1 |
 | id | Stable brief ID |
 | createdAt, updatedAt | UTC ISO timestamps |
-| project | name, clientName, calendar date YYYY-MM-DD, times HH:mm[], optional shoots[{date, time}] (max 3) |
+| project | name, clientName, optional description and instructions (max 2000 each), calendar date YYYY-MM-DD, times HH:mm[], optional shoots[{date, time}] (max 3) |
 | coordinates | Project/map reference point {lat, lng}; new briefs default to Oslo (59.9139, 10.7522) |
 | circleRig | null or {id, position, radiusMeters, ovalRatio, rotationDegrees, arrowCount} |
 | angles | Discriminated camera-angle array |
-| typeSettings | Drone/360 heightsMeters arrays; DSLR angleCount and spacingDegrees plus preserved legacy heightsMeters |
+| typeSettings | Drone/360 heightsMeters arrays (new briefs: drone 40, 60; 360 2, 5, 8); DSLR angleCount and spacingDegrees plus preserved legacy heightsMeters |
 | polygons | Newbuild polygons with id, label, and vertices[] |
 | imageOverlays | Legacy embedded source or local file reference, plus transform metadata |
 
-Position coordinates use WGS84. Height is a requested photography height in meters, not a compliance limit or terrain-adjusted flight altitude. Schedule dates and times are wall-clock values at the shoot location; there is no timezone conversion in v1. `shoots` is an additive schema v1 array of up to three independent `{date, time}` pairs used by the stacked map sliders. Older snapshots omit it; the UI then uses `date` plus the first three `times`. Saving from the sliders writes `shoots` and keeps `date`/`times` in sync so older readers still see the first date and the slot times. Extra times beyond three from older snapshots are dropped only after a slot edit. DB1/DB2 transport versions are unchanged.
+Position coordinates use WGS84. Height is a requested photography height in meters, not a compliance limit or terrain-adjusted flight altitude. Schedule dates and times are wall-clock values at the shoot location; there is no timezone conversion in v1. `description` and `instructions` are additive schema v1 project notes fields (max 2000 characters each); older snapshots omit them and parse as empty strings. The Contents tab shows them as Property information and Instructions under Description. `shoots` is an additive schema v1 array of up to three `{date, time}` pairs used by the stacked map time sliders. The editor exposes one shared date at the top of the slider box and writes that date onto every slot. Older snapshots omit `shoots`; the UI then uses `date` plus the first three `times`. Saving from the sliders writes `shoots` and keeps `date`/`times` in sync so older readers still see the first date and the slot times. Extra times beyond three from older snapshots are dropped only after a slot edit. DB1/DB2 transport versions are unchanged.
 
 ## Circle and oval
 

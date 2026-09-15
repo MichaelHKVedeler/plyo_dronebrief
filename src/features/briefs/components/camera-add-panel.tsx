@@ -1,8 +1,8 @@
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { cameraTypes, cameraLabels, maxDslrAngles, maxDslrSpacing, minDslrSpacing, type CameraAngle, type DroneBrief } from '../model/brief'
+import { cameraTypes, cameraLabels, floorHeightMeters, maxDslrAngles, maxDslrSpacing, minDslrSpacing, next360FloorHeight, type CameraAngle, type DroneBrief } from '../model/brief'
 import { cameraAppearance } from './camera-appearance'
+import { HeightsField } from './heights-field'
 import { NumberField } from './number-field'
 
 export function CameraAddPanel({ brief, onAdd, onUpdate }: { brief: DroneBrief; onAdd: (type: CameraAngle['type']) => void; onUpdate: (update: (brief: DroneBrief) => DroneBrief) => void }) {
@@ -23,15 +23,18 @@ export function CameraAddPanel({ brief, onAdd, onUpdate }: { brief: DroneBrief; 
           onChange={(spacingDegrees) => onUpdate((b) => ({ ...b, typeSettings: { ...b.typeSettings, dslr: { ...b.typeSettings.dslr, spacingDegrees } } }))} />
       </div> : <>
       <Label htmlFor={'heights-' + type}>{cameraLabels[type]} heights (m)</Label>
-      <Input id={'heights-' + type} defaultValue={brief.typeSettings[type].heightsMeters.join(', ')} onBlur={(event) => {
-        const text = event.target.value.trim()
-        const tokens = text.split(',').map((item) => item.trim())
-        const heightsMeters = text ? tokens.map((item) => item ? Number(item) : NaN) : []
-        if (heightsMeters.length > 50 || heightsMeters.some((value) => !Number.isFinite(value) || value < 0 || value > 10000)) {
-          event.target.value = brief.typeSettings[type].heightsMeters.join(', '); return
-        }
-        onUpdate((b) => ({ ...b, typeSettings: { ...b.typeSettings, [type]: { ...b.typeSettings[type], heightsMeters } } }))
-      }} />
+      <div className="flex items-center gap-2">
+      <HeightsField id={'heights-' + type} value={brief.typeSettings[type].heightsMeters} onChange={(heightsMeters) =>
+        onUpdate((b) => ({ ...b, typeSettings: { ...b.typeSettings, [type]: { ...b.typeSettings[type], heightsMeters } } }))} />
+      {type === '360' && <Button type="button" size="sm" variant="outline" className="shrink-0"
+        disabled={brief.typeSettings['360'].heightsMeters.length >= 50 || next360FloorHeight(brief.typeSettings['360'].heightsMeters) > 10000}
+        onClick={() => onUpdate((b) => {
+          const heightsMeters = b.typeSettings['360'].heightsMeters
+          const next = next360FloorHeight(heightsMeters)
+          if (heightsMeters.length >= 50 || next > 10000) return b
+          return { ...b, typeSettings: { ...b.typeSettings, '360': { ...b.typeSettings['360'], heightsMeters: [...heightsMeters, next] } } }
+        })}>Add floor ({floorHeightMeters}m)</Button>}
+      </div>
       </>}
       </div>
     </div>

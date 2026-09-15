@@ -21,6 +21,7 @@ import { MapObjectScale, mapObjectScale } from './map-object-scale'
 import type { BriefAction, BriefSession } from '@/features/briefs/state/brief-session'
 import { fromShadeView, toShadeView, type MapView } from './map-view'
 import { shadeScene } from './shade-scene'
+import { removeShadeEngine } from './remove-shade-engine'
 import { shadowTime, timeMinutes } from './shadow-time'
 import { useDarkMode } from '@/lib/use-dark-mode'
 import 'maplibre-gl/dist/maplibre-gl.css'
@@ -136,7 +137,18 @@ export function ShadeMapPanel({ imageLayer, dimOpacity, objectSizePercent, dispa
     })
     const resize = new ResizeObserver(() => instance.resize())
     resize.observe(host.current!)
-    return () => { live = false; detachViewSync(); for (const finish of pendingLoads) finish(); latest.current.onNavigation(null); resize.disconnect(); window.removeEventListener('unhandledrejection', licensingError); shadeSetup.current = null; instance.remove() }
+    return () => {
+      live = false
+      detachViewSync()
+      for (const finish of pendingLoads) finish()
+      latest.current.onNavigation(null)
+      resize.disconnect()
+      window.removeEventListener('unhandledrejection', licensingError)
+      shadeSetup.current = null
+      removeShadeEngine(shade.current)
+      shade.current = null
+      try { instance.remove() } catch { /* MapLibre remove is unsafe if the style never finished loading. */ }
+    }
   }, [key])
   useEffect(() => {
     // Interactive camera and rig geometry is rendered by the shared object controls.
@@ -184,7 +196,7 @@ export function ShadeMapPanel({ imageLayer, dimOpacity, objectSizePercent, dispa
       const frame = requestAnimationFrame(() => setError('Shadows could not start. Check the ShadeMap key and reload.'))
       return () => cancelAnimationFrame(frame)
     }
-    return () => { shade.current?.remove(); shade.current = null }
+    return () => { removeShadeEngine(shade.current); shade.current = null }
   }, [map, ready, key])
   useEffect(() => { shade.current?.setDate(new Date(timestamps)) }, [timestamps, ready])
   const editable = session.mode === 'edit'

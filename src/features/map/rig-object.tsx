@@ -17,7 +17,7 @@ export function RigObject({ rig, pixelsToMeters, dark = false, editable, interac
   const hover = useHoverHandles(!interactive, 0)
   const controlHover = useHoverHandles(!interactive, 0)
   const rigHovered = hover.hovered || controlHover.hovered
-  const strokeWeight = rigHovered ? 4 : 3
+  const strokeWeight = rigHovered ? 6 : 5
   const [draft, setDraft] = useState<{ source: CircleRig; value: CircleRig } | null>(null)
   const visible = draft?.source === rig ? draft.value : rig
   // All rig decorations keep a fixed proportion of its projected major radius.
@@ -35,7 +35,7 @@ export function RigObject({ rig, pixelsToMeters, dark = false, editable, interac
   function start() { if (canEdit) onSelect() }
   return <MapObjectScale value={scale}>
     <Polygon paths={path} draggable={false} clickable={false}
-      strokeColor={color} strokeWeight={canEdit && (rigHovered || draft !== null) ? Math.max(4, 6 * scale) : strokeWeight * scale}
+      strokeColor={color} strokeWeight={canEdit && (rigHovered || draft !== null) ? Math.max(6, 8 * scale) : strokeWeight * scale}
       fillOpacity={0} />
     {rigArrows(visible).map((arrow) => <AdvancedMarker key={arrow.number} position={arrow.position}
       anchorLeft="-50%" anchorTop="-50%" title={'Rig arrow ' + arrow.number} zIndex={10}

@@ -3,6 +3,7 @@ import type { PolygonProps } from '@vis.gl/react-google-maps'
 import { ShadeProjection } from './shade-projection'
 import type { ObjectMarkerProps } from './object-renderer'
 import type { Position } from '@/features/briefs/model/brief'
+import { rigOutlineHitRadius } from './geometry'
 
 const literal = (point: google.maps.LatLng | google.maps.LatLngLiteral): Position => 'toJSON' in point ? point.toJSON() : point
 
@@ -70,7 +71,7 @@ export const ShadePolygon = forwardRef<google.maps.Polygon, PolygonProps>(functi
       onMouseEnter={(e) => props.onMouseOver?.({ domEvent: e.nativeEvent } as google.maps.MapMouseEvent)}
       onMouseLeave={(e) => props.onMouseOut?.({ domEvent: e.nativeEvent } as google.maps.MapMouseEvent)}
       onClick={(e) => { e.stopPropagation(); props.onClick?.({ domEvent: e.nativeEvent } as google.maps.MapMouseEvent) }} />
-    {props.clickable && <polygon data-shade-object data-rig-outline points={points} fill="none" stroke="transparent" strokeWidth={Math.max(12, props.strokeWeight ?? 0)}
+    {props.clickable && <polygon data-shade-object data-rig-outline points={points} fill="none" stroke="transparent" strokeWidth={Math.max(rigOutlineHitRadius * 2, props.strokeWeight ?? 0)}
       style={{ pointerEvents: 'stroke', touchAction: 'none', cursor: 'pointer' }}
       onMouseEnter={(e) => props.onMouseOver?.({ domEvent: e.nativeEvent } as google.maps.MapMouseEvent)}
       onMouseLeave={(e) => props.onMouseOut?.({ domEvent: e.nativeEvent } as google.maps.MapMouseEvent)}

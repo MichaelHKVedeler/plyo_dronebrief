@@ -26,7 +26,8 @@ export function ProjectPanel({ onCenterCamera, onAddRig, selectedCameraIds, onSe
     setLastSelected(selectedId)
     if (selectedSection) setOpen((previous) => previous.includes(selectedSection) ? previous : [...previous, selectedSection])
   }
-  const times = shootSlots(brief.project).map((slot) => `${slot.date} · ${slot.time}`).join(', ')
+  const slots = shootSlots(brief.project)
+  const times = `${slots[0]?.date ?? brief.project.date} · ${slots.map((slot) => slot.time).join(', ')}`
   if (mode === 'view') return <Accordion type="multiple" value={open} onValueChange={setOpen}>
     <SettingsSection value="project" title="Project details">
     <dl className="grid gap-4">

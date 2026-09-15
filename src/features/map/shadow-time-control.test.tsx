@@ -13,45 +13,47 @@ function Control({ initial = [{ date: '2026-09-11', time: '09:00' }] }: { initia
   return <ShadowTimeControl slots={slots} activeIndex={activeIndex} onActivate={setActiveIndex} onChange={setSlots} onCommit={setSlots} position={oslo} />
 }
 
-it('stacks up to three date and time controls', async () => {
+it('keeps one shared date on the header and stacks up to three times', async () => {
   const user = userEvent.setup()
   render(<Control />)
   expect(screen.getByRole('slider', { name: 'Shadow time' })).toHaveAttribute('aria-valuetext', expect.stringContaining('09:00'))
   expect(screen.getByLabelText('Shadow date')).toHaveValue('2026-09-11')
+  expect(screen.queryByLabelText('Shadow date 2')).not.toBeInTheDocument()
   await user.click(screen.getByRole('button', { name: 'Add time' }))
   expect(screen.getByRole('slider', { name: 'Shadow time 2' })).toHaveAttribute('aria-valuetext', expect.stringContaining('09:15'))
-  expect(screen.getByLabelText('Shadow date 2').closest('[aria-current="true"]')).toBeTruthy()
-  fireEvent.change(screen.getByLabelText('Shadow date 2'), { target: { value: '2026-09-12' } })
-  expect(screen.getByLabelText('Shadow date 2')).toHaveValue('2026-09-12')
+  expect(screen.getByLabelText('Shadow date')).toHaveValue('2026-09-11')
+  fireEvent.change(screen.getByLabelText('Shadow date'), { target: { value: '2026-09-12' } })
+  expect(screen.getByLabelText('Shadow date')).toHaveValue('2026-09-12')
   const first = screen.getByRole('slider', { name: 'Shadow time 1' })
   first.focus()
   await user.keyboard('{ArrowRight}')
   expect(first).toHaveAttribute('aria-valuetext', expect.stringContaining('09:15'))
-  expect(screen.getByLabelText('Shadow date 1').closest('[aria-current="true"]')).toBeTruthy()
   await user.click(screen.getByRole('button', { name: 'Add time' }))
   expect(screen.getByRole('slider', { name: 'Shadow time 3' })).toBeInTheDocument()
   expect(screen.queryByRole('button', { name: 'Add time' })).not.toBeInTheDocument()
+  expect(screen.getByLabelText('Shadow date')).toHaveValue('2026-09-12')
   await user.click(screen.getByRole('button', { name: 'Remove Shadow time 2' }))
   expect(screen.queryByRole('slider', { name: 'Shadow time 3' })).not.toBeInTheDocument()
   expect(screen.getByRole('button', { name: 'Add time' })).toBeInTheDocument()
 })
 
-it('collapses to dates and times', async () => {
+it('keeps the shared date beside the collapse control and shows times when collapsed', async () => {
   const user = userEvent.setup()
-  render(<Control initial={[{ date: '2026-09-11', time: '09:00' }, { date: '2026-09-12', time: '15:15' }]} />)
+  render(<Control initial={[{ date: '2026-09-11', time: '09:00' }, { date: '2026-09-11', time: '15:15' }]} />)
   await user.click(screen.getByRole('button', { name: 'Collapse times' }))
   expect(screen.queryByRole('slider')).not.toBeInTheDocument()
   expect(screen.queryByRole('button', { name: 'Add time' })).not.toBeInTheDocument()
-  expect(screen.getByRole('button', { name: 'Shadow time 1' })).toHaveTextContent('2026-09-11 · 09:00')
-  expect(screen.getByRole('button', { name: 'Shadow time 2' })).toHaveTextContent('2026-09-12 · 15:15')
+  expect(screen.getByLabelText('Shadow date')).toHaveValue('2026-09-11')
+  expect(screen.getByRole('button', { name: 'Shadow time 1' })).toHaveTextContent('09:00')
+  expect(screen.getByRole('button', { name: 'Shadow time 2' })).toHaveTextContent('15:15')
   await user.click(screen.getByRole('button', { name: 'Shadow time 2' }))
   expect(screen.getByRole('button', { name: 'Shadow time 2' })).toHaveAttribute('aria-current', 'true')
   await user.click(screen.getByRole('button', { name: 'Expand times' }))
   expect(screen.getByRole('slider', { name: 'Shadow time 2' })).toBeInTheDocument()
-  expect(screen.getByLabelText('Shadow date 2').closest('[aria-current="true"]')).toBeTruthy()
+  expect(screen.getByLabelText('Shadow date')).toHaveValue('2026-09-11')
 })
 
-it('activates from date text or slider track without typing or jumping the time', async () => {
+it('activates from a slider track without typing or jumping the time', async () => {
   const user = userEvent.setup()
   HTMLElement.prototype.setPointerCapture = function setPointerCapture() {}
   HTMLElement.prototype.releasePointerCapture = function releasePointerCapture() {}
@@ -60,22 +62,18 @@ it('activates from date text or slider track without typing or jumping the time'
     x: 0, y: 0, top: 0, left: 0, bottom: 10, right: 240, width: 240, height: 10, toJSON() { return this },
   } as DOMRect)
   try {
-    render(<Control initial={[{ date: '2026-09-11', time: '09:00' }, { date: '2026-09-12', time: '15:15' }]} />)
-    const date = screen.getByLabelText('Shadow date 1')
+    render(<Control initial={[{ date: '2026-09-11', time: '09:00' }, { date: '2026-09-11', time: '15:15' }]} />)
+    const date = screen.getByLabelText('Shadow date')
     await user.type(date, '20250101')
     expect(date).toHaveValue('2026-09-11')
-    await user.click(screen.getByRole('button', { name: 'Shadow date 2 text' }))
-    expect(screen.getByLabelText('Shadow date 2').closest('[aria-current="true"]')).toBeTruthy()
-    const track = document.querySelector('[data-slot="slider-track"]')
-    expect(track).toBeTruthy()
-    fireEvent.pointerDown(track!)
+    const tracks = document.querySelectorAll('[data-slot="slider-track"]')
+    expect(tracks).toHaveLength(2)
+    fireEvent.pointerDown(tracks[1])
+    fireEvent.pointerDown(tracks[0])
     expect(screen.getByRole('slider', { name: 'Shadow time 1' })).toHaveAttribute('aria-valuetext', expect.stringContaining('09:00'))
-    expect(screen.getByLabelText('Shadow date 1').closest('[aria-current="true"]')).toBeTruthy()
-    const secondTrack = document.querySelectorAll('[data-slot="slider-track"]')[1]
-    fireEvent.pointerDown(secondTrack)
+    fireEvent.pointerDown(tracks[1])
     expect(screen.getByRole('slider', { name: 'Shadow time 2' })).toHaveAttribute('aria-valuetext', expect.stringContaining('15:15'))
-    expect(screen.getByLabelText('Shadow date 2').closest('[aria-current="true"]')).toBeTruthy()
-    fireEvent.pointerDown(secondTrack, { clientX: 200, clientY: 5 })
+    fireEvent.pointerDown(tracks[1], { clientX: 200, clientY: 5 })
     expect(screen.getByRole('slider', { name: 'Shadow time 2' })).not.toHaveAttribute('aria-valuetext', expect.stringContaining('15:15'))
   } finally {
     vi.restoreAllMocks()

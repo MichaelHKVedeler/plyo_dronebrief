@@ -7,6 +7,6 @@ export function SettingsSection({ value, title, count, children }: { value: stri
     <AccordionTrigger aria-label={title} className="items-center py-4 hover:no-underline">
       <span className="flex flex-1 items-center justify-between gap-2">{title}{count !== undefined && <Badge variant="secondary" aria-hidden="true">{count}</Badge>}</span>
     </AccordionTrigger>
-    <AccordionContent><div className="grid gap-4 pt-1">{children}</div></AccordionContent>
+    <AccordionContent><div className="grid gap-4 px-1 pt-1">{children}</div></AccordionContent>
   </AccordionItem>
 }
