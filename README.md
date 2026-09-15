@@ -30,6 +30,7 @@ npm run preview
 - Compressed snapshot keys and downloadable QR codes, with legacy key support, schema validation and size limits.
 - Layer visibility switches, kept separate from saved brief content.
 - Local JPG/PNG image overlays in Contents → Floor plan, with edge dragging, an adjustable anchor, combined scale/rotation, and a visibility slider in both maps.
+- Contents → Calculate images shows the locked capture rules with camera icons and live counts: circle-rig arrows × drone heights, one drone image per point and height, ten 360 images per point and height, and one DSLR image per arrow. Each count is multiplied by the number of shoot times. The total is also listed in Project details under shoot times.
 - Optional Google Maps adapter: circle/oval outlines, camera markers and polygons.
 - Map placement for 360, DSLR, and drone images, with distinct icons and camera directions.
 - Circle/oval rigs show numbered arrows pointing toward the center in both maps and the viewer. **Number of arrows** updates live from 1–50, defaults to 10, and is saved/exported with the rig.
@@ -38,7 +39,7 @@ npm run preview
 - An adjustable dark grey overlay (15% by default) dims both basemaps beneath the rig and camera objects. It does not intercept gestures or dim app controls and attribution, and makes no extra map requests. The bottom Map dimming slider adjusts opacity from 0�100%, shared across providers for the current session without saving to the brief.
 - Editor/viewer fit the browser window. The details panel has its own shadcn scrollbar; on narrow screens it sits below the map.
 - Briefs automatically frame their cameras, complete rig outline, and polygons when opened. **Frame scene** repeats this at any time; edits, search, and visibility toggles do not trigger automatic reframing.
-- Shadcn accordion sections group project details, rig settings above camera creation, indented per-type settings, and added camera points. Sections start expanded. Project name and client name are editable in Project details; shoot times from the map sliders are listed there. Contents holds Description (Property information and Instructions) and Floor plan. Selecting a map object opens its settings; opening sections does not save the brief.
+- Shadcn accordion sections group project details, rig settings above camera creation, indented per-type settings, and added camera points. Sections start expanded. Project name and client name are editable in Project details; the shoot date sits beside Shoot times, with the times and total image count below. Contents holds Description (Property information and Instructions), Floor plan, and Calculate images. Selecting a map object opens its settings; opening sections does not save the brief.
 - Street/location suggestions while typing (after three characters and a 350 ms pause), with Enter/search-button geocoding as a fallback. Search moves the view only and works in the viewer too.
 - One shared map toolbar keeps search and navigation available in both providers. The Google Maps / ShadeMap control sits above Satellite, which is shown only in Google Maps and lines up with the ShadeMap half.
 - Label-free Google cloud style provided in `docs/google-map-no-labels.json`; publish and associate it with your map ID as described below. Camera labels and attribution remain visible.

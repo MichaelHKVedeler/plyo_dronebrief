@@ -88,6 +88,7 @@ it('loads a viewer and toggles layers without writing or replacing the local dra
   expect(screen.getByText('No property information.')).toBeVisible()
   expect(screen.getByText('No instructions.')).toBeVisible()
   expect(screen.getByRole('button', { name: 'Floor plan' })).toBeVisible()
+  expect(screen.getByRole('button', { name: 'Calculate images' })).toBeVisible()
   expect(screen.queryByText(/50 m radius/)).not.toBeInTheDocument()
   const overlaySize = screen.getByRole('slider', { name: 'Overlay size' })
   overlaySize.focus()
@@ -296,4 +297,37 @@ it('saves valid rig arrow counts live and restores invalid or empty input on blu
     fireEvent.blur(count)
     expect(count).toHaveValue(16)
   }
+})
+
+it('counts planned images from the locked capture rules and places the shoot date beside the times title', async () => {
+  const brief = createBrief({ name: 'Images', clientName: 'Client', date: '2026-09-12', times: ['12:00'] })
+  brief.circleRig = { id: 'rig', position: brief.coordinates, arrowCount: 10, radiusMeters: 50, ovalRatio: 1, rotationDegrees: 0 }
+  brief.angles = [
+    { id: 'd1', label: 'D1', type: 'drone-image', position: brief.coordinates, directionDegrees: 0 },
+    { id: 'd2', label: 'D2', type: 'drone-image', position: brief.coordinates, directionDegrees: 90 },
+    { id: 'p1', label: 'P1', type: '360', position: brief.coordinates },
+    { id: 's1', label: 'S1', type: 'dslr', position: brief.coordinates, directionDegrees: 45 },
+    { id: 's2', label: 'S2', type: 'dslr', position: brief.coordinates, directionDegrees: 180 },
+  ]
+  brief.typeSettings = { ...brief.typeSettings, dslr: { ...brief.typeSettings.dslr, angleCount: 3 } }
+  briefRepository.save(brief)
+  const user = userEvent.setup()
+  render(<App />)
+  await user.click(screen.getByRole('button', { name: 'Resume editing' }))
+  expect(screen.queryByText(/2026-09-12 ·/)).not.toBeInTheDocument()
+  expect(screen.getByText('Shoot times').closest('div')?.nextElementSibling).toHaveTextContent('12:00')
+  expect(screen.getByText('Shoot times').parentElement).toHaveTextContent('2026-09-12')
+  expect(screen.getByLabelText('Total images')).toHaveTextContent('60')
+  await user.click(screen.getByRole('tab', { name: 'Contents' }))
+  const count = within(screen.getByRole('region', { name: 'Image count' }))
+  expect(screen.getByRole('button', { name: 'Calculate images' })).toBeVisible()
+  expect(count.getByText('1 per arrow, height, and time')).toBeVisible()
+  expect(count.getByText('1 per point, height, and time')).toBeVisible()
+  expect(count.getByText('10 per point, height, and time')).toBeVisible()
+  expect(count.getByText('1 per arrow and time')).toBeVisible()
+  expect(count.getByLabelText('Circle rig count')).toHaveTextContent('20')
+  expect(count.getByLabelText('Drone image count')).toHaveTextContent('4')
+  expect(count.getByLabelText('360 count')).toHaveTextContent('30')
+  expect(count.getByLabelText('DSLR count')).toHaveTextContent('6')
+  expect(count.getByLabelText('Image count total')).toHaveTextContent('60')
 })
