@@ -1,14 +1,14 @@
 import type { ReactNode } from 'react'
 import { afterEach, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { CameraMarker } from './camera-marker'
 import { destination, distanceMeters, metersPerPixel } from './geometry'
 import { MapObjectScale, mapObjectScale } from './map-object-scale'
 import type { Position } from '@/features/briefs/model/brief'
 import type { ObjectMarkerProps } from './object-renderer'
-const sdk = vi.hoisted(() => ({ dragStart: () => {}, markers: new Map<string, ObjectMarkerProps>() }))
+const sdk = vi.hoisted(() => ({ dragStart: (_event?: Partial<google.maps.MapMouseEvent>) => {}, markers: new Map<string, ObjectMarkerProps>() }))
 vi.mock('@vis.gl/react-google-maps', () => ({ Polygon: () => null, AdvancedMarker: (props: ObjectMarkerProps & { children: ReactNode }) => {
-  sdk.dragStart = () => props.onDragStart?.({} as google.maps.MapMouseEvent)
+  if (props.draggable) sdk.dragStart = (event?: Partial<google.maps.MapMouseEvent>) => props.onDragStart?.(event as google.maps.MapMouseEvent)
   if (props.title) sdk.markers.set(props.title, props)
   return <div>{props.children}</div>
 } }))
@@ -63,6 +63,24 @@ it('updates every DSLR fan and rotates it by dragging any arrow, preserving spac
   expect(commit.mock.lastCall?.[0].position).toEqual(angle.position)
   fireEvent.keyDown(screen.getByRole('button', { name: 'Aim DSLR 1 angle 1' }), { key: 'ArrowRight' })
   expect(commit.mock.lastCall?.[0].directionDegrees).toBe(5)
+})
+
+it('alt-drags a copy and leaves the original unmoved', () => {
+  const commit = vi.fn()
+  const duplicate = vi.fn()
+  const select = vi.fn()
+  const angle = { id: 'a', label: 'A', type: '360' as const, position: { lat: 60, lng: 10 } }
+  const point = { lat: 61, lng: 11 }
+  render(<CameraMarker angle={angle} editable selected={false} pixelsToMeters={1} duplicateNumber={2}
+    onSelect={select} onCommit={commit} onDuplicate={duplicate} />)
+  fireEvent.pointerDown(screen.getByRole('button', { name: 'Move 360 1' }), { button: 0, altKey: true })
+  act(() => { sdk.dragStart({ domEvent: { altKey: true } as MouseEvent }) })
+  const event = { latLng: { toJSON: () => point } } as google.maps.MapMouseEvent
+  const marker = sdk.markers.get('360 2')!
+  act(() => { marker.onDrag!(event); marker.onDragEnd!(event) })
+  expect(duplicate).toHaveBeenCalledExactlyOnceWith(point)
+  expect(commit).not.toHaveBeenCalled()
+  expect(select).not.toHaveBeenCalled()
 })
 
 it('shows a camera number while keeping all read-only arrows visible', () => {

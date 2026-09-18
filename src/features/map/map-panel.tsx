@@ -2,7 +2,7 @@ import { ImageLayer } from './image-layer'
 import type { ImageLayerState } from './image-interaction'
 import type { LocalImages } from '@/features/briefs/state/use-local-images'
 import { useCameraFocus } from './use-camera-focus'
-import { numberedCameras, nextCameraNumber } from '@/features/briefs/model/camera-numbers'
+import { duplicateCamera, numberedCameras, nextCameraLabelNumber, nextCameraNumber } from '@/features/briefs/model/camera-numbers'
 import { lazy, Suspense, useId, useImperativeHandle, useLayoutEffect, useRef, useState, type RefObject } from 'react'
 import { initialRigRadius } from './initial-rig-radius'
 import { ButtonGroup } from '@/components/ui/button-group'
@@ -21,7 +21,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import type { BriefAction, BriefSession } from '@/features/briefs/state/brief-session'
-import { cameraLabels, projectWithShoots, shootSlots, type CameraAngle, type Position, type ShootSlot } from '@/features/briefs/model/brief'
+import { projectWithShoots, shootSlots, type CameraAngle, type Position, type ShootSlot } from '@/features/briefs/model/brief'
 import { CameraMarker } from './camera-marker'
 import { RigObject } from './rig-object'
 import { MapControls } from './map-controls'
@@ -48,8 +48,8 @@ type Props = {
   onSelect: (id: string | null) => void
 }
 const ShadeMapPanel = lazy(() => import('./shade-map').then((module) => ({ default: module.ShadeMapPanel })))
-type GoogleProps = Props & { imageLayer: ImageLayerState; active: boolean; dimOpacity: number; objectSizePercent: number; zoom: number; view: RefObject<MapView>; onViewChange: (view: MapView) => void; satellite: boolean; onMapClick: (point: Position) => void; onCameraPlace: (tool: MapTool, point: Position) => void }
-function ConnectedMap({ imageLayer, selectedCameraIds, onSelectCamera, session, dispatch, tool, onToolChange, selectedId, onSelect, active, dimOpacity, objectSizePercent, zoom, view, onViewChange, satellite, onMapClick, onCameraPlace }: GoogleProps) {
+type GoogleProps = Props & { imageLayer: ImageLayerState; active: boolean; dimOpacity: number; objectSizePercent: number; zoom: number; view: RefObject<MapView>; onViewChange: (view: MapView) => void; satellite: boolean; onMapClick: (point: Position) => void; onCameraPlace: (tool: MapTool, point: Position) => void; onCameraDuplicate: (source: CameraAngle, position: Position) => void }
+function ConnectedMap({ imageLayer, selectedCameraIds, onSelectCamera, session, dispatch, tool, onToolChange, selectedId, onSelect, active, dimOpacity, objectSizePercent, zoom, view, onViewChange, satellite, onMapClick, onCameraPlace, onCameraDuplicate }: GoogleProps) {
   const status = useApiLoadingStatus()
   const dark = useDarkMode()
   const objectScale = mapObjectScale(zoom, objectSizePercent)
@@ -95,9 +95,10 @@ function ConnectedMap({ imageLayer, selectedCameraIds, onSelectCamera, session, 
         onSelect={() => onSelect(brief.circleRig!.id)}
         onCommit={(rig) => dispatch({ type: 'update', update: (b) => ({ ...b, circleRig: b.circleRig?.id === rig.id ? rig : b.circleRig }) })} />}
       {visibility.angles && numberedCameras(brief.angles).map(({ angle, number }) => <CameraMarker key={angle.id} angle={angle} editable={editing}
-        number={number} dslrSettings={brief.typeSettings.dslr}
+        number={number} duplicateNumber={nextCameraNumber(brief.angles, angle.type)} dslrSettings={brief.typeSettings.dslr}
         interactive={objectsInteractive} selected={selectedCameraIds.includes(angle.id)} pixelsToMeters={metersPerPixel(angle.position.lat, zoom)}
         onSelect={(additive = false) => onSelectCamera(angle.id, additive)}
+        onDuplicate={brief.angles.length < 1000 ? (position) => onCameraDuplicate(angle, position) : undefined}
         onCommit={(updated) => dispatch({ type: 'update', update: (b) => ({ ...b, angles: b.angles.map((item) => item.id === updated.id ? updated : item) }) })} />)}
       {pendingAngle && <CameraMarker angle={pendingAngle} editable={false} interactive={false} selected={false}
         number={nextCameraNumber(brief.angles, pendingAngle.type)} dslrSettings={brief.typeSettings.dslr}
@@ -168,10 +169,7 @@ function MapWorkspace(props: Props) {
   function handleCameraPlace(tool: MapTool, point: Position) {
     if (editing && tool.kind === 'camera') {
       if (brief.angles.length >= 1000) { onToolChange(idleTool); return }
-      let labelNumber = 1
-      const labels = new Set(brief.angles.map((angle) => angle.label))
-      while (labels.has(cameraLabels[tool.cameraType] + ' ' + labelNumber)) labelNumber++
-      const result = placeCamera(tool, point, crypto.randomUUID(), labelNumber)
+      const result = placeCamera(tool, point, crypto.randomUUID(), nextCameraLabelNumber(brief.angles, tool.cameraType))
       if (result.angle) {
         const angle = result.angle
         dispatch({ type: 'update', update: (b) => ({ ...b, angles: [...b.angles, angle] }) })
@@ -180,15 +178,21 @@ function MapWorkspace(props: Props) {
       onToolChange(result.tool)
     }
   }
+  function handleCameraDuplicate(source: CameraAngle, position: Position) {
+    if (!editing || brief.angles.length >= 1000) return
+    const angle = duplicateCamera(source, position, crypto.randomUUID(), brief.angles)
+    dispatch({ type: 'update', update: (b) => b.angles.length >= 1000 ? b : { ...b, angles: [...b.angles, angle] } })
+    onSelect(angle.id)
+  }
 
   return <CardContent ref={viewport} className="@container relative h-full min-h-0 p-0">
     <div className="absolute inset-0" style={{ visibility: shadeActive ? 'hidden' : 'visible' }} aria-hidden={shadeActive} inert={shadeActive}>
-      {apiKey ? <ConnectedMap {...props} imageLayer={imageLayer} dimOpacity={dimOpacity} objectSizePercent={objectSizePercent} zoom={zoom} active={!shadeActive} view={view} satellite={satellite} onViewChange={onViewChange} onMapClick={handleMapClick} onCameraPlace={handleCameraPlace} /> : <MapMessage title="Map setup pending" description="Google Maps will appear once connected. Your brief is still available." />}
+      {apiKey ? <ConnectedMap {...props} imageLayer={imageLayer} dimOpacity={dimOpacity} objectSizePercent={objectSizePercent} zoom={zoom} active={!shadeActive} view={view} satellite={satellite} onViewChange={onViewChange} onMapClick={handleMapClick} onCameraPlace={handleCameraPlace} onCameraDuplicate={handleCameraDuplicate} /> : <MapMessage title="Map setup pending" description="Google Maps will appear once connected. Your brief is still available." />}
     </div>
     {shadeActive && <Suspense fallback={<MapMessage title="Loading ShadeMap…" description="Preparing the shadow preview." />}>
       <ShadeMapPanel imageLayer={imageLayer} dimOpacity={dimOpacity} objectSizePercent={objectSizePercent} dispatch={dispatch} selectedId={props.selectedId} selectedCameraIds={props.selectedCameraIds} onSelect={onSelect} onSelectCamera={props.onSelectCamera} session={session} initialView={shadeStart} onViewChange={onViewChange} slot={shownSlot}
         onNavigation={setShadeNavigation} tool={tool} onMapClick={handleMapClick}
-        onToolChange={onToolChange} onCameraPlace={handleCameraPlace} />
+        onToolChange={onToolChange} onCameraPlace={handleCameraPlace} onCameraDuplicate={handleCameraDuplicate} />
     </Suspense>}
     <div className="pointer-events-none absolute inset-x-3 top-3 z-20 grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2">
       <div className="col-span-2 min-w-0 @min-[550px]:col-span-1">

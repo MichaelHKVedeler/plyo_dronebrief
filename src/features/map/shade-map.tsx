@@ -8,7 +8,7 @@ import { attachShadeViewSync } from './shade-view-sync'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Map as LibreMap, type GeoJSONSource } from 'maplibre-gl'
 import ShadeMap from 'mapbox-gl-shadow-simulator'
-import type { Position, ShootSlot } from '@/features/briefs/model/brief'
+import type { CameraAngle, Position, ShootSlot } from '@/features/briefs/model/brief'
 import type { MapNavigation } from './map-navigation'
 import { idleTool, type MapTool } from './placement'
 import { shadowBuildings } from './shadow-buildings'
@@ -26,8 +26,8 @@ import { shadowTime, timeMinutes } from './shadow-time'
 import { useDarkMode } from '@/lib/use-dark-mode'
 import 'maplibre-gl/dist/maplibre-gl.css'
 
-type Props = { imageLayer: ImageLayerState; dimOpacity: number; objectSizePercent: number; dispatch: (action: BriefAction) => void; selectedId: string | null; selectedCameraIds: string[]; onSelect: (id: string | null) => void; onSelectCamera: (id: string, additive: boolean) => void; session: BriefSession; initialView: MapView; onViewChange: (view: MapView) => void; slot: ShootSlot; onNavigation: (navigation: MapNavigation | null) => void; tool: MapTool; onMapClick: (point: Position) => void; onToolChange: (tool: MapTool) => void; onCameraPlace: (tool: MapTool, point: Position) => void }
-export function ShadeMapPanel({ imageLayer, dimOpacity, objectSizePercent, dispatch, selectedId, selectedCameraIds, onSelect, onSelectCamera, session, initialView, onViewChange, slot, onNavigation, tool, onMapClick, onToolChange, onCameraPlace }: Props) {
+type Props = { imageLayer: ImageLayerState; dimOpacity: number; objectSizePercent: number; dispatch: (action: BriefAction) => void; selectedId: string | null; selectedCameraIds: string[]; onSelect: (id: string | null) => void; onSelectCamera: (id: string, additive: boolean) => void; session: BriefSession; initialView: MapView; onViewChange: (view: MapView) => void; slot: ShootSlot; onNavigation: (navigation: MapNavigation | null) => void; tool: MapTool; onMapClick: (point: Position) => void; onToolChange: (tool: MapTool) => void; onCameraPlace: (tool: MapTool, point: Position) => void; onCameraDuplicate: (source: CameraAngle, position: Position) => void }
+export function ShadeMapPanel({ imageLayer, dimOpacity, objectSizePercent, dispatch, selectedId, selectedCameraIds, onSelect, onSelectCamera, session, initialView, onViewChange, slot, onNavigation, tool, onMapClick, onToolChange, onCameraPlace, onCameraDuplicate }: Props) {
   const dark = useDarkMode()
   const host = useRef<HTMLDivElement>(null)
   const shade = useRef<ShadeMap | null>(null)
@@ -213,9 +213,10 @@ export function ShadeMapPanel({ imageLayer, dimOpacity, objectSizePercent, dispa
           selected={selectedId === session.brief.circleRig.id} onSelect={() => onSelect(session.brief.circleRig!.id)}
           onCommit={(rig) => dispatch({ type: 'update', update: (brief) => ({ ...brief, circleRig: brief.circleRig?.id === rig.id ? rig : brief.circleRig }) })} />}
         {session.visibility.angles && numberedCameras(session.brief.angles).map(({ angle, number }) => <CameraMarker key={angle.id} angle={angle} editable={editable} interactive={interactive}
-          number={number} dslrSettings={session.brief.typeSettings.dslr}
+          number={number} duplicateNumber={nextCameraNumber(session.brief.angles, angle.type)} dslrSettings={session.brief.typeSettings.dslr}
           selected={selectedCameraIds.includes(angle.id)} pixelsToMeters={metersPerPixel(angle.position.lat, view.zoom)}
           onSelect={(additive = false) => onSelectCamera(angle.id, additive)}
+          onDuplicate={session.brief.angles.length < 1000 ? (position) => onCameraDuplicate(angle, position) : undefined}
           onCommit={(updated) => dispatch({ type: 'update', update: (brief) => ({ ...brief, angles: brief.angles.map((item) => item.id === updated.id ? updated : item) }) })} />)}
         {pendingAngle && <CameraMarker angle={pendingAngle} editable={false} interactive={false} selected={false}
           number={nextCameraNumber(session.brief.angles, pendingAngle.type)} dslrSettings={session.brief.typeSettings.dslr}

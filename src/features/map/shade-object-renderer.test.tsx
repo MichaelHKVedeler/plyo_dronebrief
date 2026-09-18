@@ -82,10 +82,11 @@ it.each(['Scale and rotate circle rig', 'Adjust rig ovalness'])('keeps the outli
   }
 })
 
-function Camera({ commit, editable = true }: { commit: (angle: CameraAngle) => void; editable?: boolean }) {
+function Camera({ commit, duplicate, editable = true }: { commit: (angle: CameraAngle) => void; duplicate?: (position: CameraAngle['position']) => void; editable?: boolean }) {
   const [angle, setAngle] = useState(original)
   const [selected, select] = useState(false)
-  return <CameraMarker angle={angle} selected={selected} editable={editable} pixelsToMeters={1} onSelect={() => select(true)} onCommit={(value) => { setAngle(value); commit(value) }} />
+  return <CameraMarker angle={angle} selected={selected} editable={editable} pixelsToMeters={1} duplicateNumber={2}
+    onSelect={() => select(true)} onCommit={(value) => { setAngle(value); commit(value) }} onDuplicate={duplicate} />
 }
 function drag(target: Element, finish = true) {
   fireEvent.pointerDown(target, { button: 0, clientX: 10, clientY: 60 })
@@ -102,6 +103,31 @@ it('selects cameras and only commits their final dragged position', () => {
   expect(commit).not.toHaveBeenCalled()
   fireEvent.pointerUp(button, { clientX: 12, clientY: 64 })
   expect(commit).toHaveBeenCalledExactlyOnceWith({ ...original, position: { lat: 64, lng: 12 } })
+})
+it('alt-drags a new camera while leaving the original in place', () => {
+  const commit = vi.fn()
+  const duplicate = vi.fn()
+  render(<Surface><Camera commit={commit} duplicate={duplicate} /></Surface>)
+  const button = screen.getByRole('button', { name: 'Move DSLR 1' })
+  fireEvent.pointerDown(button, { button: 0, clientX: 10, clientY: 60, altKey: true })
+  fireEvent.pointerMove(button, { clientX: 12, clientY: 64, altKey: true })
+  fireEvent.pointerUp(button, { clientX: 12, clientY: 64, altKey: true })
+  expect(duplicate).toHaveBeenCalledExactlyOnceWith({ lat: 64, lng: 12 })
+  expect(commit).not.toHaveBeenCalled()
+  expect(screen.getByRole('button', { name: 'Move DSLR 1' }).parentElement!.parentElement).toHaveStyle({ left: '10px', top: '60px' })
+})
+it('cancels an alt-drag without adding a camera', () => {
+  const commit = vi.fn()
+  const duplicate = vi.fn()
+  render(<Surface><Camera commit={commit} duplicate={duplicate} /></Surface>)
+  const button = screen.getByRole('button', { name: 'Move DSLR 1' })
+  fireEvent.pointerDown(button, { button: 0, clientX: 10, clientY: 60, altKey: true })
+  fireEvent.pointerMove(button, { clientX: 12, clientY: 64, altKey: true })
+  fireEvent.keyDown(window, { key: 'Escape' })
+  fireEvent.pointerUp(button, { clientX: 12, clientY: 64, altKey: true })
+  expect(duplicate).not.toHaveBeenCalled()
+  expect(commit).not.toHaveBeenCalled()
+  expect(screen.getByRole('button', { name: 'Move DSLR 1' }).parentElement!.parentElement).toHaveStyle({ left: '10px', top: '60px' })
 })
 it('cancels a drag without saving and restores the original camera position', () => {
   const commit = vi.fn()
