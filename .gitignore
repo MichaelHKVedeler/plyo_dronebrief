@@ -16,6 +16,9 @@ dist-ssr
 !.env.example
 .sites-runtime/
 coverage/
+functions/lib/
+.firebase/
+*-debug.log
 
 # Editor directories and files
 .vscode/*

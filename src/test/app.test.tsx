@@ -6,6 +6,9 @@ import { createBrief } from '@/features/briefs/model/brief'
 import { briefRepository } from '@/features/briefs/storage/brief-repository'
 import { exportBriefKey } from '@/features/briefs/storage/share-key'
 
+// Exercise local drafts even when the developer has configured a live Firebase project.
+vi.mock('@/features/cloud/auth/config', () => ({ cloudConfigured: false }))
+
 beforeEach(() => { localStorage.clear(); vi.restoreAllMocks(); vi.stubEnv('VITE_GOOGLE_MAPS_API_KEY', '') })
 afterEach(() => { cleanup(); vi.unstubAllEnvs(); vi.restoreAllMocks() })
 

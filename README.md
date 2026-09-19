@@ -1,6 +1,8 @@
 # Dronebrief
 
-A small local-first skeleton for planning drone photography briefs.
+A drone photography brief editor with local drafts and optional Firebase organization projects.
+
+Live app: [Plyo Dronebrief](https://plyo-dronebrief.web.app). The `plyo-dronebrief` Firebase project uses real Google sign-in. Local development uses the ignored `.env.local`; keep `VITE_FIREBASE_EMULATORS=false` to use real accounts. Emulator mode intentionally opens a test-user form instead of Google's account picker.
 
 ## Start
 
@@ -12,6 +14,10 @@ npm run dev
 ```
 
 Open the URL printed by Vite. No API key is needed for the create, save, export, or load workflow.
+
+With Firebase configured, Google sign-in opens **Create project** and **Load projects**. Organization members share editing access, personal collections organize the library, and revision checks prevent silent overwrites. Creators/admins can enable public read-only links that include automatically optimized floorplans without sign-in. Local drafts and DB1/DB2 snapshots keep their existing format.
+
+See [Firebase setup and operations](docs/firebase-setup.md) for emulators, EU provisioning, admin bootstrap, deployment, permissions, uploads and recovery. `npm run check` additionally requires Java 21+ for rules/backend emulator tests. Cloud deployment needs your Firebase project, billing and operator credentials; it is separate from a successful local build.
 
 ```sh
 npm run check   # lint, meaningful behavior tests, TypeScript, production build
@@ -26,7 +32,7 @@ npm run preview
 - One-step wizard for project and client names. Shoot dates and times are set on the map, not during setup.
 - Separate editor and read-only viewer modes.
 - Basic editor: rename project, add rigs at the current map center, adjust rigs on the map, set drone/360 height arrays, and set the number and spacing of DSLR arrows.
-- JSON autosave in browser localStorage after every committed editor change.
+- Committed local edits autosave to browser storage; cloud edits use transactional saves with visible saving, failure and conflict states.
 - Compressed snapshot keys and downloadable QR codes, with legacy key support, schema validation and size limits.
 - Layer visibility switches, kept separate from saved brief content.
 - Local JPG/PNG image overlays in Contents → Floor plan, with edge dragging, an adjustable anchor, combined scale/rotation, and a visibility slider in both maps.
@@ -37,7 +43,7 @@ npm run preview
 - Drag cameras and the circle rig to move them; Alt-drag a camera icon to place a copy while the original stays put. Rig handles adjust radius, rotation, and ovalness, and camera handles adjust direction.
 - Satellite toggle and mouse-wheel zoom without Ctrl in both editor and viewer. The editor opens in Satellite; the viewer opens in the normal map. These view preferences do not modify the brief JSON.
 - An adjustable dark grey overlay (15% by default) dims both basemaps beneath the rig and camera objects. It does not intercept gestures or dim app controls and attribution, and makes no extra map requests. The bottom Map dimming slider adjusts opacity from 0�100%, shared across providers for the current session without saving to the brief.
-- Editor/viewer fit the browser window. The details panel has its own shadcn scrollbar; on narrow screens it sits below the map.
+- Editor/viewer fit the browser window. The details panel has its own shadcn scrollbar; narrow screens scroll between the map and details so controls remain accessible.
 - Briefs automatically frame their cameras, complete rig outline, and polygons when opened. **Frame scene** repeats this at any time; edits, search, and visibility toggles do not trigger automatic reframing.
 - Shadcn accordion sections group project details, rig settings above camera creation, indented per-type settings, and added camera points. Sections start expanded. Project name and client name are editable in Project details; the shoot date sits beside Shoot times, with the times and total image count below. Contents holds Description (Property information and Instructions), Floor plan, and Calculate images. Selecting a map object opens its settings; opening sections does not save the brief.
 - Street/location suggestions while typing (after three characters and a 350 ms pause), with Enter/search-button geocoding as a fallback. Search moves the view only and works in the viewer too.
@@ -62,6 +68,8 @@ Drag a camera icon or grab the circle/oval outline to reposition it. **Alt-drag*
 Movement previews are temporary until the drag ends; committed changes autosave and are included in exports. Placement, selection, and hover state are not saved. Loaded briefs display the same geometry with editing and adjustment handles disabled.
 
 ### Local image overlays
+
+This section describes local-only briefs and portable snapshots. Cloud projects upload and optimize floorplans automatically and render them on other devices, including public viewers; see [Firebase floorplans](docs/firebase-setup.md#floorplans-and-public-links).
 
 Open **Contents → Floor plan → Upload image** and choose a JPG or PNG (up to 30 MB and 100 million pixels, maximum ten images). The image starts at the current map center, sized to the viewport with its aspect ratio preserved. Grab an edge to move it. Right-click anywhere on the map to set the selected image’s anchor (shown as a red cross); dragging inside the image rotates and scales it together around that anchor. With no custom anchor, the image center is used. Select an image by clicking it or its name in Floor plan. Escape, pointer cancellation, or leaving the page cancels an unfinished drag. Middle-button panning and camera placement still work over images.
 

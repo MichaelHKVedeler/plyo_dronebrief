@@ -207,7 +207,7 @@ function MapWorkspace(props: Props) {
           </Label>
         </div>
       </div>
-      <div className="col-start-1 row-start-2 grid justify-items-start gap-2">
+      <div className="col-start-1 row-start-2 grid justify-items-start gap-2 @max-[400px]:col-span-2 @max-[400px]:row-start-3">
         {editing && !interactive && <Button className="pointer-events-auto shadow-sm" onClick={() => onToolChange(idleTool)}><X />Cancel placement</Button>}
         <ViewerLayers session={session} dispatch={dispatch} />
       </div>
