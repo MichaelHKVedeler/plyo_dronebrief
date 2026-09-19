@@ -69,6 +69,13 @@
 [data-slot="button"][data-size^="icon"]:not([data-slot="button-group"] *) {
   border-radius: 9999px;
 }
+[data-image-cursor="grab"], [data-image-cursor="grab"] * { cursor: grab !important; }
+[data-image-cursor="grabbing"], [data-image-cursor="grabbing"] * { cursor: grabbing !important; }
+[data-image-cursor="crosshair"], [data-image-cursor="crosshair"] * { cursor: crosshair !important; }
+[data-rig-move-cursor="grab"], [data-rig-move-cursor="grab"] * { cursor: pointer !important; }
+[data-rig-move-cursor="grabbing"], [data-rig-move-cursor="grabbing"] * { cursor: grabbing !important; }
+[data-map-panning], [data-map-panning] * { cursor: move !important; }
+
 @layer base {
   * { @apply border-border outline-ring/50; }
   body { @apply m-0 bg-background font-sans text-base text-foreground antialiased; }

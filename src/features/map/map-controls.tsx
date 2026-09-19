@@ -6,7 +6,7 @@ import type { DroneBrief } from '@/features/briefs/model/brief'
 import { fitScene } from './scene-bounds'
 import type { MapNavigation } from './map-navigation'
 
-export function MapControls({ brief, navigation, shadeActive = false }: { brief: DroneBrief; navigation?: MapNavigation | null; shadeActive?: boolean }) {
+export function MapControls({ brief, navigation }: { brief: DroneBrief; navigation?: MapNavigation | null }) {
   const map = useMap()
   const activeMap = navigation === undefined ? map : navigation
   const framedId = useRef<string | null>(null)
@@ -23,7 +23,7 @@ export function MapControls({ brief, navigation, shadeActive = false }: { brief:
     frame()
     return () => observer.disconnect()
   }, [map, brief])
-  return <div className={`absolute right-3 z-20 flex gap-1 rounded-lg border bg-card p-1 shadow-sm ${shadeActive ? 'bottom-32 @min-[650px]:bottom-8' : 'bottom-8'}`}>
+  return <div className="pointer-events-auto ml-auto flex shrink-0 gap-1 rounded-lg border bg-card p-1 shadow-sm">
     <Button variant="ghost" size="icon" aria-label="Zoom in" disabled={!activeMap} onClick={() => activeMap?.setZoom((activeMap.getZoom() ?? 2) + 1)}><Plus /></Button>
     <Button variant="ghost" size="icon" aria-label="Zoom out" disabled={!activeMap} onClick={() => activeMap?.setZoom((activeMap.getZoom() ?? 2) - 1)}><Minus /></Button>
     <Button variant="ghost" size="icon" aria-label="Frame scene" title="Frame scene" disabled={!activeMap} onClick={() => { if (activeMap) fitScene(activeMap, brief) }}><Maximize /></Button>

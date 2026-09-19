@@ -11,12 +11,16 @@ import { RigRadii } from './rig-radii'
 import { RigRadiusFields } from './rig-radius-fields'
 import { CameraGroups } from './camera-groups'
 import { CamerasPanel } from './cameras-panel'
+import { ShootTimes } from './shoot-times'
 import type { BriefSession } from '../state/brief-session'
 
+const editSections = ['project', 'rig', 'add-cameras', 'cameras']
+const viewSections = ['project', 'rig', 'cameras', 'heights']
+
 type Props = { onCenterCamera: (angle: CameraAngle) => void; onAddRig: () => void; selectedCameraIds: string[]; onSelectCamera: (id: string, range: boolean) => void; onRemoveCameras: (ids: string[]) => void; session: BriefSession; onUpdate: (update: (brief: DroneBrief) => DroneBrief) => void; selectedId: string | null; onSelect: (id: string | null) => void; onAddCamera: (type: CameraAngle['type']) => void }
-export function ProjectPanel({ onCenterCamera, onAddRig, selectedCameraIds, onSelectCamera, onRemoveCameras, session, onUpdate, selectedId, onSelect, onAddCamera }: Props) {
+export function ProjectPanel({ onCenterCamera, onAddRig, selectedCameraIds, onSelectCamera, onRemoveCameras, session, onUpdate, selectedId, onAddCamera }: Props) {
   const { brief, mode } = session
-  const [open, setOpen] = useState<string[]>(mode === 'edit' ? ['add-cameras', 'cameras'] : ['project'])
+  const [open, setOpen] = useState<string[]>(mode === 'edit' ? editSections : viewSections)
   const [lastSelected, setLastSelected] = useState<string | null>(null)
   const selectedSection = selectedId ? (selectedId === brief.circleRig?.id ? 'rig' : 'cameras') : null
   if (lastSelected !== selectedId) {
@@ -26,10 +30,10 @@ export function ProjectPanel({ onCenterCamera, onAddRig, selectedCameraIds, onSe
   if (mode === 'view') return <Accordion type="multiple" value={open} onValueChange={setOpen}>
     <SettingsSection value="project" title="Project details">
     <dl className="grid gap-4">
+      <div><dt className="text-muted-foreground">Project name</dt><dd className="mt-1 font-medium">{brief.project.name}</dd></div>
       <div><dt className="text-muted-foreground">Client</dt><dd className="mt-1 font-medium">{brief.project.clientName}</dd></div>
-      <div><dt className="text-muted-foreground">Shoot date</dt><dd className="mt-1">{brief.project.date}</dd></div>
-      <div><dt className="text-muted-foreground">Shoot times</dt><dd className="mt-1">{brief.project.times.join(', ')}</dd></div>
     </dl>
+    <ShootTimes brief={brief} />
     </SettingsSection>
     <SettingsSection value="rig" title="Circle rig" count={brief.circleRig ? 1 : 0}>
       {brief.circleRig ? <RigRadii rig={brief.circleRig} /> : <p>No circle rig in this brief.</p>}
@@ -44,23 +48,25 @@ export function ProjectPanel({ onCenterCamera, onAddRig, selectedCameraIds, onSe
     {cameraTypes.map((type) => <div key={type}><p className="font-medium">{cameraLabels[type]}</p><p className="mt-1 text-muted-foreground">{type === 'dslr' ? `${brief.typeSettings.dslr.angleCount} angles · ${brief.typeSettings.dslr.spacingDegrees}° spacing` : (brief.typeSettings[type].heightsMeters.join(', ') || 'None') + ' m'}</p></div>)}
     </SettingsSection>
   </Accordion>
-  return <div>
-    <p className="pb-3 text-sm text-muted-foreground">{brief.project.clientName}<br />{brief.project.date} · {brief.project.times.join(', ')}</p>
-    <Accordion type="multiple" value={open} onValueChange={setOpen}>
+  return <Accordion type="multiple" value={open} onValueChange={setOpen}>
     <SettingsSection value="project" title="Project details">
-    <div className="grid gap-2"><Label htmlFor="edit-project-name">Project name</Label><Input key={brief.id} id="edit-project-name" defaultValue={brief.project.name} maxLength={200} onBlur={(e) => {
+    <div className="grid gap-2"><Label htmlFor="edit-project-name">Project name</Label><Input key={brief.id + '-name'} id="edit-project-name" defaultValue={brief.project.name} maxLength={200} onBlur={(e) => {
       const name = e.target.value.trim()
       if (name) onUpdate((b) => ({ ...b, project: { ...b.project, name } }))
       else e.target.value = brief.project.name
     }} /></div>
-    <p className="text-sm text-muted-foreground">{brief.project.clientName}<br />{brief.project.date} · {brief.project.times.join(', ')}</p>
+    <div className="grid gap-2"><Label htmlFor="edit-client-name">Client name</Label><Input key={brief.id + '-client'} id="edit-client-name" defaultValue={brief.project.clientName} maxLength={200} onBlur={(e) => {
+      const clientName = e.target.value.trim()
+      if (clientName) onUpdate((b) => ({ ...b, project: { ...b.project, clientName } }))
+      else e.target.value = brief.project.clientName
+    }} /></div>
+    <ShootTimes brief={brief} />
     </SettingsSection>
     <SettingsSection value="rig" title="Circle rig" count={brief.circleRig ? 1 : 0}>
-    {brief.circleRig ? <>
-      <Button variant="outline" onClick={() => onSelect(brief.circleRig!.id)}>Show rig handles</Button>
-      <RigRadiusFields rig={brief.circleRig} onUpdate={onUpdate} />
-      <Button variant="ghost" onClick={() => onUpdate((b) => ({ ...b, circleRig: null }))}>Remove rig</Button>
-    </> : <Button variant="outline" className="justify-start border-primary bg-primary/10 text-primary hover:bg-primary/20 hover:text-primary" onClick={onAddRig}><Circle />Add Circle Rig</Button>}
+    {brief.circleRig && <RigRadiusFields rig={brief.circleRig} onUpdate={onUpdate} />}
+    {brief.circleRig
+      ? <Button variant="ghost" onClick={() => onUpdate((b) => ({ ...b, circleRig: null }))}>Remove rig</Button>
+      : <Button variant="outline" className="justify-start border-primary bg-primary/10 text-primary hover:bg-primary/20 hover:text-primary" onClick={onAddRig}><Circle />Add Circle Rig</Button>}
     </SettingsSection>
     <SettingsSection value="add-cameras" title="Add camera points">
       <CameraAddPanel brief={brief} onAdd={onAddCamera} onUpdate={onUpdate} />
@@ -68,6 +74,5 @@ export function ProjectPanel({ onCenterCamera, onAddRig, selectedCameraIds, onSe
     <SettingsSection value="cameras" title="Added camera points" count={brief.angles.length}>
     <CamerasPanel onCenterCamera={onCenterCamera} selectedCameraIds={selectedCameraIds} onSelectCamera={onSelectCamera} onRemoveCameras={onRemoveCameras} brief={brief} selectedId={selectedId} onUpdate={onUpdate} />
     </SettingsSection>
-    </Accordion>
-  </div>
+  </Accordion>
 }

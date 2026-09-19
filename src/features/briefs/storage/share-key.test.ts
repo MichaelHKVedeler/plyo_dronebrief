@@ -27,7 +27,7 @@ describe('portable brief keys', () => {
   })
   it('round-trips Unicode and every shape type without external storage', () => {
     const complete = { ...brief,
-      circleRig: { id: 'rig', position: { lat: 59.9, lng: 10.7 }, radiusMeters: 80, ovalRatio: 0.5, rotationDegrees: 45 },
+      circleRig: { id: 'rig', position: { lat: 59.9, lng: 10.7 }, arrowCount: 10, radiusMeters: 80, ovalRatio: 0.5, rotationDegrees: 45 },
       angles: [
         { id: 'a', label: 'Drone', type: 'drone-image' as const, position: brief.coordinates, directionDegrees: 90 },
         { id: 'b', label: 'Panorama', type: '360' as const, position: brief.coordinates },
@@ -49,4 +49,17 @@ describe('portable brief keys', () => {
     }
     expect(() => importBriefKey('DB1.' + 'a'.repeat(2_700_000))).toThrow('too large')
   })
+})
+
+it('defaults legacy rig counts and round-trips explicit counts, rejecting invalid imports', () => {
+  const brief = createBrief({ name: 'Rig', clientName: 'Test', date: '2026-09-12', times: ['09:00'] })
+  const legacyRig = { id: 'rig', position: brief.coordinates, radiusMeters: 50, ovalRatio: 1, rotationDegrees: 0 }
+  const key = (rig: object) => 'DB1.' + encoded(new TextEncoder().encode(JSON.stringify({ ...brief, circleRig: rig })))
+  const restored = importBriefKey(key(legacyRig))
+  expect(restored.circleRig?.arrowCount).toBe(10)
+  restored.circleRig!.arrowCount = 23
+  expect(importBriefKey(exportBriefKey(restored))).toEqual(restored)
+  for (const arrowCount of [0, 51, 2.5, '10', null]) {
+    expect(() => importBriefKey(key({ ...legacyRig, arrowCount }))).toThrow()
+  }
 })

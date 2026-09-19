@@ -1,0 +1,83 @@
+import { useEffect, useRef, useState } from 'react'
+import type { ImageOverlay } from '../model/brief'
+import { readImageHandle, readLocalImage, rememberImageHandle, type LocalImageHandle } from '../storage/local-images'
+
+export type ImageResource = { url?: string; message?: string; handle?: LocalImageHandle }
+export function useLocalImages(overlays: ImageOverlay[]) {
+  const [resources, setResources] = useState<Record<string, ImageResource>>({})
+  const [opacityOverrides, setOpacityOverrides] = useState<Record<string, number>>({})
+  const ownedUrls = useRef(new Set<string>())
+  const resourceCache = useRef<Record<string, ImageResource>>({})
+  const referenced = useRef(new Set<string>())
+  const pending = useRef(new Set<string>())
+  const alive = useRef(true)
+  useEffect(() => {
+    alive.current = true
+    const urls = ownedUrls.current
+    return () => { alive.current = false; for (const url of urls) URL.revokeObjectURL(url); urls.clear() }
+  }, [])
+  const publish = (id: string, resource: ImageResource) => {
+    if (!alive.current) { if (resource.url) URL.revokeObjectURL(resource.url); return }
+    const previousUrl = resourceCache.current[id]?.url
+    if (previousUrl && previousUrl !== resource.url) { URL.revokeObjectURL(previousUrl); ownedUrls.current.delete(previousUrl) }
+    if (resource.url) ownedUrls.current.add(resource.url)
+    resourceCache.current[id] = resource
+    setResources((previous) => ({ ...previous, [id]: resource }))
+  }
+  useEffect(() => {
+    const ids = new Set(overlays.flatMap((image) => typeof image.source === 'string' ? [] : [image.source.fileId]))
+    for (const id of referenced.current) if (!ids.has(id)) {
+      const url = resourceCache.current[id]?.url
+      if (url) { URL.revokeObjectURL(url); ownedUrls.current.delete(url) }
+      delete resourceCache.current[id]
+      setResources((previous) => { const next = { ...previous }; delete next[id]; return next })
+    }
+    referenced.current = ids
+    for (const overlay of overlays) {
+      if (typeof overlay.source === 'string' || resources[overlay.source.fileId] || pending.current.has(overlay.source.fileId)) continue
+      const id = overlay.source.fileId
+      pending.current.add(id)
+      void (async () => {
+        try {
+          const handle = await readImageHandle(id)
+          if (!referenced.current.has(id) || resourceCache.current[id]) return
+          if (!handle) { publish(id, { message: 'Reconnect the local image to display it.' }); return }
+          const permission = await handle.queryPermission({ mode: 'read' })
+          if (!referenced.current.has(id) || resourceCache.current[id]) return
+          if (permission !== 'granted') {
+            publish(id, { handle, message: 'Allow access to display this local image.' }); return
+          }
+          const image = await readLocalImage(await handle.getFile())
+          if (!referenced.current.has(id) || resourceCache.current[id]) { URL.revokeObjectURL(image.url); return }
+          publish(id, { url: image.url, handle })
+        } catch { publish(id, { message: 'The local image is unavailable. Reconnect it to continue.' }) }
+        finally { pending.current.delete(id) }
+      })()
+    }
+  }, [overlays, resources])
+  async function connect(id: string, file: File, handle?: LocalImageHandle) {
+    const image = await readLocalImage(file)
+    let message: string | undefined
+    if (handle) {
+      try { await rememberImageHandle(id, handle) } catch { message = 'Image opened, but its file reference could not be remembered. Reconnect after reopening.' }
+    } else message = 'This browser requires reconnecting the image after reopening.'
+    if (!alive.current) { URL.revokeObjectURL(image.url); throw new Error('Image opening was cancelled.') }
+    publish(id, { url: image.url, handle, message })
+    return image
+  }
+  async function allow(id: string, handle: LocalImageHandle) {
+    if (await handle.requestPermission({ mode: 'read' }) !== 'granted') throw new Error('File access was not granted. You can reconnect the image instead.')
+    return connect(id, await handle.getFile(), handle)
+  }
+  const sourceUrl = (overlay: ImageOverlay) => typeof overlay.source === 'string' ? overlay.source : resources[overlay.source.fileId]?.url
+  function previewOpacity(id: string, value?: number) {
+    setOpacityOverrides((previous) => {
+      const next = { ...previous }
+      if (value === undefined) delete next[id]
+      else next[id] = value
+      return next
+    })
+  }
+  return { resources, connect, allow, sourceUrl, opacityOverrides, previewOpacity }
+}
+export type LocalImages = ReturnType<typeof useLocalImages>

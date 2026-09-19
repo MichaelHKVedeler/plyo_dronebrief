@@ -18,7 +18,6 @@ it('places a new rig at the current view center without changing the legacy coor
   }
   render(<Editor />)
   view.change({ lat: 60.123456789, lng: 11.987654321 })
-  fireEvent.click(screen.getByRole('button', { name: 'Circle rig' }))
   fireEvent.click(screen.getByRole('button', { name: 'Add Circle Rig' }))
   expect(current.brief.circleRig?.position).toEqual({ lat: 60.123456789, lng: 11.987654321 })
   expect(current.brief.coordinates).toEqual(brief.coordinates)
@@ -27,10 +26,9 @@ it('places a new rig at the current view center without changing the legacy coor
 
 it('shows the two oval radii in the read-only brief without exposing rig creation', () => {
   const brief = createBrief({ name: 'Oval', clientName: 'Test', date: '2026-09-11', times: ['09:00'] })
-  brief.circleRig = { id: 'rig', position: brief.coordinates, radiusMeters: 80, ovalRatio: 0.5, rotationDegrees: 30 }
+  brief.circleRig = { id: 'rig', position: brief.coordinates, arrowCount: 10, radiusMeters: 80, ovalRatio: 0.5, rotationDegrees: 30 }
   const dispatch = vi.fn()
   render(<BriefPage session={openSession(brief, 'view')} dispatch={dispatch} error={null} />)
-  fireEvent.click(screen.getByRole('button', { name: 'Circle rig' }))
   expect(screen.getByText('40.0 m')).toBeVisible()
   expect(screen.getByText('80.0 m')).toBeVisible()
   expect(screen.queryByRole('button', { name: 'Add Circle Rig' })).toBeNull()

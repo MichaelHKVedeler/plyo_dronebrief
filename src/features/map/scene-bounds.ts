@@ -1,4 +1,5 @@
 import type { DroneBrief, Position } from '@/features/briefs/model/brief'
+import { imageCorners } from './image-geometry'
 import { destination, rigOutline } from './geometry'
 import type { MapNavigation } from './map-navigation'
 
@@ -6,6 +7,7 @@ export function scenePoints(brief: DroneBrief): Position[] {
   const points = brief.angles.map((angle) => angle.position)
   if (brief.circleRig) points.push(...rigOutline(brief.circleRig))
   for (const polygon of brief.polygons) points.push(...polygon.vertices)
+  for (const overlay of brief.imageOverlays) points.push(...imageCorners(overlay))
   return points.length ? points : [brief.coordinates]
 }
 
@@ -30,10 +32,10 @@ export function sceneBounds(points: Position[]): google.maps.LatLngBoundsLiteral
 }
 
 export function fitScene(map: MapNavigation, brief: DroneBrief) {
-  if (!brief.angles.length && !brief.circleRig && !brief.polygons.length && brief.coordinates.lat === 59.9139 && brief.coordinates.lng === 10.7522) {
+  if (!brief.angles.length && !brief.circleRig && !brief.polygons.length && !brief.imageOverlays.length && brief.coordinates.lat === 59.9139 && brief.coordinates.lng === 10.7522) {
     map.moveCamera({ center: brief.coordinates, zoom: 10 }); return
   }
-  if (!brief.angles.length && !brief.circleRig && !brief.polygons.length && brief.coordinates.lat === 0 && brief.coordinates.lng === 0) {
+  if (!brief.angles.length && !brief.circleRig && !brief.polygons.length && !brief.imageOverlays.length && brief.coordinates.lat === 0 && brief.coordinates.lng === 0) {
     map.moveCamera({ center: brief.coordinates, zoom: 2 }); return
   }
   map.fitBounds(sceneBounds(scenePoints(brief)), mapPadding(map))

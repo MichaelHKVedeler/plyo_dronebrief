@@ -15,6 +15,7 @@ export function attachShadeMapPan(map: Map, surface: HTMLElement) {
     map.panTo(drag.anchor, { offset: drag.offset, duration: finish ? 0 : 80, easing: () => 1, easeId: 'brief-pointer-pan' })
   }
   const reset = () => {
+    surface.removeAttribute('data-map-panning')
     if (frame !== null) cancelAnimationFrame(frame)
     frame = null
     paint(true)
@@ -37,6 +38,7 @@ export function attachShadeMapPan(map: Map, surface: HTMLElement) {
     if (!drag.started && Math.hypot(dx, dy) < 3) return
     stop(event)
     drag.started = true
+    surface.setAttribute('data-map-panning', '')
     suppressClick = true
     drag.offset = [dx, dy]
     if (frame === null) frame = requestAnimationFrame(() => { frame = null; paint() })
