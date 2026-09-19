@@ -42,6 +42,16 @@ it('right-clicks outside the image to set an anchor, then scales and rotates fro
   expect(updated.widthMeters).toBeGreaterThan(image.widthMeters)
   expect(imageCorners(updated)).toHaveLength(4)
 })
+it('leaves right-clicks on 360 focus controls and active focus drags to the camera', () => {
+  const { surface, state } = setup()
+  const camera = document.createElement('button')
+  camera.setAttribute('data-360-focus-control', '')
+  surface.append(camera)
+  fireEvent.contextMenu(camera, { clientX: 200, clientY: 200 })
+  camera.setAttribute('data-360-focusing', '')
+  fireEvent.contextMenu(surface, { clientX: 300, clientY: 200 })
+  expect(state.onAnchor).not.toHaveBeenCalled()
+})
 it.each(['Escape', 'pointercancel', 'blur'])('discards the drag on %s', (type) => {
   const { state, preview, down, move, up } = setup()
   down(); move()

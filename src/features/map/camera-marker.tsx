@@ -10,6 +10,8 @@ import { MapHandle } from './map-handle'
 import { useHoverHandles } from './use-hover-handles'
 import { cameraArrowOffset, cameraDirectionLayout } from './camera-directions'
 import { useMapObjectScale } from './map-object-scale'
+import { PanoramaFocusCone } from './panorama-focus'
+import { usePanoramaFocusGesture } from './use-panorama-focus-gesture'
 
 type Props = {
   angle: CameraAngle
@@ -73,6 +75,13 @@ export const CameraMarker = memo(function CameraMarker({ angle, editable, select
     if (cloning) onDuplicate?.(value.position)
     else onCommit(value)
   }
+  const startFocus = usePanoramaFocusGesture({
+    enabled: angle.type === '360' && editable && interactive && !ghost,
+    onStart: () => { onSelect(); hover.enter() },
+    onPreview: (focus) => { if (angle.type === '360') setDraft({ source: angle, value: { ...angle, focus } }) },
+    onCommit: (focus) => { if (angle.type === '360') commit({ ...angle, focus }) },
+    onCancel: resetPreview,
+  })
   const symbol = <Icon className="size-5" />
   return <>
     {ghost && <CameraMarker angle={angle} editable selected={false} interactive={false} number={number} pixelsToMeters={pixelsToMeters}
@@ -91,11 +100,14 @@ export const CameraMarker = memo(function CameraMarker({ angle, editable, select
       onDrag={(event) => { if (editable && interactive && event.latLng) setDraft({ source: angle, value: { ...angle, position: event.latLng.toJSON() } }) }}
       onDragEnd={(event) => { if (editable && interactive && event.latLng) commit({ ...angle, position: event.latLng.toJSON() }) }}>
       <div className="relative" style={{ zoom: scale }} onMouseEnter={hover.enter} onMouseLeave={hover.leave}>
+        {visible.type === '360' && visible.focus && <PanoramaFocusCone focus={visible.focus} color={appearance.color} />}
         {editable ? <Button disabled={!interactive} size="icon" variant="outline" aria-label={'Move ' + name}
-          title={name + (onDuplicate ? ' · Alt-drag to duplicate' : '')}
-          className={'cursor-pointer touch-none rounded-full border-2 shadow-md active:cursor-grabbing ' + appearance.className + (selected || ghost ? ' ring-2 ring-primary ring-offset-2' : '')}
+          data-360-focus-control={angle.type === '360' && interactive ? '' : undefined}
+          title={name + (angle.type === '360' ? ' · Right-drag to set focus width and direction' : '') + (onDuplicate ? ' · Alt-drag to duplicate' : '')}
+          className={'relative cursor-pointer touch-none rounded-full border-2 shadow-md active:cursor-grabbing ' + appearance.className + (selected || ghost ? ' ring-2 ring-primary ring-offset-2' : '')}
           onFocus={hover.enter} onBlur={hover.leave} onMouseEnter={hover.enter} onMouseLeave={hover.leave}
           onPointerDownCapture={(event) => {
+            if (startFocus(event)) return
             if (event.button !== 0) return
             if (event.ctrlKey || event.shiftKey) {
               event.preventDefault(); event.stopPropagation()

@@ -33,7 +33,7 @@ Use `@/` imports across features. Within a feature, relative imports are fine. P
 - src/features/briefs/model/brief.ts is the single source of truth. Infer TypeScript types from Zod; do not duplicate interfaces elsewhere.
 - Store plain JSON only: no Google Maps objects, class instances, Dates, Files, functions, DOM nodes or object URLs.
 - Coordinates are WGS84 latitude/longitude. Distances and heights are meters. Direction is clockwise from north in [0, 360).
-- A 360 angle has only a position and identifying metadata, never a direction. Drone image and DSLR angles have directions.
+- A 360 angle has a position, identifying metadata, and optional `focus: { directionDegrees, fovDegrees }` for its highlighted viewing sector. It has no top-level direction. Drone image and DSLR angles have top-level directions.
 - Rig position is independent of project coordinates. See docs/data-model.md for oval convention.
 - Asset uploads must eventually resolve to durable sources before exporting. Do not store temporary blob URLs in JSON.
 - Keep schemaVersion and export prefix versioned. A breaking field change requires an explicit migration/version decision, tests, and documentation. Never silently reinterpret existing exports.

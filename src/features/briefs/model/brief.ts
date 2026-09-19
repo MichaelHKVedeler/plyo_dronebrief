@@ -21,9 +21,17 @@ export const projectSchema = z.object({
   shoots: z.array(shootSchema).max(maxShootSlots).optional(),
 })
 const angleBase = { id, label: name, position: positionSchema }
+export const min360Fov = 10
+export const max360Fov = 180
+// Additive v1: a panorama can optionally highlight a viewing sector.
+const panoramaFocusSchema = z.object({
+  directionDegrees: heading,
+  fovDegrees: z.number().finite().min(min360Fov).max(max360Fov),
+})
+export type PanoramaFocus = z.infer<typeof panoramaFocusSchema>
 export const angleSchema = z.discriminatedUnion('type', [
   z.object({ ...angleBase, type: z.literal('drone-image'), directionDegrees: heading }),
-  z.object({ ...angleBase, type: z.literal('360') }),
+  z.object({ ...angleBase, type: z.literal('360'), focus: panoramaFocusSchema.optional() }),
   z.object({ ...angleBase, type: z.literal('dslr'), directionDegrees: heading }),
 ])
 const heights = z.object({ heightsMeters: z.array(z.number().finite().min(0).max(10000)).max(50) })

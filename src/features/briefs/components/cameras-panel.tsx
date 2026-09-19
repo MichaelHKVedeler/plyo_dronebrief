@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 
 import { Card, CardContent } from '@/components/ui/card'
-import { cameraLabels, type CameraAngle, type DroneBrief } from '../model/brief'
+import { cameraLabels, min360Fov, max360Fov, type CameraAngle, type DroneBrief } from '../model/brief'
 import { cameraAppearance } from './camera-appearance'
 import { CameraReorderHandle, type CameraDragPreview } from './camera-reorder-handle'
 import { reorderCameras } from '../state/reorder-cameras'
@@ -62,6 +62,16 @@ export function CamerasPanel({ onCenterCamera, selectedCameraIds, onSelectCamera
       <NumberField label="Camera longitude" value={selected.position.lng} min={-180} max={180} onChange={(lng) => updateSelected((angle) => ({ ...angle, position: { ...angle.position, lng } }))} />
       {selected.type !== '360' && <NumberField label="Camera direction (degrees)" value={selected.directionDegrees} min={0} max={359.999999999}
         onChange={(directionDegrees) => updateSelected((angle) => angle.type === '360' ? angle : { ...angle, directionDegrees })} />}
+      {selected.type === '360' && <>
+        <p className="text-sm text-muted-foreground">Right-drag this point on the map. Drag farther to widen its focus, and around it to aim.</p>
+        {selected.focus ? <>
+          <NumberField label="Focus direction (degrees)" value={selected.focus.directionDegrees} min={0} max={359.999999999}
+            onChange={(directionDegrees) => updateSelected((angle) => angle.type === '360' && angle.focus ? { ...angle, focus: { ...angle.focus, directionDegrees } } : angle)} />
+          <NumberField label="Focus FOV (degrees)" value={selected.focus.fovDegrees} min={min360Fov} max={max360Fov}
+            onChange={(fovDegrees) => updateSelected((angle) => angle.type === '360' && angle.focus ? { ...angle, focus: { ...angle.focus, fovDegrees } } : angle)} />
+          <Button variant="outline" onClick={() => updateSelected((angle) => angle.type === '360' ? { ...angle, focus: undefined } : angle)}>Clear 360 focus</Button>
+        </> : <Button variant="outline" onClick={() => updateSelected((angle) => angle.type === '360' ? { ...angle, focus: { directionDegrees: 0, fovDegrees: 90 } } : angle)}>Set 360 focus</Button>}
+      </>}
       <Button variant="ghost" className="text-destructive" onClick={() => remove(selected.id)}><Trash2 /> Remove camera</Button>
     </CardContent></Card>}
     </>}</CameraGroups>
