@@ -19,8 +19,9 @@ type Props = {
   onStep?: (delta: number) => void
   className?: string
   constrain?: (position: Position) => Position
+  hitAreaOnly?: boolean
 }
-export function MapHandle({ position, label, children, onCancel, onStart, onPreview, onCommit, onEnter, onLeave, onStep, constrain, bare = false, interactive = true, className = '' }: Props) {
+export function MapHandle({ position, label, children, onCancel, onStart, onPreview, onCommit, onEnter, onLeave, onStep, constrain, bare = false, interactive = true, hitAreaOnly = false, className = '' }: Props) {
   const { Marker: AdvancedMarker } = useObjectRenderer()
   const scale = useMapObjectScale()
   const marker = useRef<google.maps.marker.AdvancedMarkerElement | null>(null)
@@ -40,7 +41,7 @@ export function MapHandle({ position, label, children, onCancel, onStart, onPrev
   return <>
     {/* A constrained handle's visible marker never participates in SDK dragging.
         Its position and the outline are rendered from the same shape state. */}
-    {constrain && <AdvancedMarker position={position} anchorLeft="-50%" anchorTop="-50%" zIndex={100}
+    {constrain && !hitAreaOnly && <AdvancedMarker position={position} anchorLeft="-50%" anchorTop="-50%" zIndex={100}
       draggable={false} clickable={false} style={{ pointerEvents: 'none' }}>
       {/* Direction symbols are geometry, not a second button. A circular button
           surface/focus ring must never be painted over the arrow. */}

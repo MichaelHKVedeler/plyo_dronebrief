@@ -2,8 +2,8 @@ import { ImageLayer } from './image-layer'
 import type { ImageLayerState } from './image-interaction'
 import type { LocalImages } from '@/features/briefs/state/use-local-images'
 import { useCameraFocus } from './use-camera-focus'
-import { duplicateCamera, numberedCameras, nextCameraLabelNumber, nextCameraNumber } from '@/features/briefs/model/camera-numbers'
-import { lazy, Suspense, useId, useImperativeHandle, useLayoutEffect, useRef, useState, type RefObject } from 'react'
+import { duplicateCamera, nextCameraLabelNumber } from '@/features/briefs/model/camera-numbers'
+import { lazy, Suspense, useCallback, useId, useImperativeHandle, useLayoutEffect, useRef, useState, type RefObject } from 'react'
 import { initialRigRadius } from './initial-rig-radius'
 import { ButtonGroup } from '@/components/ui/button-group'
 import { useDarkMode } from '@/lib/use-dark-mode'
@@ -22,7 +22,7 @@ import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import type { BriefAction, BriefSession } from '@/features/briefs/state/brief-session'
 import { projectWithShoots, shootSlots, type CameraAngle, type Position, type ShootSlot } from '@/features/briefs/model/brief'
-import { CameraMarker } from './camera-marker'
+import { CameraMarkers } from './camera-markers'
 import { RigObject } from './rig-object'
 import { MapControls } from './map-controls'
 import { MapSearch } from './map-search'
@@ -63,6 +63,10 @@ function ConnectedMap({ imageLayer, selectedCameraIds, onSelectCamera, session, 
   const pendingAngle: CameraAngle | null = tool.kind === 'camera' && tool.position && tool.cameraType !== '360'
     ? { id: 'placement-preview', label: 'Choose direction', type: tool.cameraType, position: tool.position, directionDegrees: tool.directionDegrees }
     : null
+  const commitCamera = useCallback((updated: CameraAngle) => {
+    dispatch({ type: 'update', update: (b) => ({ ...b, angles: b.angles.map((item) => item.id === updated.id ? updated : item) }) })
+  }, [dispatch])
+  const duplicateCameraAt = useCallback((source: CameraAngle, position: Position) => { onCameraDuplicate(source, position) }, [onCameraDuplicate])
   if (status === APILoadingStatus.FAILED || status === APILoadingStatus.AUTH_FAILURE) return <MapMessage title="Map could not load" description="Check your map configuration and connection. The brief is still available." />
   if (status !== APILoadingStatus.LOADED) return <MapMessage title="Loading Google Maps…" description="Your brief is ready while the map connects." />
   return <>
@@ -89,25 +93,19 @@ function ConnectedMap({ imageLayer, selectedCameraIds, onSelectCamera, session, 
         if (source?.composedPath().some((target) => target instanceof Element && target.closest('gmp-advanced-marker'))) return
         if (event.detail.latLng) onMapClick(event.detail.latLng)
       }}>
-      <MapObjectScale value={objectScale}>
+      {active && <MapObjectScale value={objectScale}>
       {visibility.circleRig && brief.circleRig && <RigObject rig={brief.circleRig} pixelsToMeters={metersPerPixel(brief.circleRig.position.lat, zoom)} dark={dark} editable={editing} interactive={objectsInteractive}
         selected={selectedId === brief.circleRig.id}
         onSelect={() => onSelect(brief.circleRig!.id)}
         onCommit={(rig) => dispatch({ type: 'update', update: (b) => ({ ...b, circleRig: b.circleRig?.id === rig.id ? rig : b.circleRig }) })} />}
-      {visibility.angles && numberedCameras(brief.angles).map(({ angle, number }) => <CameraMarker key={angle.id} angle={angle} editable={editing}
-        number={number} duplicateNumber={nextCameraNumber(brief.angles, angle.type)} dslrSettings={brief.typeSettings.dslr}
-        interactive={objectsInteractive} selected={selectedCameraIds.includes(angle.id)} pixelsToMeters={metersPerPixel(angle.position.lat, zoom)}
-        onSelect={(additive = false) => onSelectCamera(angle.id, additive)}
-        onDuplicate={brief.angles.length < 1000 ? (position) => onCameraDuplicate(angle, position) : undefined}
-        onCommit={(updated) => dispatch({ type: 'update', update: (b) => ({ ...b, angles: b.angles.map((item) => item.id === updated.id ? updated : item) }) })} />)}
-      {pendingAngle && <CameraMarker angle={pendingAngle} editable={false} interactive={false} selected={false}
-        number={nextCameraNumber(brief.angles, pendingAngle.type)} dslrSettings={brief.typeSettings.dslr}
-        pixelsToMeters={metersPerPixel(pendingAngle.position.lat, zoom)} onSelect={() => {}} onCommit={() => {}} />}
+      {visibility.angles && <CameraMarkers angles={brief.angles} pendingAngle={pendingAngle} editable={editing} interactive={objectsInteractive}
+        selectedCameraIds={selectedCameraIds} zoom={zoom} dslrSettings={brief.typeSettings.dslr}
+        onSelectCamera={onSelectCamera} onCommit={commitCamera} onDuplicate={duplicateCameraAt} />}
       {visibility.polygons && brief.polygons.map((polygon) => <Polygon key={polygon.id} paths={polygon.vertices} strokeColor="#b45309" strokeWeight={3 * objectScale} fillColor="#d97706" fillOpacity={0.2} clickable={false} />)}
-      </MapObjectScale>
+      </MapObjectScale>}
       {active && <MiddleMousePan onActiveChange={setMiddlePanning} />}
       {active && editing && <CameraPlacementGesture tool={tool} onToolChange={onToolChange} onPlace={onCameraPlace} />}
-      <ImageLayer {...imageLayer} interactive={imageLayer.interactive && active && !middlePanning} />
+      {active && <ImageLayer {...imageLayer} interactive={imageLayer.interactive && !middlePanning} />}
       <GoogleMapView active={active} satellite={satellite} view={view} />
       <BasemapDimmer opacity={dimOpacity} />
     </Map>

@@ -1,18 +1,17 @@
 import { ImageLayer } from './image-layer'
 import type { ImageLayerState } from './image-interaction'
-import { numberedCameras, nextCameraNumber } from '@/features/briefs/model/camera-numbers'
 import { attachShadePlacement } from './shade-placement'
 import { attachShadeMapPan } from './shade-map-pan'
 import { ShadeProjection } from './shade-projection'
 import { attachShadeViewSync } from './shade-view-sync'
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Map as LibreMap, type GeoJSONSource } from 'maplibre-gl'
 import ShadeMap from 'mapbox-gl-shadow-simulator'
 import type { CameraAngle, Position, ShootSlot } from '@/features/briefs/model/brief'
 import type { MapNavigation } from './map-navigation'
 import { idleTool, type MapTool } from './placement'
 import { shadowBuildings } from './shadow-buildings'
-import { CameraMarker } from './camera-marker'
+import { CameraMarkers } from './camera-markers'
 import { RigObject } from './rig-object'
 import { ObjectRenderer } from './object-renderer'
 import { ShadeMarker, ShadePolygon } from './shade-object-renderer'
@@ -63,7 +62,8 @@ export function ShadeMapPanel({ imageLayer, dimOpacity, objectSizePercent, dispa
     }
     const detachViewSync = attachShadeViewSync(instance, (next) => {
       if (!live) return
-      setView(next); latest.current.onViewChange(next)
+      latest.current.onViewChange(next)
+      setView((previous) => previous.zoom === next.zoom ? previous : next)
     })
     instance.on('moveend', () => { if (live) setTimeCenter(fromShadeView(instance.getCenter(), instance.getZoom()).center) })
     instance.on('click', (event) => { if (latest.current.tool.kind !== 'camera') latest.current.onMapClick({ lat: event.lngLat.lat, lng: event.lngLat.lng }) })
@@ -203,6 +203,10 @@ export function ShadeMapPanel({ imageLayer, dimOpacity, objectSizePercent, dispa
   const interactive = tool.kind === 'idle'
   const pendingAngle = tool.kind === 'camera' && tool.position && tool.cameraType !== '360'
     ? { id: 'pending', label: 'Choose direction', type: tool.cameraType, position: tool.position, directionDegrees: tool.directionDegrees } : null
+  const commitCamera = useCallback((updated: CameraAngle) => {
+    dispatch({ type: 'update', update: (brief) => ({ ...brief, angles: brief.angles.map((item) => item.id === updated.id ? updated : item) }) })
+  }, [dispatch])
+  const duplicateCameraAt = useCallback((source: CameraAngle, position: Position) => { onCameraDuplicate(source, position) }, [onCameraDuplicate])
   return <div className="absolute inset-0 isolate bg-muted" aria-label="ShadeMap preview" onContextMenu={(event) => { event.preventDefault(); if (editable) onToolChange(idleTool) }}>
     <div ref={host} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }} />
     <div aria-hidden="true" className="pointer-events-none absolute inset-0" style={{ background: '#282828', opacity: dimOpacity / 100 }} />
@@ -212,15 +216,9 @@ export function ShadeMapPanel({ imageLayer, dimOpacity, objectSizePercent, dispa
         {session.visibility.circleRig && session.brief.circleRig && <RigObject rig={session.brief.circleRig} pixelsToMeters={metersPerPixel(session.brief.circleRig.position.lat, view.zoom)} dark={dark} editable={editable} interactive={interactive}
           selected={selectedId === session.brief.circleRig.id} onSelect={() => onSelect(session.brief.circleRig!.id)}
           onCommit={(rig) => dispatch({ type: 'update', update: (brief) => ({ ...brief, circleRig: brief.circleRig?.id === rig.id ? rig : brief.circleRig }) })} />}
-        {session.visibility.angles && numberedCameras(session.brief.angles).map(({ angle, number }) => <CameraMarker key={angle.id} angle={angle} editable={editable} interactive={interactive}
-          number={number} duplicateNumber={nextCameraNumber(session.brief.angles, angle.type)} dslrSettings={session.brief.typeSettings.dslr}
-          selected={selectedCameraIds.includes(angle.id)} pixelsToMeters={metersPerPixel(angle.position.lat, view.zoom)}
-          onSelect={(additive = false) => onSelectCamera(angle.id, additive)}
-          onDuplicate={session.brief.angles.length < 1000 ? (position) => onCameraDuplicate(angle, position) : undefined}
-          onCommit={(updated) => dispatch({ type: 'update', update: (brief) => ({ ...brief, angles: brief.angles.map((item) => item.id === updated.id ? updated : item) }) })} />)}
-        {pendingAngle && <CameraMarker angle={pendingAngle} editable={false} interactive={false} selected={false}
-          number={nextCameraNumber(session.brief.angles, pendingAngle.type)} dslrSettings={session.brief.typeSettings.dslr}
-          pixelsToMeters={metersPerPixel(pendingAngle.position.lat, view.zoom)} onSelect={() => {}} onCommit={() => {}} />}
+        {session.visibility.angles && <CameraMarkers angles={session.brief.angles} pendingAngle={pendingAngle} editable={editable} interactive={interactive}
+          selectedCameraIds={selectedCameraIds} zoom={view.zoom} dslrSettings={session.brief.typeSettings.dslr}
+          onSelectCamera={onSelectCamera} onCommit={commitCamera} onDuplicate={duplicateCameraAt} />}
       </div>
       <ImageLayer {...imageLayer} />
     </MapObjectScale></ObjectRenderer></ShadeProjection>}

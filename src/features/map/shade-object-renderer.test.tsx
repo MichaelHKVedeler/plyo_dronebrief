@@ -129,6 +129,26 @@ it('cancels an alt-drag without adding a camera', () => {
   expect(commit).not.toHaveBeenCalled()
   expect(screen.getByRole('button', { name: 'Move DSLR 1' }).parentElement!.parentElement).toHaveStyle({ left: '10px', top: '60px' })
 })
+it('reprojects markers on map render without a React update', () => {
+  let shift = { x: 0, y: 0 }
+  const listeners = new Set<() => void>()
+  const map = {
+    getCanvas: () => document.querySelector('canvas'),
+    getContainer: () => document.body.firstElementChild!,
+    project: ([lng, lat]: number[]) => ({ x: lng + shift.x, y: lat + shift.y }),
+    unproject: ([x, y]: number[]) => ({ lng: x, lat: y }),
+    on: (_event: string, listener: () => void) => listeners.add(listener),
+    off: (_event: string, listener: () => void) => listeners.delete(listener),
+  } as unknown as Map
+  render(<ShadeProjection value={map}><ObjectRenderer value={{ Marker: ShadeMarker, Polygon: ShadePolygon }}><div>
+    <CameraMarker angle={original} selected={false} editable pixelsToMeters={1} onSelect={vi.fn()} onCommit={vi.fn()} />
+  </div></ObjectRenderer></ShadeProjection>)
+  const marker = screen.getByRole('button', { name: 'Move DSLR 1' }).parentElement!.parentElement
+  expect(marker).toHaveStyle({ left: '10px', top: '60px' })
+  shift = { x: 5, y: 8 }
+  act(() => { for (const listener of listeners) listener() })
+  expect(marker).toHaveStyle({ left: '15px', top: '68px' })
+})
 it('cancels a drag without saving and restores the original camera position', () => {
   const commit = vi.fn()
   render(<Surface><Camera commit={commit} /></Surface>)
@@ -139,18 +159,17 @@ it('cancels a drag without saving and restores the original camera position', ()
   expect(commit).not.toHaveBeenCalled()
   expect(button.parentElement!.parentElement).toHaveStyle({ left: '10px', top: '60px' })
 })
-it('supports keyboard aiming and leaves viewer arrows visible but disabled', () => {
+it('supports keyboard aiming after hover and leaves viewer arrows visible without handles', () => {
   const commit = vi.fn()
   const result = render(<Surface><Camera commit={commit} /></Surface>)
+  fireEvent.mouseEnter(screen.getByRole('button', { name: 'Move DSLR 1' }))
   fireEvent.keyDown(screen.getByRole('button', { name: 'Aim DSLR 1' }), { key: 'ArrowRight' })
   expect(commit).toHaveBeenLastCalledWith({ ...original, directionDegrees: 95 })
   result.unmount(); commit.mockClear()
-  render(<Surface><Camera editable={false} commit={commit} /></Surface>)
+  const view = render(<Surface><Camera editable={false} commit={commit} /></Surface>)
   expect(screen.queryByRole('button', { name: 'Move DSLR 1' })).toBeNull()
-  const arrow = screen.getByRole('button', { name: 'Aim DSLR 1' })
-  expect(arrow).toBeDisabled()
-  drag(arrow)
-  fireEvent.keyDown(arrow, { key: 'ArrowRight' })
+  expect(screen.queryByRole('button', { name: 'Aim DSLR 1' })).toBeNull()
+  expect(view.container.querySelectorAll('[data-camera-arrow]')).toHaveLength(1)
   expect(commit).not.toHaveBeenCalled()
 })
 it('leaves the rig interior to map navigation, omits the center icon and commits shape handle edits', () => {

@@ -7,7 +7,7 @@ import type { MapView } from './map-view'
 
 afterEach(cleanup)
 
-it('commits pan, zoom and resize in the map render frame, skips unchanged frames and detaches', () => {
+it('commits pan without a React overlay paint, then zoom and resize in the map render frame, skips unchanged frames and detaches', () => {
   let center = { lat: 60, lng: 10 }, zoom = 16
   const canvas = { width: 800, height: 600 }
   const listeners = new Set<() => void>()
@@ -25,20 +25,22 @@ it('commits pan, zoom and resize in the map render frame, skips unchanged frames
   render(<Overlay />)
   const commit = vi.fn((view: MapView) => update(view))
   const detach = attachShadeViewSync(map, commit)
-  const frame = (expected: string) => act(() => {
+  const paint = (expected: string) => act(() => {
     for (const listener of listeners) listener()
     // Assert inside the event, before act can flush deferred React updates.
     expect(screen.getByTestId('overlay')).toHaveTextContent(expected)
   })
-  frame('10,60,17')
+  paint('10,60,17')
   center = { lat: 61, lng: 12 }
-  frame('12,61,17')
+  act(() => { for (const listener of listeners) listener() })
+  expect(commit).toHaveBeenLastCalledWith({ center: { lat: 61, lng: 12 }, zoom: 17 })
+  expect(screen.getByTestId('overlay')).toHaveTextContent('12,61,17')
   zoom = 17.5
-  frame('12,61,18.5')
-  frame('12,61,18.5')
+  paint('12,61,18.5')
+  paint('12,61,18.5')
   expect(commit).toHaveBeenCalledTimes(3)
   canvas.width = 390
-  frame('12,61,18.5')
+  paint('12,61,18.5')
   expect(commit).toHaveBeenCalledTimes(4)
   detach()
   expect(listeners.size).toBe(0)

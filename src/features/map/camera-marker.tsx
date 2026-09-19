@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { memo, useRef, useState } from 'react'
 import { useObjectRenderer } from './object-renderer'
 import { Navigation } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -8,7 +8,7 @@ import { cameraAppearance } from '@/features/briefs/components/camera-appearance
 import { bearingDegrees, destination, distanceMeters, normalizeHeading } from './geometry'
 import { MapHandle } from './map-handle'
 import { useHoverHandles } from './use-hover-handles'
-import { cameraDirectionLayout } from './camera-directions'
+import { cameraArrowOffset, cameraDirectionLayout } from './camera-directions'
 import { useMapObjectScale } from './map-object-scale'
 
 type Props = {
@@ -28,7 +28,17 @@ function eventHasAlt(event?: google.maps.MapMouseEvent | null) {
   const source = event?.domEvent
   return Boolean(source && 'altKey' in source && source.altKey)
 }
-export function CameraMarker({ angle, editable, selected, pixelsToMeters, interactive = true, number = 1, duplicateNumber, dslrSettings, onSelect, onCommit, onDuplicate }: Props) {
+function CameraArrows({ offsets, directionDegrees, color }: { offsets: number[]; directionDegrees: number; color: string }) {
+  return offsets.map((offset, index) => {
+    const heading = directionDegrees + offset
+    const { x, y } = cameraArrowOffset(heading)
+    return <span key={index} data-camera-arrow aria-hidden="true" className="pointer-events-none absolute left-1/2 top-1/2 flex size-8 items-center justify-center"
+      style={{ transform: `translate(-50%, -50%) translate(${x}px, ${y}px)` }}>
+      <Navigation className="size-7 fill-white" size={28} strokeWidth={2} absoluteStrokeWidth style={{ color, transform: 'rotate(' + (heading - 45) + 'deg)' }} />
+    </span>
+  })
+}
+export const CameraMarker = memo(function CameraMarker({ angle, editable, selected, pixelsToMeters, interactive = true, number = 1, duplicateNumber, dslrSettings, onSelect, onCommit, onDuplicate }: Props) {
   const { Marker: AdvancedMarker } = useObjectRenderer()
   const scale = useMapObjectScale()
   const hover = useHoverHandles(!interactive)
@@ -45,6 +55,8 @@ export function CameraMarker({ angle, editable, selected, pixelsToMeters, intera
   const directional = visible.type !== '360'
   const { offsets, radiusPixels } = cameraDirectionLayout(angle.type === 'dslr' ? dslrSettings : undefined)
   const directionRadius = pixelsToMeters * radiusPixels * scale
+  const moving = draft !== null && (draft.value.position.lat !== draft.source.position.lat || draft.value.position.lng !== draft.source.position.lng)
+  const showAim = directional && editable && interactive && !ghost && (hover.hovered || selected || (draft !== null && !moving))
   function resetPreview() {
     const snapBack = duplicating.current
     altCopy.current = false
@@ -78,11 +90,11 @@ export function CameraMarker({ angle, editable, selected, pixelsToMeters, intera
       }}
       onDrag={(event) => { if (editable && interactive && event.latLng) setDraft({ source: angle, value: { ...angle, position: event.latLng.toJSON() } }) }}
       onDragEnd={(event) => { if (editable && interactive && event.latLng) commit({ ...angle, position: event.latLng.toJSON() }) }}>
-      <div className="relative" style={{ zoom: scale }}>
+      <div className="relative" style={{ zoom: scale }} onMouseEnter={hover.enter} onMouseLeave={hover.leave}>
         {editable ? <Button disabled={!interactive} size="icon" variant="outline" aria-label={'Move ' + name}
           title={name + (onDuplicate ? ' · Alt-drag to duplicate' : '')}
           className={'cursor-pointer touch-none rounded-full border-2 shadow-md active:cursor-grabbing ' + appearance.className + (selected || ghost ? ' ring-2 ring-primary ring-offset-2' : '')}
-          onFocus={hover.enter} onBlur={hover.leave}
+          onFocus={hover.enter} onBlur={hover.leave} onMouseEnter={hover.enter} onMouseLeave={hover.leave}
           onPointerDownCapture={(event) => {
             if (event.button !== 0) return
             if (event.ctrlKey || event.shiftKey) {
@@ -100,9 +112,10 @@ export function CameraMarker({ angle, editable, selected, pixelsToMeters, intera
           onClick={(event) => { event.stopPropagation(); altCopy.current = false; onSelect(event.ctrlKey || event.shiftKey) }}>{symbol}</Button>
           : <Badge className={'relative flex size-9 items-center justify-center rounded-full border-2 shadow-sm ' + appearance.className}>{symbol}</Badge>}
         <Badge aria-hidden="true" className="pointer-events-none absolute -right-1.5 -top-1.5 flex size-5 items-center justify-center rounded-full border-2 border-background p-0 text-[10px] leading-none tabular-nums shadow-sm">{shownNumber}</Badge>
+        {directional && <CameraArrows offsets={offsets} directionDegrees={visible.directionDegrees} color={appearance.color} />}
       </div>
     </AdvancedMarker>
-    {directional && offsets.map((offset, index) => <MapHandle key={index} onCancel={resetPreview} bare interactive={editable && interactive}
+    {showAim && offsets.map((offset, index) => <MapHandle key={index} onCancel={resetPreview} bare hitAreaOnly interactive={editable && interactive}
       position={destination(visible.position, directionRadius, normalizeHeading(visible.directionDegrees + offset))}
       label={'Aim ' + name + (offsets.length > 1 ? ' angle ' + (index + 1) : '')} className="cursor-crosshair"
       constrain={(point) => destination(visible.position, directionRadius,
@@ -116,4 +129,4 @@ export function CameraMarker({ angle, editable, selected, pixelsToMeters, intera
       <Navigation className="size-7 fill-white" size={28} strokeWidth={2} absoluteStrokeWidth style={{ color: appearance.color, transform: 'rotate(' + (visible.directionDegrees + offset - 45) + 'deg)' }} />
     </MapHandle>)}
   </>
-}
+})
