@@ -11,9 +11,10 @@ import { LayersPanel } from '@/features/briefs/components/layers-panel'
 import { idleTool, startCameraPlacement, type MapTool, type CameraType } from '@/features/map/placement'
 import { useLocalImages } from '@/features/briefs/state/use-local-images'
 import type { BriefAction, BriefSession } from '@/features/briefs/state/brief-session'
+import type { ImageTransport } from '@/features/briefs/storage/image-transport'
 
-export function BriefPage({ session, dispatch, error }: { session: BriefSession; dispatch: (action: BriefAction) => void; error: string | null }) {
-  const images = useLocalImages(session.brief.imageOverlays)
+export function BriefPage({ session, dispatch, error, imageTransport }: { session: BriefSession; dispatch: (action: BriefAction) => void; error: string | null; imageTransport?: ImageTransport }) {
+  const images = useLocalImages(session.brief.imageOverlays, imageTransport)
   const [focusPosition, setFocusPosition] = useState<Position | null>(null)
   const pendingRig = useRef<string | null>(null)
   const viewCenter = useRef(session.brief.coordinates)
@@ -78,10 +79,10 @@ export function BriefPage({ session, dispatch, error }: { session: BriefSession;
     setSelectedCameraIds([])
     setTool(startCameraPlacement(type))
   }
-  return <main className="flex min-h-0 w-full min-w-0 flex-1 flex-col px-4 py-4 sm:px-6">
+  return <main className="flex min-h-0 w-full min-w-0 flex-1 flex-col overflow-y-auto px-4 py-4 sm:px-6 lg:overflow-visible">
     <div className="mb-4 flex shrink-0 items-center gap-3"><h1 className="min-w-0 truncate text-xl font-semibold tracking-tight sm:text-2xl" title={session.brief.project.name}>{session.brief.project.name}</h1><Badge variant="secondary">{session.mode === 'edit' ? 'Editor' : 'Read-only'}</Badge></div>
     {error && <Alert variant="destructive" className="mb-4 max-h-28 shrink-0 overflow-y-auto"><AlertDescription>{error}</AlertDescription></Alert>}
-    <div className="grid min-h-0 flex-1 grid-rows-[minmax(0,1fr)_minmax(0,1fr)] gap-4 lg:grid-cols-[minmax(0,1fr)_360px] lg:grid-rows-[minmax(0,1fr)]">
+    <div className="grid min-h-0 flex-1 grid-rows-[minmax(480px,1fr)_minmax(360px,1fr)] gap-4 lg:grid-cols-[minmax(0,1fr)_360px] lg:grid-rows-[minmax(0,1fr)]">
       <MapPanel images={images} rigPlacementRef={rigPlacement} focusPosition={focusPosition} onViewCenterChange={(center) => { viewCenter.current = center }} selectedCameraIds={selectedCameraIds} onSelectCamera={selectCamera} session={session} dispatch={dispatch} tool={tool} onToolChange={setTool} selectedId={selectedId} onSelect={select} />
       <aside className="min-h-0 min-w-0" aria-label="Brief details">
         <Card className="h-full min-h-0 overflow-hidden py-0"><CardContent className="flex min-h-0 flex-1 flex-col px-0">

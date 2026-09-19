@@ -1,0 +1,21 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    function allowed(org, project) {
+      return request.auth != null && request.auth.token.email_verified == true
+        && request.auth.token.firebase.sign_in_provider == 'google.com'
+        && firestore.exists(/databases/(default)/documents/organizations/$(org)/members/$(request.auth.uid))
+        && firestore.get(/databases/(default)/documents/projects/$(project)).data.orgId == org
+        && firestore.get(/databases/(default)/documents/projects/$(project)).data.deletedAt == null;
+    }
+    match /organizations/{org}/projects/{project}/staging/{asset} {
+      allow create: if resource == null && allowed(org, project) && asset.matches('[a-f0-9-]{36}')
+        && request.resource.size > 0 && request.resource.size <= 30 * 1024 * 1024
+        && request.resource.contentType in ['image/jpeg', 'image/png'];
+    }
+    match /organizations/{org}/projects/{project}/floorplans/{file} {
+      allow get: if allowed(org, project) && file.replace('.webp', '') in firestore.get(/databases/(default)/documents/projects/$(project)).data.assetIds;
+    }
+    match /{path=**} { allow read, write: if false; }
+  }
+}

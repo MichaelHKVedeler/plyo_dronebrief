@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState } from 'react'
+import { lazy, Suspense, useLayoutEffect, useRef, useState } from 'react'
 import { ArrowLeft, Share2 } from 'lucide-react'
 import { AppHeader } from '@/components/layout/app-header'
 import { Button } from '@/components/ui/button'
@@ -10,9 +10,15 @@ import { briefRepository } from '@/features/briefs/storage/brief-repository'
 import { exportBriefKey } from '@/features/briefs/storage/share-key'
 import { openSession, reduceSession, type BriefAction, type BriefSession } from '@/features/briefs/state/brief-session'
 import type { DroneBrief } from '@/features/briefs/model/brief'
+import { cloudConfigured } from '@/features/cloud/auth/config'
+const CloudApp = lazy(() => import('@/pages/cloud-app').then((module) => ({ default: module.CloudApp })))
 
 type Screen = { page: 'landing' } | { page: 'create' } | { page: 'brief'; session: BriefSession }
 export default function App() {
+  if (!cloudConfigured && /^#\/(projects|s)\//.test(location.hash)) return <main className="mx-auto max-w-xl p-6"><h1 className="text-2xl font-semibold">Cloud projects are not configured</h1><p className="mt-4" role="alert">This installation needs Firebase configuration to open project links. Follow docs/firebase-setup.md.</p></main>
+  return cloudConfigured ? <Suspense fallback={<p role="status" className="p-6">Loading account…</p>}><CloudApp /></Suspense> : <LocalApp />
+}
+function LocalApp() {
   const [screen, setScreen] = useState<Screen>({ page: 'landing' })
   const currentScreen = useRef(screen)
   useLayoutEffect(() => { currentScreen.current = screen }, [screen])
