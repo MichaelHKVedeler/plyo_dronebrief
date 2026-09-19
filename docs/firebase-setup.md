@@ -6,9 +6,9 @@ Blank Firebase web configuration retains the local-only workflow. Configured ins
 
 Project: `plyo-dronebrief` (project number `923952642548`). Site: https://plyo-dronebrief.web.app. The existing NOK billing account ending `730730` is linked with owner approval; this project uses the usage-billed Blaze plan.
 
-Google sign-in is enabled. Authorized domains are `localhost`, `127.0.0.1`, `plyo-dronebrief.web.app`, and `plyo-dronebrief.firebaseapp.com`. The provider is declared in `firebase.json`; domain changes must also be applied in Firebase Authentication settings (the installed CLI's auth deploy does not apply an `authorizedDomains` field).
+Google sign-in is enabled. Authorized domains are `localhost`, `127.0.0.1`, `plyo-dronebrief.web.app`, `plyo-dronebrief.firebaseapp.com`, and `michaelhkvedeler.github.io`. The provider is declared in `firebase.json`; domain changes must also be applied in Firebase Authentication settings (the installed CLI's auth deploy does not apply an `authorizedDomains` field).
 
-The Standard `(default)` Firestore database and private `plyo-dronebrief.firebasestorage.app` bucket are in `europe-west1`. Bucket versioning and soft deletion are disabled. CORS permits image reads from the two hosted domains and local port 5173. Storage's service agent has the Firestore rules integration role. The Plyo bootstrap has run; Kristian and Michael's documented admin grants activate on their verified Google sign-ins.
+The Standard `(default)` Firestore database and private `plyo-dronebrief.firebasestorage.app` bucket are in `europe-west1`. Bucket versioning and soft deletion are disabled. CORS permits image reads from the two Firebase hosted domains, `https://michaelhkvedeler.github.io`, and local port 5173. Storage's service agent has the Firestore rules integration role. The Plyo bootstrap has run; Kristian and Michael's documented admin grants activate on their verified Google sign-ins.
 
 The ignored `.env.local` contains the web app configuration and `VITE_FIREBASE_EMULATORS=false`. Restart Vite after changing configuration, and remove shell-level emulator variables, which override `.env.local`. Do not replace these values with the demo configuration below unless intentionally testing emulators. Google Maps and ShadeMap still need their separate provider keys.
 
