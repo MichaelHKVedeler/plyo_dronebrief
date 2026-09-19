@@ -88,6 +88,32 @@ function Camera({ commit, duplicate, editable = true }: { commit: (angle: Camera
   return <CameraMarker angle={angle} selected={selected} editable={editable} pixelsToMeters={1} duplicateNumber={2}
     onSelect={() => select(true)} onCommit={(value) => { setAngle(value); commit(value) }} onDuplicate={duplicate} />
 }
+it('reveals rig grab areas above overlapping cameras on hover, and removes them in viewer/export mode', () => {
+  const rig: CircleRig = { id: 'rig', position: original.position, arrowCount: 10, radiusMeters: 80, ovalRatio: 0.6, rotationDegrees: 0 }
+  const commit = vi.fn(), cameraCommit = vi.fn()
+  const scene = (editable: boolean) => <Surface>
+    <RigObject rig={rig} pixelsToMeters={1} editable={editable} interactive selected={false} onSelect={vi.fn()} onCommit={commit} />
+    <CameraMarker angle={original} selected editable={editable} pixelsToMeters={1} onSelect={vi.fn()} onCommit={cameraCommit} />
+  </Surface>
+  const view = render(scene(true))
+  expect(screen.queryByRole('button', { name: 'Scale and rotate circle rig' })).not.toBeInTheDocument()
+  fireEvent.pointerMove(screen.getByRole('button', { name: 'Move DSLR 1' }), { clientX: 10, clientY: 60 })
+  const control = screen.getByRole('button', { name: 'Scale and rotate circle rig' })
+  const marker = control.closest<HTMLElement>('[data-shade-object]')!
+  const camera = screen.getByRole('button', { name: 'Move DSLR 1' }).closest<HTMLElement>('[data-shade-object]')!
+  const aim = screen.getByRole('button', { name: 'Aim DSLR 1' }).closest<HTMLElement>('[data-shade-object]')!
+  expect(Number(marker.style.zIndex)).toBeGreaterThan(Number(camera.style.zIndex))
+  expect(Number(marker.style.zIndex)).toBeGreaterThan(Number(aim.style.zIndex))
+  expect(control.parentElement).toHaveStyle({ minWidth: '32px', minHeight: '32px' })
+  // Dragging the enlarged area around the small visual handle still edits the rig.
+  drag(control.parentElement!)
+  expect(commit).toHaveBeenCalledTimes(1)
+  expect(cameraCommit).not.toHaveBeenCalled()
+  view.rerender(scene(false))
+  expect(screen.queryByRole('button', { name: 'Scale and rotate circle rig' })).not.toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: 'Adjust rig ovalness' })).not.toBeInTheDocument()
+  expect(screen.getByRole('img', { name: 'Rig arrow 1, pointing toward center' })).toBeInTheDocument()
+})
 function drag(target: Element, finish = true) {
   fireEvent.pointerDown(target, { button: 0, clientX: 10, clientY: 60 })
   fireEvent.pointerMove(target, { clientX: 12, clientY: 64 })

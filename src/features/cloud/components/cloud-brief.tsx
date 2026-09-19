@@ -1,8 +1,13 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { FileDown } from 'lucide-react'
+import { AppHeader } from '@/components/layout/app-header'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { BriefPage } from '@/pages/brief-page'
 import { ExportDialog } from '@/features/briefs/components/export-dialog'
+import { PdfExportDialog } from '@/features/briefs/components/pdf-export-dialog'
+import type { PdfMapCapture } from '@/features/briefs/export/pdf-types'
 import { openSession, reduceSession, type BriefAction } from '@/features/briefs/state/brief-session'
 import { exportBriefKey } from '@/features/briefs/storage/share-key'
 import type { ImageTransport } from '@/features/briefs/storage/image-transport'
@@ -14,7 +19,7 @@ import { SaveCoordinator, type SaveStatus } from '../state/save-coordinator'
 import { ShareDialog } from './share-dialog'
 import { Problem } from './problem'
 
-export function CloudBrief({ initial, publicToken, organization, uid, onDirty, onOpen }: { initial: CloudProject; publicToken?: string; organization?: Organization; uid?: string; onDirty: (dirty: boolean) => void; onOpen: (id: string) => void }) {
+export function CloudBrief({ initial, publicToken, organization, uid, onDirty, onOpen, onHome, headerActions }: { initial: CloudProject; publicToken?: string; organization?: Organization; uid?: string; onDirty: (dirty: boolean) => void; onOpen: (id: string) => void; onHome: () => void; headerActions?: ReactNode }) {
   const [project, setProject] = useState(initial)
   const [session, setSession] = useState(() => openSession(initial.brief, publicToken ? 'view' : 'edit'))
   const current = useRef(session); const assets = useRef<AssetManifest>(initial.assets)
@@ -22,6 +27,8 @@ export function CloudBrief({ initial, publicToken, organization, uid, onDirty, o
   const [uploadStatus, setUploadStatus] = useState(''); const [uploading, setUploading] = useState(false)
   const [accessLost, setAccessLost] = useState(false); const [generation, setGeneration] = useState(0)
   const [share, setShare] = useState(false); const [key, setKey] = useState<string | null>(null); const [reloadConfirm, setReloadConfirm] = useState(false)
+  const [pdfOpen, setPdfOpen] = useState(false)
+  const pdfMapRef = useRef<PdfMapCapture | null>(null)
   const [copying, setCopying] = useState(false); const copyOperation = useRef(crypto.randomUUID())
   const copyRequest = useRef<{ project: CloudProject; brief: CloudProject['brief']; assets: AssetManifest } | null>(null)
   const alive = useRef(true); const observedRevision = useRef(initial.summary.revision)
@@ -114,6 +121,13 @@ export function CloudBrief({ initial, publicToken, organization, uid, onDirty, o
   }
   const canManage = organization?.role === 'admin' || project.summary.createdBy.uid === uid
   return <>
+    <AppHeader onHome={onHome} context={<div className="flex min-w-0 items-center gap-2">
+      <h1 className="min-w-0 truncate text-base font-semibold tracking-tight" title={session.brief.project.name}>{session.brief.project.name}</h1>
+      <Badge variant="secondary" className="shrink-0">{session.mode === 'edit' ? 'Editor' : 'Read-only'}</Badge>
+    </div>}>
+      {headerActions}
+      <Button variant="outline" disabled={accessLost || uploading} onClick={() => setPdfOpen(true)}><FileDown /> Export as PDF</Button>
+    </AppHeader>
     <div className="flex flex-wrap items-center gap-2 border-b px-4 py-2 text-sm">
       <span role="status">{publicToken ? 'Public read-only project' : uploadStatus || status}</span>
       <span className="text-muted-foreground">Created by {project.summary.createdBy.name} · {new Date(project.summary.createdAt).toLocaleString()}</span>
@@ -122,7 +136,9 @@ export function CloudBrief({ initial, publicToken, organization, uid, onDirty, o
       {status === 'Save failed' && !accessLost && <Button size="sm" onClick={() => void coordinator.flush()}>Retry save</Button>}
       {(status === 'Conflict' || status === 'Save failed') && !accessLost && <><Button size="sm" variant="outline" onClick={() => setReloadConfirm(true)}>Reload latest</Button><Button size="sm" disabled={copying || uploading} onClick={() => void copyProject()}>{copying ? 'Copying…' : 'Save as a new project'}</Button></>}
     </div>
-    {accessLost ? <div className="grid gap-3 p-6"><Problem message={error ?? 'Project access is no longer available.'} /><Button variant="outline" onClick={() => { void loadFresh().then(() => { if (alive.current && publicToken) { setAccessLost(false); setError(null) } }).catch((error) => { if (alive.current) setError(cloudError(error)) }) }}>Retry project</Button></div> : <BriefPage key={generation} session={session} dispatch={dispatch} error={error} imageTransport={transport} />}
+    {accessLost ? <div className="grid gap-3 p-6"><Problem message={error ?? 'Project access is no longer available.'} /><Button variant="outline" onClick={() => { void loadFresh().then(() => { if (alive.current && publicToken) { setAccessLost(false); setError(null) } }).catch((error) => { if (alive.current) setError(cloudError(error)) }) }}>Retry project</Button></div> : <BriefPage key={generation} session={session} dispatch={dispatch} error={error} imageTransport={transport} pdfMapRef={pdfMapRef} />}
+    {pdfOpen && !accessLost && <PdfExportDialog brief={session.brief} editable={session.mode === 'edit'} captureRef={pdfMapRef} onClose={() => setPdfOpen(false)}
+      onSaveNotes={(notes) => dispatch({ type: 'update', update: (brief) => ({ ...brief, project: { ...brief.project, ...notes } }) })} />}
     <ExportDialog shareKey={key} hasLocalImages={session.brief.imageOverlays.some((image) => typeof image.source !== 'string')} onClose={() => setKey(null)} />
     {share && <ShareDialog projectId={project.summary.id} canManage={canManage} onClose={() => setShare(false)} />}
     <Dialog open={reloadConfirm} onOpenChange={setReloadConfirm}><DialogContent><DialogHeader><DialogTitle>Discard unsaved changes and reload?</DialogTitle><DialogDescription>Export your local snapshot or save a new project first if you need to keep these changes.</DialogDescription></DialogHeader><Button variant="destructive" onClick={() => { onDirty(false); onOpen(initial.summary.id) }}>Discard and reload latest</Button></DialogContent></Dialog>

@@ -7,7 +7,7 @@ The runtime contract is `src/features/briefs/model/brief.ts`. This document expl
 | schemaVersion | 1 |
 | id | Stable brief ID |
 | createdAt, updatedAt | UTC ISO timestamps |
-| project | name, clientName, optional description and instructions (max 2000 each), calendar date YYYY-MM-DD, times HH:mm[], optional shoots[{date, time}] (max 3) |
+| project | name, clientName, optional description and instructions (max 2000 each), calendar date YYYY-MM-DD, times HH:mm[], optional shoots[{date, time, endTime?}] (max 3) |
 | coordinates | Project/map reference point {lat, lng}; new briefs default to Oslo (59.9139, 10.7522) |
 | circleRig | null or {id, position, radiusMeters, ovalRatio, rotationDegrees, arrowCount} |
 | angles | Discriminated camera-angle array |
@@ -16,6 +16,12 @@ The runtime contract is `src/features/briefs/model/brief.ts`. This document expl
 | imageOverlays | Legacy embedded source or local file reference, plus transform metadata |
 
 Position coordinates use WGS84. Height is a requested photography height in meters, not a compliance limit or terrain-adjusted flight altitude. Schedule dates and times are wall-clock values at the shoot location; there is no timezone conversion in v1. `description` and `instructions` are additive schema v1 project notes fields (max 2000 characters each); older snapshots omit them and parse as empty strings. The Contents tab shows them as Property information and Instructions under Description. `shoots` is an additive schema v1 array of up to three `{date, time}` pairs used by the stacked map time sliders. The editor exposes one shared date at the top of the slider box and writes that date onto every slot. Older snapshots omit `shoots`; the UI then uses `date` plus the first three `times`. Saving from the sliders writes `shoots` and keeps `date`/`times` in sync so older readers still see the first date and the slot times. Extra times beyond three from older snapshots are dropped only after a slot edit. DB1/DB2 transport versions are unchanged.
+
+### Shoot ranges
+
+Optional `shoots[].endTime` (HH:mm) turns a slot into a range on its saved date. `time` is the start; `endTime` must be strictly later, with both between 00:00 and 23:59. Midnight-crossing ranges require separate dates/slots. A range counts as one shoot for capture totals. The legacy `project.times` list stores each slot's start, and `project.date` stores the first slot's date. Updated apps preserve the entire range through draft storage, DB1/DB2 import/export and PDF export.
+
+**Version decision:** this is an additive schema v1 field; DB1/DB2 transport versions are unchanged. Old snapshots remain single times, with no migration. Older app builds ignore `endTime`, display the start time, and lose the end on re-export. Invalid or reversed ranges are rejected at import and at the session update boundary. Selection of the start/end handle is ephemeral: ShadeMap receives only that endpoint's instant, and selection never changes the saved range. Viewer adjustments remain temporary and do not alter the saved PDF schedule.
 
 ## Circle and oval
 

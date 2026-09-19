@@ -71,8 +71,8 @@ export function attachImageInteraction(surface: HTMLElement, projection: ImagePr
   }
   const context = (event: MouseEvent) => {
     if (!enabled() || !onSurface(event)) return
-    // A 360 point owns right-drag focus, including a contextmenu on release.
-    if (surface.querySelector('[data-360-focusing]') || (event.target instanceof Element && event.target.closest('[data-360-focus-control]'))) return
+    // Camera aiming owns right-drag, including a contextmenu on release.
+    if (surface.querySelector('[data-camera-aiming]') || (event.target instanceof Element && event.target.closest('[data-camera-aim-control]'))) return
     // Anchors may be placed on icons too; shared app controls remain untouched.
     if (event.target instanceof Element && event.target.closest('input, [role="slider"], a') ) return
     const state = getState(), at = hit(pixel(event))

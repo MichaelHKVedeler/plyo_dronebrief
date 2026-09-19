@@ -43,14 +43,36 @@ export function attachRigLineDrag(surface: HTMLElement, projection: RigProjectio
   }
   const cancel = () => { if (drag) { latest().onCancel(); suppressClick = true; clear() } else feedback(false) }
   const point = (event: PointerEvent) => drag && projection.unproject({ x: drag.center.x + event.clientX - drag.x, y: drag.center.y + event.clientY - drag.y })
-  const hit = (event: PointerEvent) => {
+  const hit = (event: PointerEvent, forHover = false) => {
     const props = latest()
-    if (!inside(event) || !props.interactive || event.ctrlKey || event.shiftKey || event.altKey || event.metaKey || !acceptTarget(event.target)) return false
-    if (event.target instanceof Element && event.target.closest('button, input, [role="slider"], [role="switch"], gmp-advanced-marker, [data-shade-object]:not([data-rig-outline])')) return false
+    // Camera icons and their separate aim handles keep their own press gestures.
+    const cameraTarget = event.target instanceof Element ? event.target.closest('[data-camera-marker], [data-camera-aim-handle]') : null
+    const overCamera = forHover && !!cameraTarget
+    if (!inside(event) || !props.interactive || event.ctrlKey || event.shiftKey || event.altKey || event.metaKey || (!acceptTarget(event.target) && !overCamera)) return false
+    if (!overCamera && event.target instanceof Element && event.target.closest('button, input, [role="slider"], [role="switch"], gmp-advanced-marker, [data-shade-object]:not([data-rig-outline])')) return false
     const rect = surface.getBoundingClientRect()
     const pointer = { x: event.clientX - rect.left, y: event.clientY - rect.top }
     const path = rigOutline(props.rig).map(projection.project)
-    return !path.some((p) => !p) && path.some((p, i) => segmentDistance(pointer, p!, path[(i + 1) % path.length]!) <= Math.max(rigOutlineHitRadius, props.strokeWidth / 2))
+    if (path.some((p) => !p)) return false
+    const nearOutline = (point: Pixel) => path.some((p, i) => segmentDistance(point, p!, path[(i + 1) % path.length]!) <= Math.max(rigOutlineHitRadius, props.strokeWidth / 2))
+    if (forHover) {
+      const containsPointer = (element: Element) => {
+        const bounds = element.getBoundingClientRect()
+        return bounds.width > 0 && bounds.height > 0 && event.clientX >= bounds.left && event.clientX <= bounds.right && event.clientY >= bounds.top && event.clientY <= bounds.bottom
+      }
+      // Decorations do not receive pointer events. Their rendered bounds include
+      // zoom, overlay scaling and live previews, even before aim handles mount.
+      for (const decoration of surface.querySelectorAll('[data-rig-decoration]')) {
+        if (decoration.getAttribute('data-rig-decoration') === props.rig.id && [...decoration.querySelectorAll('[data-rig-hover]')].some(containsPointer)) return true
+      }
+      for (const camera of surface.querySelectorAll('[data-camera-marker]')) {
+        const bounds = camera.getBoundingClientRect()
+        if (!nearOutline({ x: bounds.left + bounds.width / 2 - rect.left, y: bounds.top + bounds.height / 2 - rect.top })) continue
+        if (cameraTarget === camera || cameraTarget?.getAttribute('data-camera-aim-handle') === camera.getAttribute('data-camera-marker')) return true
+        if (containsPointer(camera) || [...camera.querySelectorAll('[data-camera-arrow], [data-camera-badge]')].some(containsPointer)) return true
+      }
+    }
+    return nearOutline(pointer)
   }
   const down = (event: PointerEvent) => {
     if (!inside(event)) return
@@ -65,7 +87,7 @@ export function attachRigLineDrag(surface: HTMLElement, projection: RigProjectio
     surface.setPointerCapture?.(event.pointerId)
   }
   const move = (event: PointerEvent) => {
-    if (!drag) { feedback(event.buttons === 0 && hit(event)); return }
+    if (!drag) { feedback(event.buttons === 0 && hit(event, true)); return }
     if (!drag || event.pointerId !== drag.id) return
     stop(event)
     if (!latest().interactive) { cancel(); return }

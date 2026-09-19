@@ -9,8 +9,11 @@ const name = z.string().trim().min(1).max(200)
 const id = z.string().min(1).max(100)
 const clockTime = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/)
 export const maxShootSlots = 3
-// Additive v1: independent date+time pairs for stacked map shadows. Older snapshots omit this.
-export const shootSchema = z.object({ date: z.iso.date(), time: clockTime })
+// Additive v1: endTime makes a shoot a same-day range. Older snapshots are single times.
+export const shootSchema = z.object({ date: z.iso.date(), time: clockTime, endTime: clockTime.optional() })
+  .refine((slot) => !slot.endTime || slot.endTime > slot.time, {
+    message: 'The end time must be later than the start time on the same day.', path: ['endTime'],
+  })
 export const projectSchema = z.object({
   name,
   clientName: name,
@@ -102,6 +105,10 @@ export function shootSlots(project: ProjectDetails): ShootSlot[] {
   return project.times.slice(0, maxShootSlots).map((time) => ({ date: project.date, time }))
 }
 
+export function formatShootTime(slot: ShootSlot) {
+  return slot.endTime ? `${slot.time} - ${slot.endTime}` : slot.time
+}
+
 export function projectWithShoots(project: ProjectDetails, shoots: ShootSlot[]): ProjectDetails {
   const next = shoots.slice(0, maxShootSlots)
   if (!next.length) return project
@@ -132,8 +139,8 @@ export function formatHeightsMeters(heights: number[]) {
 
 export function nextShootSlot(slots: ShootSlot[]): ShootSlot {
   const last = slots.at(-1)
-  const [hours, minutes] = (last?.time ?? '09:00').split(':').map(Number)
-  const next = Math.min(hours * 60 + minutes + 15, 23 * 60 + 45)
+  const [hours, minutes] = (last?.endTime ?? last?.time ?? '09:00').split(':').map(Number)
+  const next = Math.min(hours * 60 + minutes + 15, 23 * 60 + 59)
   const time = `${String(Math.floor(next / 60)).padStart(2, '0')}:${String(next % 60).padStart(2, '0')}`
   return { date: last?.date ?? todayIsoDate(), time }
 }

@@ -3,7 +3,7 @@ import { useObjectRenderer } from './object-renderer'
 import { Navigation } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { cameraLabels, type CameraAngle, type DroneBrief, type Position } from '@/features/briefs/model/brief'
+import { cameraLabels, max360Fov, min360Fov, type CameraAngle, type DroneBrief, type Position } from '@/features/briefs/model/brief'
 import { cameraAppearance } from '@/features/briefs/components/camera-appearance'
 import { bearingDegrees, destination, distanceMeters, normalizeHeading } from './geometry'
 import { MapHandle } from './map-handle'
@@ -11,7 +11,7 @@ import { useHoverHandles } from './use-hover-handles'
 import { cameraArrowOffset, cameraDirectionLayout } from './camera-directions'
 import { useMapObjectScale } from './map-object-scale'
 import { PanoramaFocusCone } from './panorama-focus'
-import { usePanoramaFocusGesture } from './use-panorama-focus-gesture'
+import { useCameraAimGesture, type CameraAim } from './use-camera-aim-gesture'
 
 type Props = {
   angle: CameraAngle
@@ -75,11 +75,18 @@ export const CameraMarker = memo(function CameraMarker({ angle, editable, select
     if (cloning) onDuplicate?.(value.position)
     else onCommit(value)
   }
-  const startFocus = usePanoramaFocusGesture({
-    enabled: angle.type === '360' && editable && interactive && !ghost,
+  function aimedAngle(aim: CameraAim): CameraAngle {
+    if (angle.type === '360') return { ...angle, focus: {
+      directionDegrees: aim.directionDegrees,
+      fovDegrees: Math.max(min360Fov, Math.min(max360Fov, Math.round(aim.distancePixels))),
+    } }
+    return { ...angle, directionDegrees: aim.directionDegrees }
+  }
+  const startAim = useCameraAimGesture({
+    enabled: editable && interactive && !ghost,
     onStart: () => { onSelect(); hover.enter() },
-    onPreview: (focus) => { if (angle.type === '360') setDraft({ source: angle, value: { ...angle, focus } }) },
-    onCommit: (focus) => { if (angle.type === '360') commit({ ...angle, focus }) },
+    onPreview: (aim) => setDraft({ source: angle, value: aimedAngle(aim) }),
+    onCommit: (aim) => commit(aimedAngle(aim)),
     onCancel: resetPreview,
   })
   const symbol = <Icon className="size-5" />
@@ -99,15 +106,15 @@ export const CameraMarker = memo(function CameraMarker({ angle, editable, select
       }}
       onDrag={(event) => { if (editable && interactive && event.latLng) setDraft({ source: angle, value: { ...angle, position: event.latLng.toJSON() } }) }}
       onDragEnd={(event) => { if (editable && interactive && event.latLng) commit({ ...angle, position: event.latLng.toJSON() }) }}>
-      <div className="relative" style={{ zoom: scale }} onMouseEnter={hover.enter} onMouseLeave={hover.leave}>
+      <div data-camera-marker={angle.id} className="relative" style={{ zoom: scale }} onMouseEnter={hover.enter} onMouseLeave={hover.leave}>
         {visible.type === '360' && visible.focus && <PanoramaFocusCone focus={visible.focus} color={appearance.color} />}
         {editable ? <Button disabled={!interactive} size="icon" variant="outline" aria-label={'Move ' + name}
-          data-360-focus-control={angle.type === '360' && interactive ? '' : undefined}
-          title={name + (angle.type === '360' ? ' · Right-drag to set focus width and direction' : '') + (onDuplicate ? ' · Alt-drag to duplicate' : '')}
+          data-camera-aim-control={interactive ? '' : undefined}
+          title={name + (angle.type === '360' ? ' · Right-drag to set focus width and direction' : ' · Right-drag to aim the camera') + (onDuplicate ? ' · Alt-drag to duplicate' : '')}
           className={'relative cursor-pointer touch-none rounded-full border-2 shadow-md active:cursor-grabbing ' + appearance.className + (selected || ghost ? ' ring-2 ring-primary ring-offset-2' : '')}
           onFocus={hover.enter} onBlur={hover.leave} onMouseEnter={hover.enter} onMouseLeave={hover.leave}
           onPointerDownCapture={(event) => {
-            if (startFocus(event)) return
+            if (startAim(event)) return
             if (event.button !== 0) return
             if (event.ctrlKey || event.shiftKey) {
               event.preventDefault(); event.stopPropagation()
@@ -123,11 +130,11 @@ export const CameraMarker = memo(function CameraMarker({ angle, editable, select
           }}
           onClick={(event) => { event.stopPropagation(); altCopy.current = false; onSelect(event.ctrlKey || event.shiftKey) }}>{symbol}</Button>
           : <Badge className={'relative flex size-9 items-center justify-center rounded-full border-2 shadow-sm ' + appearance.className}>{symbol}</Badge>}
-        <Badge aria-hidden="true" className="pointer-events-none absolute -right-1.5 -top-1.5 flex size-5 items-center justify-center rounded-full border-2 border-background p-0 text-[10px] leading-none tabular-nums shadow-sm">{shownNumber}</Badge>
+        <Badge data-camera-badge aria-hidden="true" className="pointer-events-none absolute -right-1.5 -top-1.5 flex size-5 items-center justify-center rounded-full border-2 border-background p-0 text-[10px] leading-none tabular-nums shadow-sm">{shownNumber}</Badge>
         {directional && <CameraArrows offsets={offsets} directionDegrees={visible.directionDegrees} color={appearance.color} />}
       </div>
     </AdvancedMarker>
-    {showAim && offsets.map((offset, index) => <MapHandle key={index} onCancel={resetPreview} bare hitAreaOnly interactive={editable && interactive}
+    {showAim && offsets.map((offset, index) => <MapHandle key={index} cameraId={angle.id} onCancel={resetPreview} bare hitAreaOnly interactive={editable && interactive}
       position={destination(visible.position, directionRadius, normalizeHeading(visible.directionDegrees + offset))}
       label={'Aim ' + name + (offsets.length > 1 ? ' angle ' + (index + 1) : '')} className="cursor-crosshair"
       constrain={(point) => destination(visible.position, directionRadius,

@@ -11,12 +11,12 @@ const projection: RigProjection = {
   project: (p) => ({ x: 200 + p.lng * 111195, y: 200 - p.lat * 111195 }),
   unproject: (p) => ({ lng: (p.x - 200) / 111195, lat: (200 - p.y) / 111195 }),
 }
-function setup(interactive = true) {
+function setup(interactive = true, acceptTarget?: (target: EventTarget | null) => boolean) {
   const surface = document.createElement('div')
   surface.innerHTML = '<svg><polygon data-rig-outline data-shade-object /></svg><button>Handle</button>'
   document.body.append(surface)
   const props: RigLineDragProps = { rig, strokeWidth: 1, interactive, onStart: vi.fn(), onPreview: vi.fn(), onCommit: vi.fn(), onCancel: vi.fn() }
-  detach = attachRigLineDrag(surface, projection, () => props)
+  detach = attachRigLineDrag(surface, projection, () => props, acceptTarget)
   const edge = projection.project(rigOutline(rig)[16])!
   const target = surface.querySelector('polygon')!
   const down = (button = 0) => fireEvent.pointerDown(target, { button, clientX: edge.x, clientY: edge.y })
@@ -101,4 +101,64 @@ it('signals movement only over the outline and clears feedback on exit and cance
   fireEvent.pointerMove(target, { buttons: 0, clientX: edge.x, clientY: edge.y })
   expect(surface).not.toHaveAttribute('data-rig-move-cursor')
   expect(props.onCommit).not.toHaveBeenCalled()
+})
+
+function bounds(element: Element, x: number, y: number, size = 32) {
+  vi.spyOn(element, 'getBoundingClientRect').mockReturnValue({ left: x - size / 2, top: y - size / 2, right: x + size / 2, bottom: y + size / 2, width: size, height: size } as DOMRect)
+}
+
+it.each([false, true])('keeps hover across a rig camera arrow, icon, badge and aim handle without stealing camera drags (ShadeMap: %s)', (shade) => {
+  const { surface, target, edge, props, move, up } = setup(true, shade ? (target) => target instanceof Element && target.matches('[data-rig-outline]') : undefined)
+  props.onHoverChange = vi.fn()
+  const camera = document.createElement('div')
+  camera.setAttribute('data-camera-marker', 'camera-1')
+  camera.innerHTML = '<button>Camera</button><span data-camera-arrow></span><span data-camera-badge></span>'
+  surface.append(camera)
+  bounds(camera, edge.x, edge.y)
+  const arrow = { x: (edge.x + 200) / 2, y: (edge.y + 200) / 2 }
+  bounds(camera.querySelector('[data-camera-arrow]')!, arrow.x, arrow.y)
+  bounds(camera.querySelector('[data-camera-badge]')!, edge.x + 20, edge.y - 20, 20)
+  const hover = (element: Element, x: number, y: number) => fireEvent.pointerMove(element, { buttons: 0, clientX: x, clientY: y })
+  // First enter the non-interactive arrow, before any camera aim handle exists.
+  hover(target, arrow.x, arrow.y)
+  expect(props.onHoverChange).toHaveBeenCalledExactlyOnceWith(true)
+  const aim = document.createElement('div')
+  aim.setAttribute('data-camera-aim-handle', 'camera-1')
+  aim.innerHTML = '<button>Aim camera</button>'
+  surface.append(aim)
+  hover(aim.firstElementChild!, arrow.x, arrow.y)
+  hover(camera.firstElementChild!, edge.x, edge.y)
+  hover(target, edge.x + 20, edge.y - 20)
+  expect(props.onHoverChange).toHaveBeenCalledTimes(1)
+  fireEvent.pointerDown(camera.firstElementChild!, { button: 0, clientX: edge.x, clientY: edge.y }); move(); up()
+  fireEvent.pointerDown(aim.firstElementChild!, { button: 0, clientX: arrow.x, clientY: arrow.y }); move(); up()
+  expect(props.onStart).not.toHaveBeenCalled()
+  expect(props.onCommit).not.toHaveBeenCalled()
+  hover(target, 200, 200)
+  expect(props.onHoverChange).toHaveBeenLastCalledWith(false)
+  // Arrows of cameras away from the outline must not reveal the rig handles.
+  bounds(camera, 200, 200)
+  hover(aim.firstElementChild!, arrow.x, arrow.y)
+  expect(props.onHoverChange).toHaveBeenLastCalledWith(false)
+  expect(surface).not.toHaveAttribute('data-rig-move-cursor')
+})
+
+it('reveals controls over the rig numbered badges and inward arrows beyond the outline hit area', () => {
+  const { surface, target, props } = setup()
+  props.onHoverChange = vi.fn()
+  const decoration = document.createElement('div')
+  decoration.setAttribute('data-rig-decoration', rig.id)
+  decoration.innerHTML = '<span data-rig-hover></span><span data-rig-hover></span>'
+  surface.append(decoration)
+  bounds(decoration.children[0], 200, 160)
+  bounds(decoration.children[1], 250, 200)
+  for (const [x, y] of [[200, 160], [250, 200]]) {
+    fireEvent.pointerMove(target, { buttons: 0, clientX: x, clientY: y })
+    expect(props.onHoverChange).toHaveBeenLastCalledWith(true)
+  }
+  fireEvent.pointerMove(target, { buttons: 0, clientX: 200, clientY: 200 })
+  expect(props.onHoverChange).toHaveBeenLastCalledWith(false)
+  props.interactive = false
+  fireEvent.pointerMove(target, { buttons: 0, clientX: 200, clientY: 160 })
+  expect(props.onHoverChange).toHaveBeenLastCalledWith(false)
 })

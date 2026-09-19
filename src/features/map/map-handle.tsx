@@ -20,8 +20,11 @@ type Props = {
   className?: string
   constrain?: (position: Position) => Position
   hitAreaOnly?: boolean
+  zIndex?: number
+  minHitSize?: number
+  cameraId?: string
 }
-export function MapHandle({ position, label, children, onCancel, onStart, onPreview, onCommit, onEnter, onLeave, onStep, constrain, bare = false, interactive = true, hitAreaOnly = false, className = '' }: Props) {
+export function MapHandle({ position, label, children, onCancel, onStart, onPreview, onCommit, onEnter, onLeave, onStep, constrain, bare = false, interactive = true, hitAreaOnly = false, zIndex = 100, minHitSize, cameraId, className = '' }: Props) {
   const { Marker: AdvancedMarker } = useObjectRenderer()
   const scale = useMapObjectScale()
   const marker = useRef<google.maps.marker.AdvancedMarkerElement | null>(null)
@@ -41,7 +44,7 @@ export function MapHandle({ position, label, children, onCancel, onStart, onPrev
   return <>
     {/* A constrained handle's visible marker never participates in SDK dragging.
         Its position and the outline are rendered from the same shape state. */}
-    {constrain && !hitAreaOnly && <AdvancedMarker position={position} anchorLeft="-50%" anchorTop="-50%" zIndex={100}
+    {constrain && !hitAreaOnly && <AdvancedMarker position={position} anchorLeft="-50%" anchorTop="-50%" zIndex={zIndex}
       draggable={false} clickable={false} style={{ pointerEvents: 'none' }}>
       {/* Direction symbols are geometry, not a second button. A circular button
           surface/focus ring must never be painted over the arrow. */}
@@ -51,13 +54,14 @@ export function MapHandle({ position, label, children, onCancel, onStart, onPrev
         style={{ zoom: scale }}
         className={handleClass + (focused ? ' ring-2 ring-ring' : '')}>{children}</Button>}
     </AdvancedMarker>}
-    <AdvancedMarker ref={marker} position={position} anchorLeft="-50%" anchorTop="-50%" zIndex={101}
+    <AdvancedMarker ref={marker} position={position} anchorLeft="-50%" anchorTop="-50%" zIndex={zIndex + 1}
     title={label} draggable={interactive} clickable={interactive} style={{ pointerEvents: interactive ? 'auto' : 'none', opacity: constrain ? 0 : 1 }}
     onMouseEnter={onEnter} onMouseLeave={onLeave}
     onDragCancel={onCancel}
     onDragStart={() => { if (interactive) onStart() }}
     onDrag={(event) => { if (event.latLng) drag(event.latLng.toJSON(), false) }}
     onDragEnd={(event) => { if (event.latLng) drag(event.latLng.toJSON(), true) }}>
+    <div data-camera-aim-handle={cameraId} className={'flex items-center justify-center ' + className} style={{ minWidth: minHitSize, minHeight: minHitSize }}>
     <Button disabled={!interactive} type="button" size="icon-sm" variant={bare ? 'ghost' : 'outline'}
       style={{ zoom: scale }}
       className={handleClass}
@@ -69,6 +73,7 @@ export function MapHandle({ position, label, children, onCancel, onStart, onPrev
         event.preventDefault(); event.stopPropagation()
         onStep(event.key === 'ArrowUp' || event.key === 'ArrowRight' ? 1 : -1)
       }}>{children}</Button>
+    </div>
   </AdvancedMarker>
   </>
 }
