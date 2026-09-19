@@ -1,0 +1,18 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // All writes use validated, transactional trusted operations. No client role fields are authoritative.
+    function googleUser() { return request.auth != null && request.auth.token.email_verified == true && request.auth.token.firebase.sign_in_provider == 'google.com'; }
+    function member(org) { return googleUser() && exists(/databases/$(database)/documents/organizations/$(org)/members/$(request.auth.uid)); }
+    function admin(org) { return member(org) && get(/databases/$(database)/documents/organizations/$(org)/members/$(request.auth.uid)).data.role == 'admin'; }
+    match /projects/{project} {
+      // Summary listeners only; public-share tokens are stored in a separate server-only document.
+      allow get: if member(resource.data.orgId) && resource.data.deletedAt == null;
+    }
+    match /organizations/{org}/members/{uid} { allow read: if member(org); }
+    match /organizations/{org}/grants/{id} { allow read: if admin(org); }
+    match /users/{uid} { allow get: if googleUser() && request.auth.uid == uid; }
+    match /users/{uid}/organizations/{org} { allow read: if googleUser() && request.auth.uid == uid && member(org); }
+    match /{document=**} { allow read, write: if false; }
+  }
+}

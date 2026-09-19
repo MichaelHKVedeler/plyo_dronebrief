@@ -7,6 +7,8 @@ import { briefRepository } from '@/features/briefs/storage/brief-repository'
 import { exportBriefKey } from '@/features/briefs/storage/share-key'
 import { readImageHandle, readLocalImage, rememberImageHandle, imagePicker } from '@/features/briefs/storage/local-images'
 
+vi.mock('@/features/cloud/auth/config', () => ({ cloudConfigured: false }))
+
 vi.mock('@/features/briefs/storage/local-images', () => ({
   imagePicker: vi.fn(() => undefined), readImageHandle: vi.fn(async () => undefined),
   rememberImageHandle: vi.fn(async () => {}), readLocalImage: vi.fn(async () => ({ url: 'blob:local-only', width: 640, height: 360 })),
@@ -73,6 +75,9 @@ it('reconnects local images in a viewer without saving or permitting edits', asy
   await user.click(await screen.findByRole('button', { name: 'Reconnect image' }))
   await user.upload(screen.getByLabelText('Local image file'), file)
   await waitFor(() => expect(readLocalImage).toHaveBeenCalledOnce())
+  await user.click(screen.getByRole('button', { name: 'View floorplan' }))
+  expect(screen.getByRole('img', { name: 'plan.png' })).toHaveAttribute('src', 'blob:local-only')
+  await user.keyboard('{Escape}')
   await user.click(within(screen.getByRole('region', { name: 'Brief map' })).getByRole('switch', { name: 'Image overlays' }))
   expect(writes).not.toHaveBeenCalled()
   expect(briefRepository.latest()!.project.name).toBe(project.name)
