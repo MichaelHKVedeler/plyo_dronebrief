@@ -72,5 +72,6 @@ it('defaults missing project notes and round-trips authored description and inst
 it('picks unused default times when stacking shadow sliders', () => {
   expect(nextShootSlot([{ date: '2026-09-12', time: '09:00' }])).toEqual({ date: '2026-09-12', time: '09:15' })
   expect(nextShootSlot([{ date: '2026-09-12', time: '09:00' }, { date: '2026-09-13', time: '12:00' }])).toEqual({ date: '2026-09-13', time: '12:15' })
-  expect(nextShootSlot([{ date: '2026-09-12', time: '23:50' }])).toEqual({ date: '2026-09-12', time: '23:45' })
+  expect(nextShootSlot([{ date: '2026-09-12', time: '23:50' }])).toEqual({ date: '2026-09-12', time: '23:59' })
+  expect(nextShootSlot([{ date: '2026-09-12', time: '09:00', endTime: '12:00' }])).toEqual({ date: '2026-09-12', time: '12:15' })
 })

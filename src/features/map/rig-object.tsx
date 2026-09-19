@@ -25,7 +25,7 @@ export function RigObject({ rig, pixelsToMeters, dark = false, editable, interac
   const scale = visible.radiusMeters / pixelsToMeters / 400
   const path = useMemo(() => rigOutline(visible), [visible])
   const canEdit = editable && interactive
-  const handles = editable && (rigHovered || draft !== null)
+  const handles = canEdit && (rigHovered || draft !== null)
   const radiusPoint = rigRadiusHandle(visible)
   const ovalPoint = destination(visible.position, visible.radiusMeters * visible.ovalRatio, visible.rotationDegrees + 90)
   function commit(value: CircleRig) {
@@ -40,14 +40,14 @@ export function RigObject({ rig, pixelsToMeters, dark = false, editable, interac
     {rigArrows(visible).map((arrow) => <AdvancedMarker key={arrow.number} position={arrow.position}
       anchorLeft="-50%" anchorTop="-50%" title={'Rig arrow ' + arrow.number} zIndex={10}
       clickable={false} style={{ pointerEvents: 'none' }}>
-      <div className="relative size-8" style={{ zoom: scale }} role="img" aria-label={'Rig arrow ' + arrow.number + ', pointing toward center'}>
-        <div className="absolute inset-0"
+      <div data-rig-decoration={rig.id} className="relative size-8" style={{ zoom: scale }} role="img" aria-label={'Rig arrow ' + arrow.number + ', pointing toward center'}>
+        <div data-rig-hover className="absolute inset-0"
         style={{ transform: `translate(${Math.sin(arrow.directionDegrees * Math.PI / 180) * 36}px, ${-Math.cos(arrow.directionDegrees * Math.PI / 180) * 36}px)` }}
         >
         <Navigation className="size-8 fill-white" size={32} strokeWidth={2} absoluteStrokeWidth
           style={{ color, transform: 'rotate(' + (arrow.directionDegrees - 45) + 'deg)' }} />
         </div>
-        <Badge variant="outline" style={{ borderColor: color, borderWidth: strokeWeight, color }} className="bg-white absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 size-10 justify-center rounded-full p-0 text-lg font-semibold leading-none tabular-nums">{arrow.number}</Badge>
+        <Badge data-rig-hover variant="outline" style={{ borderColor: color, borderWidth: strokeWeight, color }} className="bg-white absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 size-10 justify-center rounded-full p-0 text-lg font-semibold leading-none tabular-nums">{arrow.number}</Badge>
       </div>
     </AdvancedMarker>)}
     <RigLineDragController rig={visible} interactive={canEdit} strokeWidth={strokeWeight * scale}
@@ -56,13 +56,13 @@ export function RigObject({ rig, pixelsToMeters, dark = false, editable, interac
       onPreview={(position) => setDraft({ source: rig, value: { ...rig, position } })}
       onCommit={(position) => commit({ ...rig, position })} />
     {handles && <>
-      <MapHandle onCancel={() => setDraft(null)} interactive={canEdit} position={radiusPoint} label="Scale and rotate circle rig" className="cursor-crosshair"
+      <MapHandle onCancel={() => setDraft(null)} interactive={canEdit} position={radiusPoint} label="Scale and rotate circle rig" className="cursor-crosshair" zIndex={200} minHitSize={32}
         onEnter={controlHover.enter} onLeave={controlHover.leave} onStart={start}
         onPreview={(point) => setDraft({ source: rig, value: scaleAndRotateRig(visible, point) })}
         onCommit={(point) => commit(scaleAndRotateRig(visible, point))}>
         <Circle className="size-3 fill-current" />
       </MapHandle>
-      <MapHandle onCancel={() => setDraft(null)} interactive={canEdit} position={ovalPoint} label="Adjust rig ovalness" className="cursor-ew-resize"
+      <MapHandle onCancel={() => setDraft(null)} interactive={canEdit} position={ovalPoint} label="Adjust rig ovalness" className="cursor-ew-resize" zIndex={200} minHitSize={32}
         constrain={(point) => {
           const shaped = reshapeRig(visible, point)
           return destination(shaped.position, shaped.radiusMeters * shaped.ovalRatio, shaped.rotationDegrees + 90)

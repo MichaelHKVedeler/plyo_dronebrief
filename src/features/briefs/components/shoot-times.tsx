@@ -1,10 +1,10 @@
 import { countBriefImages } from '../model/image-count'
-import { shootSlots, type DroneBrief } from '../model/brief'
+import { formatShootTime, shootSlots, type DroneBrief } from '../model/brief'
 
 export function ShootTimes({ brief }: { brief: DroneBrief }) {
   const slots = shootSlots(brief.project)
   const date = slots[0]?.date ?? brief.project.date
-  const times = slots.map((slot) => slot.time).join(', ')
+  const times = slots.map(formatShootTime).join(', ')
   return <div className="grid gap-4">
     <div>
       <div className="flex items-baseline justify-between gap-2">

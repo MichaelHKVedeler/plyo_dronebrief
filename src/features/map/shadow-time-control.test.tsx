@@ -4,13 +4,16 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ShadowTimeControl } from './shadow-time-control'
 import type { ShootSlot } from '@/features/briefs/model/brief'
+import type { ShootEndpoint } from './shoot-time-range'
 
 afterEach(cleanup)
 const oslo = { lat: 59.91, lng: 10.75 }
 function Control({ initial = [{ date: '2026-09-11', time: '09:00' }] }: { initial?: ShootSlot[] }) {
   const [slots, setSlots] = useState(initial)
   const [activeIndex, setActiveIndex] = useState(0)
-  return <ShadowTimeControl slots={slots} activeIndex={activeIndex} onActivate={setActiveIndex} onChange={setSlots} onCommit={setSlots} position={oslo} />
+  const [activeEndpoint, setActiveEndpoint] = useState<ShootEndpoint>(0)
+  return <ShadowTimeControl slots={slots} activeIndex={activeIndex} activeEndpoint={activeEndpoint}
+    onActivate={(index, endpoint = 0) => { setActiveIndex(index); setActiveEndpoint(endpoint) }} onChange={setSlots} onCommit={setSlots} position={oslo} />
 }
 
 it('keeps one shared date on the header and stacks up to three times', async () => {
@@ -81,4 +84,18 @@ it('activates from a slider track without typing or jumping the time', async () 
     Reflect.deleteProperty(HTMLElement.prototype, 'releasePointerCapture')
     Reflect.deleteProperty(HTMLElement.prototype, 'hasPointerCapture')
   }
+})
+
+it('offers range creation by button and preserves the chosen endpoint when returning to a single time', async () => {
+  const user = userEvent.setup()
+  render(<Control />)
+  await user.click(screen.getByRole('button', { name: 'Make Shadow time a range' }))
+  expect(screen.getAllByRole('slider')).toHaveLength(2)
+  await user.click(screen.getByRole('button', { name: 'Shadow time end' }))
+  await user.click(screen.getByRole('button', { name: 'Collapse times' }))
+  expect(screen.getByRole('button', { name: 'Shadow time end' })).toHaveAttribute('aria-current', 'true')
+  await user.click(screen.getByRole('button', { name: 'Expand times' }))
+  await user.click(screen.getByRole('button', { name: 'Use a single time for Shadow time' }))
+  expect(screen.getAllByRole('slider')).toHaveLength(1)
+  expect(screen.getByRole('slider', { name: 'Shadow time' })).toHaveAttribute('aria-valuetext', '10:00 Europe/Oslo')
 })

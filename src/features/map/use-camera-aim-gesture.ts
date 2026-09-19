@@ -1,21 +1,21 @@
 import { useEffect, useRef, type PointerEvent as ReactPointerEvent } from 'react'
-import { max360Fov, min360Fov, type PanoramaFocus } from '@/features/briefs/model/brief'
 import { normalizeHeading } from './geometry'
 
-export function panoramaFocusAt(x: number, y: number): PanoramaFocus {
+export type CameraAim = { directionDegrees: number; distancePixels: number }
+function cameraAimAt(x: number, y: number): CameraAim {
   return {
     directionDegrees: normalizeHeading(Math.round(Math.atan2(x, -y) * 180 / Math.PI)),
-    fovDegrees: Math.max(min360Fov, Math.min(max360Fov, Math.round(Math.hypot(x, y)))),
+    distancePixels: Math.hypot(x, y),
   }
 }
 
-// Both providers are north-up. Mouse distance controls angular width (one
-// degree per CSS pixel), independently of map zoom and overlay display size.
-export function usePanoramaFocusGesture({ enabled, onStart, onPreview, onCommit, onCancel }: {
+// Both providers are north-up. The shared gesture reports bearing and distance;
+// each camera type decides which of those values belongs in its saved settings.
+export function useCameraAimGesture({ enabled, onStart, onPreview, onCommit, onCancel }: {
   enabled: boolean
   onStart: () => void
-  onPreview: (focus: PanoramaFocus) => void
-  onCommit: (focus: PanoramaFocus) => void
+  onPreview: (aim: CameraAim) => void
+  onCommit: (aim: CameraAim) => void
   onCancel: () => void
 }) {
   const detach = useRef<(() => void) | null>(null)
@@ -29,14 +29,14 @@ export function usePanoramaFocusGesture({ enabled, onStart, onPreview, onCommit,
     const center = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 }
     const start = { x: event.clientX, y: event.clientY }
     const pointerId = event.pointerId
-    let latest: PanoramaFocus | null = null
+    let latest: CameraAim | null = null
     let active = true
     const stop = (e: Event) => { e.preventDefault(); e.stopImmediatePropagation() }
     const preview = (e: PointerEvent) => {
       if (!latest && Math.hypot(e.clientX - start.x, e.clientY - start.y) < 3) return
       // At the center there is no bearing; retain the most recent direction.
       const x = e.clientX - center.x, y = e.clientY - center.y
-      latest = Math.hypot(x, y) < 1 && latest ? { ...latest, fovDegrees: min360Fov } : panoramaFocusAt(x, y)
+      latest = Math.hypot(x, y) < 1 && latest ? { ...latest, distancePixels: 0 } : cameraAimAt(x, y)
       onPreview(latest)
     }
     const move = (e: PointerEvent) => {
@@ -69,7 +69,7 @@ export function usePanoramaFocusGesture({ enabled, onStart, onPreview, onCommit,
     }
     function cleanup() {
       cancel()
-      button.removeAttribute('data-360-focusing')
+      button.removeAttribute('data-camera-aiming')
       window.removeEventListener('pointermove', move, true)
       window.removeEventListener('pointerup', up, true)
       window.removeEventListener('pointercancel', cancel, true)
@@ -89,7 +89,7 @@ export function usePanoramaFocusGesture({ enabled, onStart, onPreview, onCommit,
     window.addEventListener('pointerdown', nextDown, options)
     mouseEvents.forEach((name) => window.addEventListener(name, mouse, options))
     button.addEventListener('lostpointercapture', cancel)
-    button.setAttribute('data-360-focusing', '')
+    button.setAttribute('data-camera-aiming', '')
     button.setPointerCapture?.(pointerId)
     detach.current = cleanup
     onStart()

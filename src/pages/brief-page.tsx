@@ -1,8 +1,8 @@
 import { defaultRigArrowCount, type Position } from '@/features/briefs/model/brief'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type RefObject } from 'react'
+import type { PdfMapCapture } from '@/features/briefs/export/pdf-types'
 import { Card, CardContent } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { MapPanel } from '@/features/map/map-panel'
@@ -12,7 +12,7 @@ import { idleTool, startCameraPlacement, type MapTool, type CameraType } from '@
 import { useLocalImages } from '@/features/briefs/state/use-local-images'
 import type { BriefAction, BriefSession } from '@/features/briefs/state/brief-session'
 
-export function BriefPage({ session, dispatch, error }: { session: BriefSession; dispatch: (action: BriefAction) => void; error: string | null }) {
+export function BriefPage({ session, dispatch, error, pdfMapRef }: { session: BriefSession; dispatch: (action: BriefAction) => void; error: string | null; pdfMapRef?: RefObject<PdfMapCapture | null> }) {
   const images = useLocalImages(session.brief.imageOverlays)
   const [focusPosition, setFocusPosition] = useState<Position | null>(null)
   const pendingRig = useRef<string | null>(null)
@@ -78,11 +78,10 @@ export function BriefPage({ session, dispatch, error }: { session: BriefSession;
     setSelectedCameraIds([])
     setTool(startCameraPlacement(type))
   }
-  return <main className="flex min-h-0 w-full min-w-0 flex-1 flex-col px-4 py-4 sm:px-6">
-    <div className="mb-4 flex shrink-0 items-center gap-3"><h1 className="min-w-0 truncate text-xl font-semibold tracking-tight sm:text-2xl" title={session.brief.project.name}>{session.brief.project.name}</h1><Badge variant="secondary">{session.mode === 'edit' ? 'Editor' : 'Read-only'}</Badge></div>
+  return <main className="flex min-h-0 w-full min-w-0 flex-1 flex-col p-3 sm:px-4">
     {error && <Alert variant="destructive" className="mb-4 max-h-28 shrink-0 overflow-y-auto"><AlertDescription>{error}</AlertDescription></Alert>}
-    <div className="grid min-h-0 flex-1 grid-rows-[minmax(0,1fr)_minmax(0,1fr)] gap-4 lg:grid-cols-[minmax(0,1fr)_360px] lg:grid-rows-[minmax(0,1fr)]">
-      <MapPanel images={images} rigPlacementRef={rigPlacement} focusPosition={focusPosition} onViewCenterChange={(center) => { viewCenter.current = center }} selectedCameraIds={selectedCameraIds} onSelectCamera={selectCamera} session={session} dispatch={dispatch} tool={tool} onToolChange={setTool} selectedId={selectedId} onSelect={select} />
+    <div className="grid min-h-0 flex-1 grid-rows-[minmax(0,1fr)_minmax(0,1fr)] gap-3 lg:grid-cols-[minmax(0,1fr)_360px] lg:grid-rows-[minmax(0,1fr)]">
+      <MapPanel pdfMapRef={pdfMapRef} images={images} rigPlacementRef={rigPlacement} focusPosition={focusPosition} onViewCenterChange={(center) => { viewCenter.current = center }} selectedCameraIds={selectedCameraIds} onSelectCamera={selectCamera} session={session} dispatch={dispatch} tool={tool} onToolChange={setTool} selectedId={selectedId} onSelect={select} />
       <aside className="min-h-0 min-w-0" aria-label="Brief details">
         <Card className="h-full min-h-0 overflow-hidden py-0"><CardContent className="flex min-h-0 flex-1 flex-col px-0">
           <Tabs defaultValue="project" className="min-h-0 flex-1 gap-0">

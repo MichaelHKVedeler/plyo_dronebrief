@@ -1,4 +1,5 @@
 import { ImageLayer } from './image-layer'
+import { waitForMapIdle } from './use-pdf-map-capture'
 import type { ImageLayerState } from './image-interaction'
 import { attachShadePlacement } from './shade-placement'
 import { attachShadeMapPan } from './shade-map-pan'
@@ -49,6 +50,7 @@ export function ShadeMapPanel({ imageLayer, dimOpacity, objectSizePercent, dispa
       instance = new LibreMap({ container: host.current!, style: 'https://tiles.openfreemap.org/styles/liberty',
         ...toShadeView(startView.current), minZoom: -1, maxZoom: 23, pitch: 0, maxPitch: 0, bearing: 0,
         dragRotate: false, pitchWithRotate: false, touchPitch: false, attributionControl: false,
+        canvasContextAttributes: { preserveDrawingBuffer: true },
       })
       instance.touchZoomRotate.disableRotation()
     } catch {
@@ -115,6 +117,7 @@ export function ShadeMapPanel({ imageLayer, dimOpacity, objectSizePercent, dispa
       setMap(instance)
       const literal = (position: google.maps.LatLng | google.maps.LatLngLiteral) => 'toJSON' in position ? position.toJSON() : position
       latest.current.onNavigation({
+        waitForIdle: (signal) => waitForMapIdle({ addListener: (event, callback) => { instance.on(event, callback); return { remove: () => { instance.off(event, callback) } } } }, signal),
         getDiv: () => instance.getContainer(),
         getZoom: () => instance.getZoom() + 1,
         setZoom: (zoom) => { if (zoom !== undefined) instance.setZoom(zoom - 1) },
@@ -207,7 +210,7 @@ export function ShadeMapPanel({ imageLayer, dimOpacity, objectSizePercent, dispa
     dispatch({ type: 'update', update: (brief) => ({ ...brief, angles: brief.angles.map((item) => item.id === updated.id ? updated : item) }) })
   }, [dispatch])
   const duplicateCameraAt = useCallback((source: CameraAngle, position: Position) => { onCameraDuplicate(source, position) }, [onCameraDuplicate])
-  return <div className="absolute inset-0 isolate bg-muted" aria-label="ShadeMap preview" onContextMenu={(event) => { event.preventDefault(); if (editable) onToolChange(idleTool) }}>
+  return <div data-pdf-map-surface className="absolute inset-0 isolate bg-muted" aria-label="ShadeMap preview" onContextMenu={(event) => { event.preventDefault(); if (editable) onToolChange(idleTool) }}>
     <div ref={host} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }} />
     <div aria-hidden="true" className="pointer-events-none absolute inset-0" style={{ background: '#282828', opacity: dimOpacity / 100 }} />
     <div data-image-host className="pointer-events-none absolute inset-0" />
@@ -222,7 +225,7 @@ export function ShadeMapPanel({ imageLayer, dimOpacity, objectSizePercent, dispa
       </div>
       <ImageLayer {...imageLayer} />
     </MapObjectScale></ObjectRenderer></ShadeProjection>}
-    {(!key || error || !ready) && <p role="status" className="absolute inset-x-3 top-28 z-10 mx-auto max-w-md rounded-md border bg-card p-3 text-sm shadow-sm">
+    {(!key || error || !ready) && <p data-pdf-map-unavailable role="status" className="absolute inset-x-3 top-28 z-10 mx-auto max-w-md rounded-md border bg-card p-3 text-sm shadow-sm">
       {!key ? 'Add VITE_SHADEMAP_API_KEY to .env.local and restart Vite to enable shadows.' : error || 'Loading shadow map…'}
     </p>}
     <div className="absolute bottom-0 left-0 z-10 bg-white/90 px-1 text-[10px] text-black">

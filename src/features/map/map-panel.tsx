@@ -1,4 +1,6 @@
 import { ImageLayer } from './image-layer'
+import type { PdfMapCapture } from '@/features/briefs/export/pdf-types'
+import { usePdfMapCapture, waitForMapIdle } from './use-pdf-map-capture'
 import type { ImageLayerState } from './image-interaction'
 import type { LocalImages } from '@/features/briefs/state/use-local-images'
 import { useCameraFocus } from './use-camera-focus'
@@ -31,9 +33,11 @@ import { MiddleMousePan } from './middle-mouse-pan'
 import { metersPerPixel } from './geometry'
 import { MapObjectScale, mapObjectScale } from './map-object-scale'
 import { idleTool, placeCamera, type MapTool } from './placement'
-import { ShadowTimeControl } from './shadow-time-control'
+import { ResponsiveShadowTimeControl } from './shadow-time-control'
+import { previewShootSlot, type ShootEndpoint } from './shoot-time-range'
 
 type Props = {
+  pdfMapRef?: RefObject<PdfMapCapture | null>
   images: LocalImages
   rigPlacementRef?: RefObject<(() => { position: Position; radiusMeters: number }) | null>
   focusPosition?: Position | null
@@ -112,7 +116,7 @@ function ConnectedMap({ imageLayer, selectedCameraIds, onSelectCamera, session, 
   </>
 }
 function MapMessage({ title, description }: { title: string; description: string }) {
-  return <div className="flex h-full min-h-0 items-center justify-center overflow-auto bg-muted/60 p-4 sm:p-8">
+  return <div data-pdf-map-unavailable className="flex h-full min-h-0 items-center justify-center overflow-auto bg-muted/60 p-4 sm:p-8">
     <div className="max-w-sm text-center"><MapPin className="mx-auto mb-4 size-9 text-primary" /><h2 className="text-lg font-semibold">{title}</h2><p className="mt-2 text-sm leading-relaxed text-muted-foreground">{description}</p></div>
   </div>
 }
@@ -134,13 +138,15 @@ function MapWorkspace(props: Props) {
   useCameraFocus(props.focusPosition, shadeActive ? shadeNavigation : googleMap)
   const [slots, setSlots] = useState(() => shootSlots(brief.project))
   const [activeSlot, setActiveSlot] = useState(0)
+  const [activeEndpoint, setActiveEndpoint] = useState<ShootEndpoint>(0)
   const sourceId = useRef(brief.id)
   if (sourceId.current !== brief.id) {
     sourceId.current = brief.id
     setSlots(shootSlots(brief.project))
     setActiveSlot(0)
+    setActiveEndpoint(0)
   }
-  const shownSlot = slots[Math.min(activeSlot, Math.max(slots.length - 1, 0))] ?? { date: brief.project.date, time: brief.project.times[0] ?? '09:00' }
+  const shownSlot = previewShootSlot(slots[Math.min(activeSlot, Math.max(slots.length - 1, 0))] ?? { date: brief.project.date, time: brief.project.times[0] ?? '09:00' }, activeEndpoint)
   function commitSlots(next: ShootSlot[]) {
     setSlots(next)
     if (mode === 'edit') dispatch({ type: 'update', update: (b) => ({ ...b, project: projectWithShoots(b.project, next) }) })
@@ -148,13 +154,27 @@ function MapWorkspace(props: Props) {
   const view = useRef<MapView>({ center: brief.coordinates, zoom: 10 })
   const [zoom, setZoom] = useState(view.current.zoom)
   const viewport = useRef<HTMLDivElement>(null)
+  const [capturing, setCapturing] = useState(false)
+  usePdfMapCapture(props.pdfMapRef, {
+    root: viewport, navigation: shadeActive ? shadeNavigation : googleMap ? {
+      getDiv: () => googleMap.getDiv(), getZoom: () => googleMap.getZoom(), setZoom: (z) => googleMap.setZoom(z!),
+      panTo: (p) => googleMap.panTo(p), fitBounds: (b, padding) => googleMap.fitBounds(b, padding), moveCamera: (v) => googleMap.moveCamera(v),
+      getBounds: () => googleMap.getBounds(), waitForIdle: async (signal) => {
+        await Promise.all([waitForMapIdle(googleMap, signal), waitForMapIdle(googleMap, signal, 'tilesloaded', 5000)])
+      },
+    } : null,
+    view, brief, sourceUrl: props.images.sourceUrl, setCapturing, shadowSlot: shadeActive ? shownSlot : undefined,
+  })
+  const renderedSession = capturing ? { ...session, mode: 'view' as const, visibility: { circleRig: true, angles: true, polygons: true, imageOverlays: true } } : session
+  const mapProps = capturing ? { ...props, session: renderedSession, selectedId: null, selectedCameraIds: [], tool: idleTool } : props
+  const renderedObjectSize = capturing ? 100 / 2 ** (zoom - 17) : objectSizePercent
   useImperativeHandle(props.rigPlacementRef, () => () => ({
     position: { ...view.current.center },
     radiusMeters: initialRigRadius(view.current, viewport.current?.clientWidth ?? 0, viewport.current?.clientHeight ?? 0),
   }), [])
   const imageLayer: ImageLayerState = {
-    images: session.visibility.imageOverlays ? brief.imageOverlays.map((image) => ({ ...image, opacity: props.images.opacityOverrides[image.id] ?? image.opacity })) : [], selectedId: props.selectedId,
-    editable: editing, interactive, anchors, sourceUrl: props.images.sourceUrl,
+    images: renderedSession.visibility.imageOverlays ? brief.imageOverlays.map((image) => ({ ...image, opacity: capturing ? image.opacity : props.images.opacityOverrides[image.id] ?? image.opacity })) : [], selectedId: capturing ? null : props.selectedId,
+    editable: editing && !capturing, interactive: interactive && !capturing, anchors, sourceUrl: props.images.sourceUrl,
     onSelect: props.onSelect, onAnchor: (id, point) => setAnchors((previous) => ({ ...previous, [id]: point })),
     onCommit: (image) => dispatch({ type: 'update', update: (b) => ({ ...b, imageOverlays: b.imageOverlays.map((item) => item.id === image.id ? image : item) }) }),
   }
@@ -184,12 +204,12 @@ function MapWorkspace(props: Props) {
   }
 
   return <CardContent ref={viewport} className="@container relative h-full min-h-0 p-0">
-    <div className="absolute inset-0" style={{ visibility: shadeActive ? 'hidden' : 'visible' }} aria-hidden={shadeActive} inert={shadeActive}>
-      {apiKey ? <ConnectedMap {...props} imageLayer={imageLayer} dimOpacity={dimOpacity} objectSizePercent={objectSizePercent} zoom={zoom} active={!shadeActive} view={view} satellite={satellite} onViewChange={onViewChange} onMapClick={handleMapClick} onCameraPlace={handleCameraPlace} onCameraDuplicate={handleCameraDuplicate} /> : <MapMessage title="Map setup pending" description="Google Maps will appear once connected. Your brief is still available." />}
+    <div data-pdf-map-surface={!shadeActive ? '' : undefined} className="absolute inset-0" style={{ visibility: shadeActive ? 'hidden' : 'visible' }} aria-hidden={shadeActive} inert={shadeActive}>
+      {apiKey ? <ConnectedMap {...mapProps} imageLayer={imageLayer} dimOpacity={dimOpacity} objectSizePercent={renderedObjectSize} zoom={zoom} active={!shadeActive} view={view} satellite={satellite} onViewChange={onViewChange} onMapClick={handleMapClick} onCameraPlace={handleCameraPlace} onCameraDuplicate={handleCameraDuplicate} /> : <MapMessage title="Map setup pending" description="Google Maps will appear once connected. Your brief is still available." />}
     </div>
     {shadeActive && <Suspense fallback={<MapMessage title="Loading ShadeMap…" description="Preparing the shadow preview." />}>
-      <ShadeMapPanel imageLayer={imageLayer} dimOpacity={dimOpacity} objectSizePercent={objectSizePercent} dispatch={dispatch} selectedId={props.selectedId} selectedCameraIds={props.selectedCameraIds} onSelect={onSelect} onSelectCamera={props.onSelectCamera} session={session} initialView={shadeStart} onViewChange={onViewChange} slot={shownSlot}
-        onNavigation={setShadeNavigation} tool={tool} onMapClick={handleMapClick}
+      <ShadeMapPanel imageLayer={imageLayer} dimOpacity={dimOpacity} objectSizePercent={renderedObjectSize} dispatch={dispatch} selectedId={mapProps.selectedId} selectedCameraIds={mapProps.selectedCameraIds} onSelect={onSelect} onSelectCamera={props.onSelectCamera} session={renderedSession} initialView={shadeStart} onViewChange={onViewChange} slot={shownSlot}
+        onNavigation={setShadeNavigation} tool={mapProps.tool} onMapClick={handleMapClick}
         onToolChange={onToolChange} onCameraPlace={handleCameraPlace} onCameraDuplicate={handleCameraDuplicate} />
     </Suspense>}
     <div className="pointer-events-none absolute inset-x-3 top-3 z-20 grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2">
@@ -212,8 +232,9 @@ function MapWorkspace(props: Props) {
         <ViewerLayers session={session} dispatch={dispatch} />
       </div>
     </div>
-    <div className="pointer-events-auto absolute right-3 bottom-[5.5rem] z-20 grid w-[calc(100%-196px)] max-w-sm gap-1 rounded-lg border bg-card p-2 shadow-sm @min-[750px]:right-auto @min-[750px]:bottom-8 @min-[750px]:left-1/2 @min-[750px]:w-[calc(100%-384px)] @min-[750px]:-translate-x-1/2 @min-[750px]:p-3">
-      <ShadowTimeControl slots={slots} activeIndex={Math.min(activeSlot, slots.length - 1)} onActivate={setActiveSlot} onChange={setSlots} onCommit={commitSlots} position={view.current.center} />
+    <div className="pointer-events-auto absolute right-3 bottom-[5.5rem] z-20 grid max-h-[calc(100%-7rem)] w-[calc(100%-196px)] max-w-sm gap-1 overflow-y-auto rounded-lg border bg-card p-2 shadow-sm @min-[750px]:right-auto @min-[750px]:bottom-8 @min-[750px]:left-1/2 @min-[750px]:w-[calc(100%-384px)] @min-[750px]:-translate-x-1/2 @min-[750px]:p-3">
+      <ResponsiveShadowTimeControl slots={slots} activeIndex={Math.min(activeSlot, slots.length - 1)} activeEndpoint={activeEndpoint}
+        onActivate={(index, endpoint = 0) => { setActiveSlot(index); setActiveEndpoint(endpoint) }} onChange={setSlots} onCommit={commitSlots} position={view.current.center} />
     </div>
     <div className="pointer-events-none absolute inset-x-3 bottom-8 z-20 flex items-end gap-2">
       <div className="pointer-events-auto grid min-w-0 max-w-40 flex-1 gap-2">

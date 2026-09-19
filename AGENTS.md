@@ -21,6 +21,7 @@ Applies to every file in this repository. Humans and AI assistants share the sam
 | src/features/briefs/model | Zod schema, serializable domain types, factories |
 | src/features/briefs/state | Session transitions and edit/view guarantees |
 | src/features/briefs/storage | Persistence and share transport adapters |
+| src/features/briefs/export | PDF language copy, document layout, generation and download; no brief mutations |
 | src/features/briefs/components | Brief-specific controls |
 | src/features/map | Map SDK, geometry, rendering, interaction tools |
 | src/lib | Small shared utilities without domain rules |
