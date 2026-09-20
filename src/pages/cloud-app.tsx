@@ -92,7 +92,7 @@ export function CloudApp() {
       {briefScreen && !publicToken && <Button variant="outline" onClick={home}>Home</Button>}
   </>
   return <div className={briefScreen ? 'flex h-dvh min-h-0 flex-col overflow-hidden' : 'min-h-svh'}>
-    {!cloudBriefVisible && <AppHeader onHome={publicToken ? undefined : home} status={snapshot && <Badge variant="secondary">Read-only</Badge>} context={snapshot && <BriefHeaderTitle name={snapshot.brief.project.name} clientName={snapshot.brief.project.clientName} mode="view" />}>
+    {!cloudBriefVisible && !publicToken && <AppHeader onHome={home} status={snapshot && <Badge variant="secondary">Read-only</Badge>} context={snapshot && <BriefHeaderTitle name={snapshot.brief.project.name} clientName={snapshot.brief.project.clientName} mode="view" />}>
       {headerActions}
       {snapshot && <Button variant="outline" onClick={() => setPdfOpen(true)}><FileDown /> Export</Button>}
     </AppHeader>}

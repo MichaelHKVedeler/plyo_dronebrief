@@ -2,7 +2,7 @@ import { ThemeToggle } from './theme-toggle'
 import { Button } from '@/components/ui/button'
 import type { ReactNode } from 'react'
 
-function BrandMark() {
+export function AppBrand() {
   return <>
     <img
       src={`${import.meta.env.BASE_URL}brand/plyo-logo-light.svg`}
@@ -42,9 +42,9 @@ export function AppHeader({
       onClick={onHome}
       aria-label="Dronebrief home"
     >
-      <BrandMark />
+      <AppBrand />
     </Button> : <div className="flex items-center gap-3 text-base text-foreground">
-      <BrandMark />
+      <AppBrand />
     </div>}
     <ThemeToggle />
     {status}
