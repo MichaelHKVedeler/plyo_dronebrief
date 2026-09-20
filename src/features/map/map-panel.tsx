@@ -5,7 +5,7 @@ import type { ImageLayerState } from './image-interaction'
 import type { LocalImages } from '@/features/briefs/state/use-local-images'
 import { useCameraFocus } from './use-camera-focus'
 import { duplicateCamera, nextCameraLabelNumber } from '@/features/briefs/model/camera-numbers'
-import { lazy, Suspense, useCallback, useId, useImperativeHandle, useLayoutEffect, useRef, useState, type RefObject } from 'react'
+import { lazy, Suspense, useCallback, useId, useImperativeHandle, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from 'react'
 import { initialRigRadius } from './initial-rig-radius'
 import { ButtonGroup } from '@/components/ui/button-group'
 import { useDarkMode } from '@/lib/use-dark-mode'
@@ -55,6 +55,7 @@ type Props = {
   objectSizePercent?: number
   overlaySizeRef?: RefObject<number>
   isolatedKind?: IsolatedCapture
+  layerControls?: ReactNode
 }
 const ShadeMapPanel = lazy(() => import('./shade-map').then((module) => ({ default: module.ShadeMapPanel })))
 type GoogleProps = Props & { imageLayer: ImageLayerState; active: boolean; dimOpacity: number; objectSizePercent: number; zoom: number; view: RefObject<MapView>; onViewChange: (view: MapView) => void; satellite: boolean; onMapClick: (point: Position) => void; onCameraPlace: (tool: MapTool, point: Position) => void; onCameraDuplicate: (source: CameraAngle, position: Position) => void }
@@ -239,7 +240,7 @@ function MapWorkspace(props: Props) {
       </div>
       <div className="col-start-1 row-start-2 grid justify-items-start gap-2 @max-[400px]:col-span-2 @max-[400px]:row-start-3">
         {editing && !interactive && <Button className="pointer-events-auto shadow-sm" onClick={() => onToolChange(idleTool)}><X />Cancel placement</Button>}
-        <ViewerLayers session={session} dispatch={dispatch} />
+        {briefing ? props.layerControls : <ViewerLayers session={session} dispatch={dispatch} />}
       </div>
     </div>
     {!briefing && <div className="pointer-events-auto absolute right-3 bottom-[5.5rem] z-20 grid max-h-[calc(100%-7rem)] w-[calc(100%-196px)] max-w-sm gap-1 overflow-y-auto rounded-lg border bg-card p-2 shadow-sm @min-[750px]:right-auto @min-[750px]:bottom-8 @min-[750px]:left-1/2 @min-[750px]:w-[calc(100%-384px)] @min-[750px]:-translate-x-1/2 @min-[750px]:p-3">
@@ -257,7 +258,8 @@ function MapWorkspace(props: Props) {
 }
 export function MapPanel(props: Props) {
   const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY?.trim() || ''
-  return <Card className="relative h-full min-h-0 min-w-0 overflow-hidden py-0" role="region" aria-label="Brief map">
+  const briefing = props.presentation === 'briefing'
+  return <Card className={'relative h-full min-h-0 min-w-0 overflow-hidden py-0' + (briefing ? ' rounded-none border-0 shadow-none' : '')} role="region" aria-label="Brief map">
     <APIProvider apiKey={apiKey}><MapWorkspace {...props} /></APIProvider>
   </Card>
 }

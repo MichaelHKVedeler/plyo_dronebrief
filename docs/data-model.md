@@ -87,7 +87,7 @@ Per-image opacity is an authored image setting, saved through the reducer after 
 
 ## Reference images
 
-`references` is an additive schema v1 array of up to four `{id, caption, source}` photos. `source` uses the same embedded-or-local-file union as image overlays. Caption is 1–200 characters. These images are not placed on the map; Contents lists them below Floor plan. PDF export and the public briefing include them automatically (briefing sidebar, after capture instructions). Cloud projects upload them through the same asset manifest as floorplans. Older snapshots omit the field and parse as `[]`. Older app builds ignore the field and lose it on re-export.
+`references` is an additive schema v1 array of up to four `{id, caption, source}` photos. `source` uses the same embedded-or-local-file union as image overlays. Caption is 1–200 characters. These images are not placed on the map; Contents lists them below Floor plan. PDF export and the public briefing include them automatically (briefing details panel, after capture instructions). Cloud projects upload them through the same asset manifest as floorplans. Older snapshots omit the field and parse as `[]`. Older app builds ignore the field and lose it on re-export.
 
 The whole JSON must fit within the existing 2 MB share-key limit. A local reference is device-specific rather than a portable image asset; export UI explicitly tells recipients to reconnect the matching file. Cloud storage uses the separate envelope described below without changing portable reference semantics.
 
