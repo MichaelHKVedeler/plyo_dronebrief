@@ -1,10 +1,6 @@
-import type { LucideIcon } from 'lucide-react'
-import { Circle } from 'lucide-react'
 import { cameraLabels, type DroneBrief } from '../model/brief'
 import { countBriefImages, imageCaptureConfig } from '../model/image-count'
-import { cameraAppearance } from './camera-appearance'
-
-type Row = { key: string; Icon: LucideIcon; label: string; color?: string; className?: string; rule: string; detail: string; images: number }
+import { CaptureKindGlyph } from './capture-kind-glyph'
 
 export function ImageCountSummary({ brief }: { brief: DroneBrief }) {
   const counts = countBriefImages(brief)
@@ -13,28 +9,27 @@ export function ImageCountSummary({ brief }: { brief: DroneBrief }) {
   const dronePoints = brief.angles.filter((angle) => angle.type === 'drone-image').length
   const panoramaPoints = brief.angles.filter((angle) => angle.type === '360').length
   const dslrPoints = brief.angles.filter((angle) => angle.type === 'dslr').length
-  const rows: Row[] = [
+  const rows = [
     {
-      key: 'circleRig', Icon: Circle, label: 'Circle rig', className: 'text-primary',
+      key: 'circleRig' as const, label: 'Circle rig',
       rule: `${imageCaptureConfig.circleRigPerArrowAndHeight} per arrow, height, and time`,
       detail: `${brief.circleRig?.arrowCount ?? 0} arrows · ${droneHeights} heights · ${counts.times} times`,
       images: counts.circleRig,
     },
     {
-      key: 'drone-image', Icon: cameraAppearance['drone-image'].Icon, label: cameraLabels['drone-image'],
-      color: cameraAppearance['drone-image'].color,
+      key: 'drone-image' as const, label: cameraLabels['drone-image'],
       rule: `${imageCaptureConfig.droneImagePerPointAndHeight} per point, height, and time`,
       detail: `${dronePoints} points · ${droneHeights} heights · ${counts.times} times`,
       images: counts.droneImage,
     },
     {
-      key: '360', Icon: cameraAppearance['360'].Icon, label: cameraLabels['360'], color: cameraAppearance['360'].color,
+      key: '360' as const, label: cameraLabels['360'],
       rule: `${imageCaptureConfig.panoramaPerPointAndHeight} per point, height, and time`,
       detail: `${panoramaPoints} points · ${panoramaHeights} heights · ${counts.times} times`,
       images: counts.panorama,
     },
     {
-      key: 'dslr', Icon: cameraAppearance.dslr.Icon, label: cameraLabels.dslr, color: cameraAppearance.dslr.color,
+      key: 'dslr' as const, label: cameraLabels.dslr,
       rule: `${imageCaptureConfig.dslrPerArrow} per arrow and time`,
       detail: `${dslrPoints} points · ${brief.typeSettings.dslr.angleCount} arrows · ${counts.times} times`,
       images: counts.dslr,
@@ -44,7 +39,7 @@ export function ImageCountSummary({ brief }: { brief: DroneBrief }) {
     <ul className="grid gap-3">
       {rows.map((row) => <li key={row.key} className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 items-start gap-2">
-          <row.Icon aria-hidden className={'mt-0.5 size-4 shrink-0 ' + (row.className ?? '')} style={row.color ? { color: row.color } : undefined} />
+          <CaptureKindGlyph kind={row.key} />
           <div className="min-w-0">
             <p className="font-medium">{row.label}</p>
             <p className="text-muted-foreground text-xs">{row.rule}</p>

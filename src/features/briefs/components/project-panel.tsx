@@ -2,8 +2,6 @@ import { useState } from 'react'
 import { Circle, Crosshair } from 'lucide-react'
 import { Accordion } from '@/components/ui/accordion'
 import { SettingsSection } from './settings-section'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { cameraLabels, cameraTypes, type CameraAngle, type DroneBrief } from '../model/brief'
 import { CameraAddPanel } from './camera-add-panel'
@@ -11,11 +9,10 @@ import { RigRadii } from './rig-radii'
 import { RigRadiusFields } from './rig-radius-fields'
 import { CameraGroups } from './camera-groups'
 import { CamerasPanel } from './cameras-panel'
-import { ShootTimes } from './shoot-times'
 import type { BriefSession } from '../state/brief-session'
 
-const editSections = ['project', 'rig', 'add-cameras', 'cameras']
-const viewSections = ['project', 'rig', 'cameras', 'heights']
+const editSections = ['rig', 'add-cameras', 'cameras']
+const viewSections = ['rig', 'cameras', 'heights']
 
 type Props = { onCenterCamera: (angle: CameraAngle) => void; onAddRig: () => void; selectedCameraIds: string[]; onSelectCamera: (id: string, range: boolean) => void; onRemoveCameras: (ids: string[]) => void; session: BriefSession; onUpdate: (update: (brief: DroneBrief) => DroneBrief) => void; selectedId: string | null; onSelect: (id: string | null) => void; onAddCamera: (type: CameraAngle['type']) => void }
 export function ProjectPanel({ onCenterCamera, onAddRig, selectedCameraIds, onSelectCamera, onRemoveCameras, session, onUpdate, selectedId, onAddCamera }: Props) {
@@ -28,13 +25,6 @@ export function ProjectPanel({ onCenterCamera, onAddRig, selectedCameraIds, onSe
     if (selectedSection) setOpen((previous) => previous.includes(selectedSection) ? previous : [...previous, selectedSection])
   }
   if (mode === 'view') return <Accordion type="multiple" value={open} onValueChange={setOpen}>
-    <SettingsSection value="project" title="Project details">
-    <dl className="grid gap-4">
-      <div><dt className="text-muted-foreground">Project name</dt><dd className="mt-1 font-medium">{brief.project.name}</dd></div>
-      <div><dt className="text-muted-foreground">Client</dt><dd className="mt-1 font-medium">{brief.project.clientName}</dd></div>
-    </dl>
-    <ShootTimes brief={brief} />
-    </SettingsSection>
     <SettingsSection value="rig" title="Circle rig" count={brief.circleRig ? 1 : 0}>
       {brief.circleRig ? <RigRadii rig={brief.circleRig} /> : <p>No circle rig in this brief.</p>}
     </SettingsSection>
@@ -49,19 +39,6 @@ export function ProjectPanel({ onCenterCamera, onAddRig, selectedCameraIds, onSe
     </SettingsSection>
   </Accordion>
   return <Accordion type="multiple" value={open} onValueChange={setOpen}>
-    <SettingsSection value="project" title="Project details">
-    <div className="grid gap-2"><Label htmlFor="edit-project-name">Project name</Label><Input key={brief.id + '-name'} id="edit-project-name" defaultValue={brief.project.name} maxLength={200} onBlur={(e) => {
-      const name = e.target.value.trim()
-      if (name) onUpdate((b) => ({ ...b, project: { ...b.project, name } }))
-      else e.target.value = brief.project.name
-    }} /></div>
-    <div className="grid gap-2"><Label htmlFor="edit-client-name">Client name</Label><Input key={brief.id + '-client'} id="edit-client-name" defaultValue={brief.project.clientName} maxLength={200} onBlur={(e) => {
-      const clientName = e.target.value.trim()
-      if (clientName) onUpdate((b) => ({ ...b, project: { ...b.project, clientName } }))
-      else e.target.value = brief.project.clientName
-    }} /></div>
-    <ShootTimes brief={brief} />
-    </SettingsSection>
     <SettingsSection value="rig" title="Circle rig" count={brief.circleRig ? 1 : 0}>
     {brief.circleRig && <RigRadiusFields rig={brief.circleRig} onUpdate={onUpdate} />}
     {brief.circleRig

@@ -5,6 +5,7 @@ import { Label } from '@/components/ui/label'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { ActorAvatar } from '@/features/cloud/components/actor-avatar'
 import { Choice } from '@/features/cloud/components/choice'
 import { Problem } from '@/features/cloud/components/problem'
 import { cloudError } from '@/features/cloud/auth/firebase'
@@ -59,7 +60,7 @@ export function ProjectLibraryPage({ organization, uid, onOpen }: { organization
     {loading ? <p role="status">Loading projects…</p> : page?.projects.length ? <Table><TableHeader><TableRow>{['Project', 'Client', 'My collection', 'Created by', 'Edited by', 'Last updated', 'Actions'].map((name) => <TableHead key={name}>{name}</TableHead>)}</TableRow></TableHeader><TableBody>{page.projects.map((project) => <TableRow key={project.id}>
       <TableCell><Button variant="link" disabled={Boolean(project.deletedAt)} onClick={() => onOpen(project.id)}>{project.name}</Button></TableCell><TableCell>{project.clientName}</TableCell>
       <TableCell><Choice label={`Collection for ${project.name}`} value={project.collectionId ?? ''} disabled={busy || Boolean(project.deletedAt)} onChange={(id) => void mutate(() => cloudLibrary.assign(organization.id, project.id, id || null))} options={[{ value: '', label: 'Uncollected' }, ...collections.map((item) => ({ value: item.id, label: item.name }))]} /></TableCell>
-      <TableCell>{project.createdBy.name}</TableCell><TableCell>{project.editedBy.name}</TableCell><TableCell className="whitespace-nowrap">{new Date(project.updatedAt).toLocaleString()}</TableCell>
+      <TableCell><ActorAvatar label="Created by" actor={project.createdBy} at={project.createdAt} /></TableCell><TableCell><ActorAvatar label="Edited by" actor={project.editedBy} at={project.updatedAt} /></TableCell><TableCell className="whitespace-nowrap">{new Date(project.updatedAt).toLocaleString()}</TableCell>
       <TableCell>{project.deletedAt ? <Button variant="outline" disabled={busy} onClick={() => void mutate(() => cloudProjects.trash(project.id, true))}>Restore</Button> : (organization.role === 'admin' || project.createdBy.uid === uid) && <Button variant="ghost" onClick={() => setConfirm(project)}>Delete</Button>}</TableCell>
     </TableRow>)}</TableBody></Table> : <p>No projects match this view.</p>}
     <div className="flex gap-2"><Button variant="outline" disabled={!query.cursor || loading} onClick={() => change({})}>First page</Button><Button variant="outline" disabled={!page?.cursor || loading} onClick={() => setQuery((previous) => ({ ...previous, cursor: page?.cursor ?? null }))}>Next page</Button></div>

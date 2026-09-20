@@ -38,6 +38,10 @@ export const angleSchema = z.discriminatedUnion('type', [
   z.object({ ...angleBase, type: z.literal('dslr'), directionDegrees: heading }),
 ])
 const heights = z.object({ heightsMeters: z.array(z.number().finite().min(0).max(10000)).max(50) })
+const imageSourceSchema = z.union([
+  z.string().max(1_500_000).regex(/^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/]+=*$/),
+  z.object({ kind: z.literal('local-file'), fileId: z.uuid(), fileName: z.string().min(1).max(255) }),
+])
 export const defaultRigArrowCount = 10
 export const maxRigArrows = 50
 export const maxDslrAngles = 12
@@ -72,20 +76,23 @@ export const briefSchema = z.object({
   imageOverlays: z.array(z.object({
     id, name,
     // Additive v1 source variant. Existing embedded sources retain their meaning.
-    source: z.union([
-      z.string().max(1_500_000).regex(/^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/]+=*$/),
-      z.object({ kind: z.literal('local-file'), fileId: z.uuid(), fileName: z.string().min(1).max(255) }),
-    ]),
+    source: imageSourceSchema,
     position: positionSchema,
     widthMeters: z.number().finite().positive().max(10000),
     heightMeters: z.number().finite().positive().max(10000),
     rotationDegrees: heading,
     opacity: z.number().finite().min(0).max(1),
   })).max(10),
+  // Additive v1: optional reference photos for PDF and public briefing. Older snapshots omit them.
+  references: z.array(z.object({
+    id, caption: z.string().trim().min(1).max(200), source: imageSourceSchema,
+  })).max(4).default([]),
 })
 
 export type DroneBrief = z.infer<typeof briefSchema>
 export type ImageOverlay = DroneBrief['imageOverlays'][number]
+export type BriefReference = DroneBrief['references'][number]
+export type ImageSource = ImageOverlay['source']
 export type ProjectDetails = z.infer<typeof projectSchema>
 export type ShootSlot = z.infer<typeof shootSchema>
 export type Position = z.infer<typeof positionSchema>
@@ -155,6 +162,14 @@ export function createBrief(project: Pick<ProjectDetails, 'name' | 'clientName'>
       'drone-image': { heightsMeters: defaultDroneHeights },
       '360': { heightsMeters: default360Heights }, dslr: { heightsMeters: [1.6] },
     },
-    polygons: [], imageOverlays: [],
+    polygons: [], imageOverlays: [], references: [],
   })
+}
+
+export function localFileSources(brief: Pick<DroneBrief, 'imageOverlays' | 'references'>) {
+  return [...brief.imageOverlays, ...brief.references].flatMap((item) => typeof item.source === 'string' ? [] : [item.source])
+}
+
+export function hasLocalFiles(brief: Pick<DroneBrief, 'imageOverlays' | 'references'>) {
+  return localFileSources(brief).length > 0
 }

@@ -60,6 +60,15 @@ it('round-trips independent shoot dates while keeping date and times in sync for
   ])
 })
 
+it('defaults missing references and round-trips authored captions', () => {
+  const { references: _omitted, ...withoutReferences } = brief
+  expect(briefSchema.parse(withoutReferences).references).toEqual([])
+  const references = [{ id: 'ref', caption: 'East facade', source: { kind: 'local-file' as const, fileId: crypto.randomUUID(), fileName: 'east.jpg' } }]
+  expect(briefSchema.parse({ ...brief, references }).references).toEqual(references)
+  expect(briefSchema.safeParse({ ...brief, references: [{ ...references[0], caption: '' }] }).success).toBe(false)
+  expect(briefSchema.safeParse({ ...brief, references: Array.from({ length: 5 }, (_, i) => ({ ...references[0], id: String(i) })) }).success).toBe(false)
+})
+
 it('defaults missing project notes and round-trips authored description and instructions', () => {
   const { name, clientName, date, times } = brief.project
   const parsed = briefSchema.parse({ ...brief, project: { name, clientName, date, times } }).project

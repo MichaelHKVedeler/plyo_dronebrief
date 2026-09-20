@@ -129,7 +129,7 @@ export const CameraMarker = memo(function CameraMarker({ angle, editable, select
             }
           }}
           onClick={(event) => { event.stopPropagation(); altCopy.current = false; onSelect(event.ctrlKey || event.shiftKey) }}>{symbol}</Button>
-          : <Badge className={'relative flex size-9 items-center justify-center rounded-full border-2 shadow-sm ' + appearance.className}>{symbol}</Badge>}
+          : <span role="img" aria-label={name} className={'relative inline-flex size-9 items-center justify-center rounded-full border-2 shadow-md ' + appearance.className}>{symbol}</span>}
         <Badge data-camera-badge aria-hidden="true" className="pointer-events-none absolute -right-1.5 -top-1.5 flex size-5 items-center justify-center rounded-full border-2 border-background p-0 text-[10px] leading-none tabular-nums shadow-sm">{shownNumber}</Badge>
         {directional && <CameraArrows offsets={offsets} directionDegrees={visible.directionDegrees} color={appearance.color} />}
       </div>

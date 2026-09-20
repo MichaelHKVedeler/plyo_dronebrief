@@ -1,21 +1,24 @@
 import { countBriefImages } from '../model/image-count'
 import { formatShootTime, shootSlots, type DroneBrief } from '../model/brief'
 
-export function ShootTimes({ brief }: { brief: DroneBrief }) {
+export function ShootTimes({ brief, labels = { shootTimes: 'Shoot times', totalImages: 'Total images' } }: {
+  brief: DroneBrief
+  labels?: { shootTimes: string; totalImages: string }
+}) {
   const slots = shootSlots(brief.project)
   const date = slots[0]?.date ?? brief.project.date
   const times = slots.map(formatShootTime).join(', ')
-  return <div className="grid gap-4">
-    <div>
-      <div className="flex items-baseline justify-between gap-2">
-        <p className="text-sm font-medium">Shoot times</p>
-        <time className="text-sm text-muted-foreground" dateTime={date}>{date}</time>
-      </div>
-      <p className="mt-1 text-sm text-muted-foreground">{times}</p>
+  return (
+    <div className="flex min-w-0 flex-wrap items-baseline gap-x-4 gap-y-1">
+      <p className="flex min-w-0 flex-wrap items-baseline gap-x-2">
+        <span className="font-medium">{labels.shootTimes}</span>
+        <time className="text-muted-foreground" dateTime={date}>{date}</time>
+        <span className="text-muted-foreground">{times}</span>
+      </p>
+      <p className="flex items-baseline gap-2">
+        <span className="font-medium">{labels.totalImages}</span>
+        <span className="text-muted-foreground tabular-nums" aria-label={labels.totalImages}>{countBriefImages(brief).total}</span>
+      </p>
     </div>
-    <div>
-      <p className="text-sm font-medium">Total images</p>
-      <p className="mt-1 text-sm text-muted-foreground tabular-nums" aria-label="Total images">{countBriefImages(brief).total}</p>
-    </div>
-  </div>
+  )
 }

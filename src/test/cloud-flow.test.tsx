@@ -10,11 +10,12 @@ import { cloudProjects, loadPublic } from '@/features/cloud/storage/project-repo
 import { callCloud, signInGoogle } from '@/features/cloud/auth/firebase'
 import { briefRepository } from '@/features/briefs/storage/brief-repository'
 import { exportBriefKey } from '@/features/briefs/storage/share-key'
+import { exportCloudSnapshot } from '@/features/cloud/components/cloud-brief'
 import type { PdfExportInput } from '@/features/briefs/export/pdf-types'
 
 const pdf = vi.hoisted(() => ({ create: vi.fn(async (_input: PdfExportInput) => new Uint8Array([1])), download: vi.fn() }))
 vi.mock('@/features/briefs/export/create-brief-pdf', () => ({ createBriefPdf: pdf.create }))
-vi.mock('@/features/briefs/export/pdf-browser', () => ({ loadPdfAssets: vi.fn(async () => ({})), downloadPdf: pdf.download, pdfReference: vi.fn() }))
+vi.mock('@/features/briefs/export/pdf-browser', () => ({ loadPdfAssets: vi.fn(async () => ({})), downloadPdf: pdf.download, pdfReference: vi.fn(), pdfReferenceFromUrl: vi.fn() }))
 vi.mock('@/features/map/pdf-address', () => ({ lookupPdfAddress: vi.fn(async () => 'Oslo') }))
 
 let account: { user: { uid: string; displayName: string; email: string } | null; organizations: Organization[]; loading: boolean; error: null; refresh: () => Promise<void> }
@@ -47,14 +48,43 @@ it('opens the dedicated project library and handles its empty state', async () =
   expect(await screen.findByText('No projects match this view.')).toBeVisible()
   expect(cloudLibrary.search).toHaveBeenCalledWith(expect.objectContaining({ orgId: 'org', view: 'mine' }))
 })
-it('opens public links without sign-in and never writes drafts or cloud updates', async () => {
-  history.replaceState(null, '', '/#/s/' + 'x'.repeat(43)); account.user = null
-  vi.mocked(loadPublic).mockResolvedValue(project())
+it('opens public briefing links without sign-in and never writes drafts or cloud updates', async () => {
+  history.replaceState(null, '', '/#/s/' + 'x'.repeat(43) + '?address=Karl%20Johans%20gate:%20Oslo')
+  account.user = null
+  const data = project()
+  data.brief.circleRig = { id: 'rig', position: data.brief.coordinates, arrowCount: 10, radiusMeters: 50, ovalRatio: 1, rotationDegrees: 0 }
+  data.brief.angles = [
+    { id: 'd1', label: 'D1', type: 'drone-image', position: data.brief.coordinates, directionDegrees: 0 },
+    { id: 's1', label: 'S1', type: 'dslr', position: data.brief.coordinates, directionDegrees: 90 },
+  ]
+  vi.mocked(loadPublic).mockResolvedValue(data)
   const writes = vi.spyOn(briefRepository, 'save')
   render(<CloudApp />)
-  expect(await screen.findByText('Public read-only project')).toBeVisible()
+  expect(await screen.findByText('Shoot times')).toBeVisible()
+  expect(screen.getByText('Large project')).toBeVisible()
+  expect(screen.getByText("Automatically matched to the template's point counts and height levels. Rig arrows count as aerial positions.")).toBeVisible()
+  const title = screen.getByRole('heading', { name: 'Cloud project' })
+  expect(title.parentElement).toHaveTextContent('Cloud project')
+  expect(title.parentElement).toHaveTextContent('Client')
+  expect(title.parentElement).not.toHaveTextContent('Karl Johans gate: Oslo')
+  expect(title.parentElement?.parentElement).toHaveTextContent('Karl Johans gate: Oslo')
+  expect(screen.queryByRole('button', { name: /Created by Owner/ })).not.toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: /Edited by Owner/ })).not.toBeInTheDocument()
   expect(screen.queryByRole('button', { name: 'Sign in with Google' })).not.toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: 'Export' })).not.toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: 'Home' })).not.toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: 'Dronebrief home' })).not.toBeInTheDocument()
+  expect(screen.queryByRole('search')).not.toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: 'ShadeMap' })).not.toBeInTheDocument()
+  expect(screen.queryByRole('slider', { name: 'Overlay size' })).not.toBeInTheDocument()
+  expect(screen.queryByRole('slider', { name: 'Map dimming' })).not.toBeInTheDocument()
   expect(screen.queryByLabelText('Project name')).not.toBeInTheDocument()
+  const aerial = screen.getByRole('button', { name: 'Show only Aerial photo' })
+  await userEvent.click(aerial)
+  expect(aerial).toHaveAttribute('aria-pressed', 'true')
+  expect(screen.getByRole('button', { name: 'Show only DSLR' })).toHaveAttribute('aria-pressed', 'false')
+  await userEvent.click(aerial)
+  expect(aerial).toHaveAttribute('aria-pressed', 'false')
   const toggles = screen.getAllByRole('switch'); if (toggles[0]) await userEvent.click(toggles[0])
   expect(writes).not.toHaveBeenCalled(); expect(cloudProjects.save).not.toHaveBeenCalled()
 })
@@ -63,19 +93,22 @@ it('persists committed edits under StrictMode and surfaces save conflicts withou
   vi.mocked(cloudProjects.load).mockResolvedValue(data)
   vi.mocked(cloudProjects.save).mockRejectedValue({ code: 'functions/aborted', message: 'Another editor saved.' })
   render(<StrictMode><CloudApp /></StrictMode>)
-  const name = await screen.findByLabelText('Project name')
+  await userEvent.click(await screen.findByRole('button', { name: 'Edit title' }))
+  const name = screen.getByLabelText('Project name')
   fireEvent.change(name, { target: { value: 'My unsaved work' } }); fireEvent.blur(name)
   await waitFor(() => expect(screen.getByText('Conflict')).toBeVisible())
   expect(screen.getByRole('button', { name: 'Save as a new project' })).toBeVisible()
-  expect(name).toHaveValue('My unsaved work')
-  await userEvent.click(screen.getByRole('button', { name: 'Export snapshot' }))
-  expect((screen.getByLabelText('Export key') as HTMLTextAreaElement).value).toMatch(/^DB2\./)
+  expect(screen.getByRole('heading', { name: 'My unsaved work' })).toBeVisible()
+  expect(screen.queryByRole('button', { name: 'Export snapshot' })).not.toBeInTheDocument()
+  const keys: string[] = []
+  exportCloudSnapshot({ ...data.brief, project: { ...data.brief.project, name: 'My unsaved work' } }, (value) => keys.push(value), () => { throw new Error('snapshot export failed') })
+  expect(keys[0]).toMatch(/^DB2\./)
 })
 it('clears another account’s project immediately while the new account is loading', async () => {
   history.replaceState(null, '', '/#/projects/project')
   vi.mocked(cloudProjects.load).mockResolvedValueOnce(project())
   const view = render(<CloudApp />)
-  expect(await screen.findByLabelText('Project name')).toHaveValue('Cloud project')
+  expect(await screen.findByRole('heading', { name: 'Cloud project' })).toBeVisible()
   account = { ...account, user: { uid: 'different', displayName: 'Different', email: 'different@example.com' } }
   vi.mocked(cloudProjects.load).mockImplementationOnce(() => new Promise(() => {}))
   view.rerender(<CloudApp />)
@@ -90,11 +123,12 @@ it('keeps the cloud project title in the header and saves PDF notes through clou
   vi.mocked(cloudProjects.save).mockResolvedValue({ ...data.summary, revision: 2 })
   const writes = vi.spyOn(briefRepository, 'save')
   render(<CloudApp />)
-  const name = await screen.findByLabelText('Project name')
+  await userEvent.click(await screen.findByRole('button', { name: 'Edit title' }))
+  const name = screen.getByLabelText('Project name')
   fireEvent.change(name, { target: { value: 'Updated cloud title' } }); fireEvent.blur(name)
   expect(within(screen.getByRole('banner')).getByRole('heading', { name: 'Updated cloud title' })).toBeVisible()
   await waitFor(() => expect(cloudProjects.save).toHaveBeenCalledTimes(1))
-  await userEvent.click(screen.getByRole('button', { name: 'Export as PDF' }))
+  await userEvent.click(screen.getByRole('button', { name: 'Export' }))
   await userEvent.click(screen.getByRole('button', { name: 'Continue' }))
   fireEvent.change(screen.getByLabelText('Instructions (optional)'), { target: { value: 'Use the east entrance.' } })
   expect(screen.getByRole('switch', { name: 'Save these notes to the brief when exporting' })).toBeChecked()
@@ -107,20 +141,14 @@ it('keeps the cloud project title in the header and saves PDF notes through clou
   expect(writes).not.toHaveBeenCalled()
 })
 
-it.each(['public', 'snapshot'])('exports a %s viewer PDF without saving edits to the project', async (kind) => {
+it('exports a snapshot viewer PDF without saving edits to the project', async () => {
   const data = project(); account.user = null
-  if (kind === 'public') {
-    history.replaceState(null, '', '/#/s/' + 'x'.repeat(43))
-    vi.mocked(loadPublic).mockResolvedValue(data)
-  }
   const writes = vi.spyOn(briefRepository, 'save')
   render(<CloudApp />)
-  if (kind === 'snapshot') {
-    await userEvent.click(screen.getByRole('button', { name: 'Open portable snapshot' }))
-    fireEvent.change(screen.getByLabelText('Export key'), { target: { value: exportBriefKey(data.brief) } })
-    await userEvent.click(screen.getByRole('button', { name: 'Open read-only brief' }))
-  }
-  await userEvent.click(await screen.findByRole('button', { name: 'Export as PDF' }))
+  await userEvent.click(screen.getByRole('button', { name: 'Open portable snapshot' }))
+  fireEvent.change(screen.getByLabelText('Export key'), { target: { value: exportBriefKey(data.brief) } })
+  await userEvent.click(screen.getByRole('button', { name: 'Open read-only brief' }))
+  await userEvent.click(await screen.findByRole('button', { name: 'Export' }))
   await userEvent.click(screen.getByRole('button', { name: 'Continue' }))
   expect(screen.queryByRole('switch', { name: 'Save these notes to the brief when exporting' })).not.toBeInTheDocument()
   fireEvent.change(screen.getByLabelText('Instructions (optional)'), { target: { value: 'Only in this PDF.' } })
@@ -130,4 +158,27 @@ it.each(['public', 'snapshot'])('exports a %s viewer PDF without saving edits to
   await waitFor(() => expect(pdf.download).toHaveBeenCalledOnce())
   expect(pdf.create).toHaveBeenCalledWith(expect.objectContaining({ notes: expect.objectContaining({ instructions: 'Only in this PDF.' }) }), expect.anything())
   expect(cloudProjects.save).not.toHaveBeenCalled(); expect(writes).not.toHaveBeenCalled()
+})
+
+it('creates a public briefing link from Export without capturing the map', async () => {
+  const data = project(); history.replaceState(null, '', '/#/projects/project')
+  vi.mocked(cloudProjects.load).mockResolvedValue(data)
+  vi.mocked(callCloud).mockImplementation(async (operation) => {
+    if (operation === 'share') return { token: 'y'.repeat(43) }
+    return { collections: [], creators: [], token: null }
+  })
+  const writeText = vi.fn(async () => {})
+  Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } })
+  render(<CloudApp />)
+  await userEvent.click(await screen.findByRole('button', { name: 'Export' }))
+  await userEvent.click(screen.getByRole('button', { name: 'Continue' }))
+  fireEvent.change(screen.getByLabelText('Instructions (optional)'), { target: { value: 'Use the east entrance.' } })
+  await userEvent.click(screen.getByRole('button', { name: 'Continue' }))
+  expect(screen.getByRole('group', { name: 'PDF map source' })).toBeVisible()
+  expect(screen.getByRole('button', { name: 'Download PDF' })).toBeVisible()
+  await userEvent.click(screen.getByRole('button', { name: 'Create link' }))
+  await waitFor(() => expect(writeText).toHaveBeenCalledOnce())
+  expect(writeText).toHaveBeenCalledWith(expect.stringContaining('#/s/' + 'y'.repeat(43)))
+  await waitFor(() => expect(cloudProjects.save).toHaveBeenCalled())
+  expect(cloudProjects.save).toHaveBeenCalledWith('project', 1, expect.any(String), expect.objectContaining({ project: expect.objectContaining({ instructions: 'Use the east entrance.' }) }), {})
 })

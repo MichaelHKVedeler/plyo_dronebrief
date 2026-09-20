@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
-import type { ImageOverlay } from '../model/brief'
+import type { ImageSource } from '../model/brief'
 import { readImageHandle, readLocalImage, rememberImageHandle, type LocalImageHandle } from '../storage/local-images'
 import type { ImageTransport } from '../storage/image-transport'
 
+export type ImageSourceItem = { source: ImageSource }
 export type ImageResource = { url?: string; message?: string; handle?: LocalImageHandle }
-export function useLocalImages(overlays: ImageOverlay[], transport?: ImageTransport) {
+export function useLocalImages(overlays: ImageSourceItem[], transport?: ImageTransport) {
   const [resources, setResources] = useState<Record<string, ImageResource>>({})
   const [opacityOverrides, setOpacityOverrides] = useState<Record<string, number>>({})
   const ownedUrls = useRef(new Set<string>())
@@ -92,7 +93,7 @@ export function useLocalImages(overlays: ImageOverlay[], transport?: ImageTransp
     if (await handle.requestPermission({ mode: 'read' }) !== 'granted') throw new Error('File access was not granted. You can reconnect the image instead.')
     return connect(id, await handle.getFile(), handle)
   }
-  const sourceUrl = (overlay: ImageOverlay) => typeof overlay.source === 'string' ? overlay.source : resources[overlay.source.fileId]?.url
+  const sourceUrl = (overlay: ImageSourceItem) => typeof overlay.source === 'string' ? overlay.source : resources[overlay.source.fileId]?.url
   function previewOpacity(id: string, value?: number) {
     setOpacityOverrides((previous) => {
       const next = { ...previous }

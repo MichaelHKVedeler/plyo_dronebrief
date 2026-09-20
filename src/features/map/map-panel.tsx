@@ -33,6 +33,7 @@ import { MiddleMousePan } from './middle-mouse-pan'
 import { metersPerPixel } from './geometry'
 import { MapObjectScale, mapObjectScale } from './map-object-scale'
 import { idleTool, placeCamera, type MapTool } from './placement'
+import { isolatedCaptureAngles, isolatedCaptureVisibility, type IsolatedCapture } from './isolated-capture'
 import { ResponsiveShadowTimeControl } from './shadow-time-control'
 import { previewShootSlot, type ShootEndpoint } from './shoot-time-range'
 
@@ -50,10 +51,14 @@ type Props = {
   onToolChange: (tool: MapTool) => void
   selectedId: string | null
   onSelect: (id: string | null) => void
+  presentation?: 'briefing'
+  objectSizePercent?: number
+  overlaySizeRef?: RefObject<number>
+  isolatedKind?: IsolatedCapture
 }
 const ShadeMapPanel = lazy(() => import('./shade-map').then((module) => ({ default: module.ShadeMapPanel })))
 type GoogleProps = Props & { imageLayer: ImageLayerState; active: boolean; dimOpacity: number; objectSizePercent: number; zoom: number; view: RefObject<MapView>; onViewChange: (view: MapView) => void; satellite: boolean; onMapClick: (point: Position) => void; onCameraPlace: (tool: MapTool, point: Position) => void; onCameraDuplicate: (source: CameraAngle, position: Position) => void }
-function ConnectedMap({ imageLayer, selectedCameraIds, onSelectCamera, session, dispatch, tool, onToolChange, selectedId, onSelect, active, dimOpacity, objectSizePercent, zoom, view, onViewChange, satellite, onMapClick, onCameraPlace, onCameraDuplicate }: GoogleProps) {
+function ConnectedMap({ imageLayer, selectedCameraIds, onSelectCamera, session, dispatch, tool, onToolChange, selectedId, onSelect, active, dimOpacity, objectSizePercent, zoom, view, onViewChange, satellite, onMapClick, onCameraPlace, onCameraDuplicate, isolatedKind = null }: GoogleProps) {
   const status = useApiLoadingStatus()
   const dark = useDarkMode()
   const objectScale = mapObjectScale(zoom, objectSizePercent)
@@ -64,6 +69,8 @@ function ConnectedMap({ imageLayer, selectedCameraIds, onSelectCamera, session, 
   const editing = mode === 'edit'
   const interactive = tool.kind === 'idle'
   const objectsInteractive = interactive && !middlePanning
+  const capture = isolatedCaptureVisibility(visibility, isolatedKind)
+  const captureAngles = isolatedCaptureAngles(brief.angles, isolatedKind)
   const pendingAngle: CameraAngle | null = tool.kind === 'camera' && tool.position && tool.cameraType !== '360'
     ? { id: 'placement-preview', label: 'Choose direction', type: tool.cameraType, position: tool.position, directionDegrees: tool.directionDegrees }
     : null
@@ -98,11 +105,11 @@ function ConnectedMap({ imageLayer, selectedCameraIds, onSelectCamera, session, 
         if (event.detail.latLng) onMapClick(event.detail.latLng)
       }}>
       {active && <MapObjectScale value={objectScale}>
-      {visibility.circleRig && brief.circleRig && <RigObject rig={brief.circleRig} pixelsToMeters={metersPerPixel(brief.circleRig.position.lat, zoom)} dark={dark} editable={editing} interactive={objectsInteractive}
+      {capture.circleRig && brief.circleRig && <RigObject rig={brief.circleRig} pixelsToMeters={metersPerPixel(brief.circleRig.position.lat, zoom)} dark={dark} editable={editing} interactive={objectsInteractive}
         selected={selectedId === brief.circleRig.id}
         onSelect={() => onSelect(brief.circleRig!.id)}
         onCommit={(rig) => dispatch({ type: 'update', update: (b) => ({ ...b, circleRig: b.circleRig?.id === rig.id ? rig : b.circleRig }) })} />}
-      {visibility.angles && <CameraMarkers angles={brief.angles} pendingAngle={pendingAngle} editable={editing} interactive={objectsInteractive}
+      {capture.angles && <CameraMarkers angles={captureAngles} pendingAngle={pendingAngle} editable={editing} interactive={objectsInteractive}
         selectedCameraIds={selectedCameraIds} zoom={zoom} dslrSettings={brief.typeSettings.dslr}
         onSelectCamera={onSelectCamera} onCommit={commitCamera} onDuplicate={duplicateCameraAt} />}
       {visibility.polygons && brief.polygons.map((polygon) => <Polygon key={polygon.id} paths={polygon.vertices} strokeColor="#b45309" strokeWeight={3 * objectScale} fillColor="#d97706" fillOpacity={0.2} clickable={false} />)}
@@ -124,13 +131,16 @@ function MapWorkspace(props: Props) {
   const { session, dispatch, tool, onToolChange, onSelect } = props
   const { brief, mode } = session
   const editing = mode === 'edit'
+  const briefing = props.presentation === 'briefing'
   const interactive = tool.kind === 'idle'
   const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY?.trim()
   const googleMap = useMap()
   const [anchors, setAnchors] = useState<Record<string, Position>>({})
-  const [dimOpacity, setDimOpacity] = useState(15)
-  const [objectSizePercent, setObjectSizePercent] = useState(100)
-  const [satellite, setSatellite] = useState(editing)
+  const [dimOpacity, setDimOpacity] = useState(briefing ? 0 : 15)
+  const [internalObjectSize, setInternalObjectSize] = useState(100)
+  const objectSizePercent = props.objectSizePercent ?? internalObjectSize
+  if (props.overlaySizeRef) props.overlaySizeRef.current = objectSizePercent
+  const [satellite, setSatellite] = useState(editing || briefing)
   const satelliteId = useId()
   const [shadeStart, setShadeStart] = useState<MapView | null>(null)
   const shadeActive = shadeStart !== null
@@ -166,7 +176,7 @@ function MapWorkspace(props: Props) {
     view, brief, sourceUrl: props.images.sourceUrl, setCapturing, shadowSlot: shadeActive ? shownSlot : undefined,
   })
   const renderedSession = capturing ? { ...session, mode: 'view' as const, visibility: { circleRig: true, angles: true, polygons: true, imageOverlays: true } } : session
-  const mapProps = capturing ? { ...props, session: renderedSession, selectedId: null, selectedCameraIds: [], tool: idleTool } : props
+  const mapProps = capturing ? { ...props, session: renderedSession, selectedId: null, selectedCameraIds: [], tool: idleTool, isolatedKind: null } : props
   const renderedObjectSize = capturing ? 100 / 2 ** (zoom - 17) : objectSizePercent
   useImperativeHandle(props.rigPlacementRef, () => () => ({
     position: { ...view.current.center },
@@ -207,21 +217,21 @@ function MapWorkspace(props: Props) {
     <div data-pdf-map-surface={!shadeActive ? '' : undefined} className="absolute inset-0" style={{ visibility: shadeActive ? 'hidden' : 'visible' }} aria-hidden={shadeActive} inert={shadeActive}>
       {apiKey ? <ConnectedMap {...mapProps} imageLayer={imageLayer} dimOpacity={dimOpacity} objectSizePercent={renderedObjectSize} zoom={zoom} active={!shadeActive} view={view} satellite={satellite} onViewChange={onViewChange} onMapClick={handleMapClick} onCameraPlace={handleCameraPlace} onCameraDuplicate={handleCameraDuplicate} /> : <MapMessage title="Map setup pending" description="Google Maps will appear once connected. Your brief is still available." />}
     </div>
-    {shadeActive && <Suspense fallback={<MapMessage title="Loading ShadeMap…" description="Preparing the shadow preview." />}>
+    {!briefing && shadeActive && <Suspense fallback={<MapMessage title="Loading ShadeMap…" description="Preparing the shadow preview." />}>
       <ShadeMapPanel imageLayer={imageLayer} dimOpacity={dimOpacity} objectSizePercent={renderedObjectSize} dispatch={dispatch} selectedId={mapProps.selectedId} selectedCameraIds={mapProps.selectedCameraIds} onSelect={onSelect} onSelectCamera={props.onSelectCamera} session={renderedSession} initialView={shadeStart} onViewChange={onViewChange} slot={shownSlot}
-        onNavigation={setShadeNavigation} tool={mapProps.tool} onMapClick={handleMapClick}
+        onNavigation={setShadeNavigation} tool={mapProps.tool} onMapClick={handleMapClick} isolatedKind={mapProps.isolatedKind ?? null}
         onToolChange={onToolChange} onCameraPlace={handleCameraPlace} onCameraDuplicate={handleCameraDuplicate} />
     </Suspense>}
     <div className="pointer-events-none absolute inset-x-3 top-3 z-20 grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2">
       <div className="col-span-2 min-w-0 @min-[550px]:col-span-1">
-        {apiKey && <MapSearch navigation={shadeActive ? shadeNavigation : googleMap} />}
+        {!briefing && apiKey && <MapSearch navigation={shadeActive ? shadeNavigation : googleMap} />}
       </div>
       <div className="col-start-2 row-start-2 flex flex-col items-end @min-[550px]:row-start-1 @min-[550px]:row-span-2">
         <div className="pointer-events-auto grid w-fit grid-cols-[auto_auto] gap-y-2">
-          <ButtonGroup aria-label="Map provider" className="col-span-2 grid !grid grid-cols-subgrid overflow-hidden rounded-lg bg-card shadow-sm">
+          {!briefing && <ButtonGroup aria-label="Map provider" className="col-span-2 grid !grid grid-cols-subgrid overflow-hidden rounded-lg bg-card shadow-sm">
             <Button size="sm" className="h-10 !rounded-none" variant={!shadeActive ? 'default' : 'ghost'} aria-pressed={!shadeActive} onClick={() => setShadeStart(null)}>Google Maps</Button>
             <Button size="sm" className="h-10 w-full !rounded-none" variant={shadeActive ? 'default' : 'ghost'} aria-pressed={shadeActive} onClick={() => { if (!shadeActive) setShadeStart(view.current) }}>ShadeMap</Button>
-          </ButtonGroup>
+          </ButtonGroup>}
           <Label htmlFor={satelliteId} aria-hidden={shadeActive} inert={shadeActive} className={'col-start-2 flex h-10 w-full cursor-pointer items-center gap-2 rounded-lg border bg-card px-3 shadow-sm' + (shadeActive ? ' invisible pointer-events-none' : '')}>
             <Switch id={satelliteId} checked={satellite} onCheckedChange={setSatellite} /><span>Satellite</span>
           </Label>
@@ -232,15 +242,15 @@ function MapWorkspace(props: Props) {
         <ViewerLayers session={session} dispatch={dispatch} />
       </div>
     </div>
-    <div className="pointer-events-auto absolute right-3 bottom-[5.5rem] z-20 grid max-h-[calc(100%-7rem)] w-[calc(100%-196px)] max-w-sm gap-1 overflow-y-auto rounded-lg border bg-card p-2 shadow-sm @min-[750px]:right-auto @min-[750px]:bottom-8 @min-[750px]:left-1/2 @min-[750px]:w-[calc(100%-384px)] @min-[750px]:-translate-x-1/2 @min-[750px]:p-3">
+    {!briefing && <div className="pointer-events-auto absolute right-3 bottom-[5.5rem] z-20 grid max-h-[calc(100%-7rem)] w-[calc(100%-196px)] max-w-sm gap-1 overflow-y-auto rounded-lg border bg-card p-2 shadow-sm @min-[750px]:right-auto @min-[750px]:bottom-8 @min-[750px]:left-1/2 @min-[750px]:w-[calc(100%-384px)] @min-[750px]:-translate-x-1/2 @min-[750px]:p-3">
       <ResponsiveShadowTimeControl slots={slots} activeIndex={Math.min(activeSlot, slots.length - 1)} activeEndpoint={activeEndpoint}
         onActivate={(index, endpoint = 0) => { setActiveSlot(index); setActiveEndpoint(endpoint) }} onChange={setSlots} onCommit={commitSlots} position={view.current.center} />
-    </div>
+    </div>}
     <div className="pointer-events-none absolute inset-x-3 bottom-8 z-20 flex items-end gap-2">
-      <div className="pointer-events-auto grid min-w-0 max-w-40 flex-1 gap-2">
-        <MapObjectSizeControl value={objectSizePercent} onChange={setObjectSizePercent} />
+      {!briefing && <div className="pointer-events-auto grid min-w-0 max-w-40 flex-1 gap-2">
+        <MapObjectSizeControl value={objectSizePercent} onChange={setInternalObjectSize} />
         <MapDimmerControl value={dimOpacity} onChange={setDimOpacity} />
-      </div>
+      </div>}
       <MapControls brief={brief} navigation={shadeActive ? shadeNavigation : googleMap} />
     </div>
   </CardContent>
