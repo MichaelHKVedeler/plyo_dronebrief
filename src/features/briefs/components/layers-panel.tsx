@@ -3,17 +3,22 @@ import { Textarea } from '@/components/ui/textarea'
 import { Accordion } from '@/components/ui/accordion'
 import { SettingsSection } from './settings-section'
 import { ImageOverlayControls, type ImageControlsProps } from './image-overlay-controls'
+import { ReferenceImageControls } from './reference-image-controls'
 import { ImageCountSummary } from './image-count-summary'
 import { countBriefImages } from '../model/image-count'
 import type { BriefSession } from '../state/brief-session'
+import type { LocalImages } from '../state/use-local-images'
 
-export function LayersPanel({ session, ...imageControls }: ImageControlsProps & { session: BriefSession }) {
+export function LayersPanel({ session, referenceImages, ...imageControls }: ImageControlsProps & {
+  session: BriefSession
+  referenceImages: LocalImages
+}) {
   const { brief } = session
   const editing = session.mode === 'edit'
   function commit(field: 'description' | 'instructions', value: string) {
     if (value !== brief.project[field]) imageControls.onUpdate((current) => ({ ...current, project: { ...current.project, [field]: value } }))
   }
-  return <Accordion type="multiple" defaultValue={['description', 'floor-plan', 'calculate-images']}>
+  return <Accordion type="multiple" defaultValue={['description', 'floor-plan', 'references', 'calculate-images']}>
     <SettingsSection value="description" title="Description">
       {editing
         ? <>
@@ -33,6 +38,9 @@ export function LayersPanel({ session, ...imageControls }: ImageControlsProps & 
     </SettingsSection>
     <SettingsSection value="floor-plan" title="Floor plan">
       <ImageOverlayControls {...imageControls} overlays={brief.imageOverlays} editable={editing} />
+    </SettingsSection>
+    <SettingsSection value="references" title="Reference images" count={brief.references.length}>
+      <ReferenceImageControls references={brief.references} editable={editing} images={referenceImages} onUpdate={imageControls.onUpdate} />
     </SettingsSection>
     <SettingsSection value="calculate-images" title="Calculate images" count={countBriefImages(brief).total}>
       <ImageCountSummary brief={brief} />

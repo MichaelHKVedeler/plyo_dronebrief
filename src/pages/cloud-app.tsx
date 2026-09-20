@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { AppHeader } from '@/components/layout/app-header'
 import { FileDown } from 'lucide-react'
+import { BriefHeaderTitle } from '@/features/briefs/components/brief-header-title'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -10,6 +11,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { CreateBriefPage } from '@/pages/create-brief-page'
 import { BriefPage } from '@/pages/brief-page'
 import { PdfExportDialog } from '@/features/briefs/components/pdf-export-dialog'
+import { parsePublicShareRoute, defaultBriefingPresentation } from '@/features/briefs/storage/public-brief-link'
 import type { PdfMapCapture } from '@/features/briefs/export/pdf-types'
 import { ProjectLibraryPage } from '@/pages/project-library-page'
 import { OrganizationPage } from '@/pages/organization-page'
@@ -39,13 +41,15 @@ export function CloudApp() {
   const [snapshot, setSnapshot] = useState<ReturnType<typeof openSession> | null>(null)
   const [pdfOpen, setPdfOpen] = useState(false)
   const pdfMapRef = useRef<PdfMapCapture | null>(null)
+  const overlaySizeRef = useRef(100)
   const [migrate, setMigrate] = useState<DroneBrief | null>(null)
   const [{ drafts, draftError }] = useState(() => {
     try { return { drafts: briefRepository.list(), draftError: null } }
     catch { return { drafts: [] as DroneBrief[], draftError: 'Local drafts could not be read. Browser storage may be unavailable.' } }
   })
   const creationId = useRef(crypto.randomUUID())
-  const publicToken = route.startsWith('/s/') ? route.slice(3) : undefined
+  const publicShare = parsePublicShareRoute(route)
+  const publicToken = publicShare?.token
   const projectId = route.startsWith('/projects/') ? route.slice(10) : undefined
   const identity = publicToken ? `public:${publicToken}` : `${uid ?? ''}:${projectId ?? ''}`
   const [resourceIdentity, setResourceIdentity] = useState(identity)
@@ -84,20 +88,17 @@ export function CloudApp() {
   const cloudBriefVisible = Boolean(loaded && (publicToken || (!snapshot && !account.loading && account.user && projectId)))
   const home = () => guard(() => goNow('/'))
   const headerActions = <>
-      {account.user && <><span className="text-sm">{account.user.displayName ?? account.user.email}</span>{!briefScreen && organization && <Choice label="Organization" value={organization.id} onChange={(id) => { setOrgId(id); goNow('/') }} options={account.organizations.map((org) => ({ value: org.id, label: org.name }))} />}<Button variant="outline" onClick={() => guard(() => { void signOutGoogle().catch((error) => setError(cloudError(error))) })}>Sign out</Button></>}
-      {briefScreen && <Button variant="outline" onClick={home}>Home</Button>}
+      {account.user && !publicToken && <><span className="text-sm">{account.user.displayName ?? account.user.email}</span>{!briefScreen && organization && <Choice label="Organization" value={organization.id} onChange={(id) => { setOrgId(id); goNow('/') }} options={account.organizations.map((org) => ({ value: org.id, label: org.name }))} />}<Button variant="outline" onClick={() => guard(() => { void signOutGoogle().catch((error) => setError(cloudError(error))) })}>Sign out</Button></>}
+      {briefScreen && !publicToken && <Button variant="outline" onClick={home}>Home</Button>}
   </>
   return <div className={briefScreen ? 'flex h-dvh min-h-0 flex-col overflow-hidden' : 'min-h-svh'}>
-    {!cloudBriefVisible && <AppHeader onHome={home} context={snapshot && <div className="flex min-w-0 items-center gap-2">
-      <h1 className="min-w-0 truncate text-base font-semibold tracking-tight" title={snapshot.brief.project.name}>{snapshot.brief.project.name}</h1>
-      <Badge variant="secondary" className="shrink-0">Read-only</Badge>
-    </div>}>
+    {!cloudBriefVisible && <AppHeader onHome={publicToken ? undefined : home} status={snapshot && <Badge variant="secondary">Read-only</Badge>} context={snapshot && <BriefHeaderTitle name={snapshot.brief.project.name} clientName={snapshot.brief.project.clientName} mode="view" />}>
       {headerActions}
-      {snapshot && <Button variant="outline" onClick={() => setPdfOpen(true)}><FileDown /> Export as PDF</Button>}
+      {snapshot && <Button variant="outline" onClick={() => setPdfOpen(true)}><FileDown /> Export</Button>}
     </AppHeader>}
     {(error || account.error || draftError) && <div className="p-4"><Problem message={error ?? account.error ?? draftError} /><Button variant="outline" onClick={() => { setError(null); setLoaded(null); setLoadTick((value) => value + 1); if (account.user) void account.refresh() }}>Retry</Button></div>}
-    {publicToken ? (loaded ? <CloudBrief key={`${publicToken}-${loadTick}`} initial={loaded} publicToken={publicToken} onDirty={onDirty} onOpen={openProject} onHome={home} headerActions={headerActions} /> : !error && <p role="status" className="p-6">Loading public project…</p>)
-      : snapshot ? <><div className="flex flex-wrap gap-3 px-6 py-2"><span>Portable snapshot · read-only</span>{account.user && organization && <Button size="sm" onClick={() => setMigrate(snapshot.brief)}>Save as a cloud project</Button>}</div><BriefPage session={snapshot} dispatch={(action) => setSnapshot((previous) => previous ? reduceSession(previous, action) : null)} error={null} pdfMapRef={pdfMapRef} /></>
+    {publicToken ? (loaded ? <CloudBrief key={`${publicToken}-${loadTick}`} initial={loaded} publicToken={publicToken} presentation={publicShare?.presentation ?? defaultBriefingPresentation} onDirty={onDirty} onOpen={openProject} onHome={home} /> : !error && <p role="status" className="p-6">Loading public project…</p>)
+      : snapshot ? <><div className="flex flex-wrap gap-3 px-6 py-2"><span>Portable snapshot · read-only</span>{account.user && organization && <Button size="sm" onClick={() => setMigrate(snapshot.brief)}>Save as a cloud project</Button>}</div><BriefPage session={snapshot} dispatch={(action) => setSnapshot((previous) => previous ? reduceSession(previous, action) : null)} error={null} pdfMapRef={pdfMapRef} overlaySizeRef={overlaySizeRef} /></>
       : account.loading ? <p role="status" className="p-6">Loading account…</p>
       : !account.user ? <main className="mx-auto grid max-w-xl gap-5 px-6 py-16"><h1 className="text-3xl font-semibold">Dronebrief</h1><p>Sign in to create projects and collaborate with your organization.</p><Button disabled={busy} onClick={() => void authenticate()}>{busy ? 'Signing in…' : 'Sign in with Google'}</Button><Button variant="outline" onClick={() => setImportOpen(true)}>Open portable snapshot</Button></main>
       : projectId ? (loaded ? <CloudBrief key={`${account.user.uid}-${projectId}-${loadTick}`} initial={loaded} organization={projectOrganization} uid={account.user.uid} onDirty={onDirty} onOpen={openProject} onHome={home} headerActions={headerActions} /> : !error && <p role="status" className="p-6">Loading project…</p>)
@@ -109,7 +110,7 @@ export function CloudApp() {
       : <main className="p-6"><Problem message="This page is unavailable, or you do not have permission to open it." /></main>}
     <Dialog open={importOpen} onOpenChange={setImportOpen}><DialogContent><DialogHeader><DialogTitle>Open portable snapshot</DialogTitle><DialogDescription>A snapshot is a frozen copy. Local floorplan references may need reconnecting.</DialogDescription></DialogHeader><Problem message={error} /><Label htmlFor="snapshot-key">Export key</Label><Textarea id="snapshot-key" value={importKey} onChange={(event) => setImportKey(event.target.value)} /><Button onClick={() => { try { setSnapshot(openSession(importBriefKey(importKey), 'view')); setImportOpen(false); setError(null) } catch (error) { setError(cloudError(error)) } }}>Open read-only brief</Button></DialogContent></Dialog>
     {migrate && account.user && <MigrateDialog brief={migrate} organizations={account.organizations} uid={account.user.uid} onDirty={onDirty} onClose={() => setMigrate(null)} onSaved={(id) => { setMigrate(null); openProject(id) }} />}
-    {snapshot && pdfOpen && <PdfExportDialog brief={snapshot.brief} editable={false} captureRef={pdfMapRef} onSaveNotes={() => {}} onClose={() => setPdfOpen(false)} />}
+    {snapshot && pdfOpen && <PdfExportDialog brief={snapshot.brief} editable={false} captureRef={pdfMapRef} overlaySizeRef={overlaySizeRef} link={{ status: 'unavailable', reason: 'snapshot' }} onSaveNotes={() => {}} onClose={() => setPdfOpen(false)} />}
     <Dialog open={Boolean(leave)} onOpenChange={(open) => { if (!open) setLeave(null) }}><DialogContent><DialogHeader><DialogTitle>Leave with unsaved changes?</DialogTitle><DialogDescription>Keep this page open to save or export your work. Leaving discards unsaved changes and cancels uploads.</DialogDescription></DialogHeader><Button variant="outline" onClick={() => setLeave(null)}>Keep editing</Button><Button variant="destructive" onClick={() => { const action = leave; setLeave(null); dirty.current = false; action?.() }}>Discard and leave</Button></DialogContent></Dialog>
   </div>
 }

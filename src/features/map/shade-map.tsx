@@ -19,6 +19,7 @@ import { ShadeMarker, ShadePolygon } from './shade-object-renderer'
 import { metersPerPixel } from './geometry'
 import { MapObjectScale, mapObjectScale } from './map-object-scale'
 import type { BriefAction, BriefSession } from '@/features/briefs/state/brief-session'
+import { isolatedCaptureAngles, isolatedCaptureVisibility, type IsolatedCapture } from './isolated-capture'
 import { fromShadeView, toShadeView, type MapView } from './map-view'
 import { shadeScene } from './shade-scene'
 import { removeShadeEngine } from './remove-shade-engine'
@@ -26,8 +27,8 @@ import { shadowTime, timeMinutes } from './shadow-time'
 import { useDarkMode } from '@/lib/use-dark-mode'
 import 'maplibre-gl/dist/maplibre-gl.css'
 
-type Props = { imageLayer: ImageLayerState; dimOpacity: number; objectSizePercent: number; dispatch: (action: BriefAction) => void; selectedId: string | null; selectedCameraIds: string[]; onSelect: (id: string | null) => void; onSelectCamera: (id: string, additive: boolean) => void; session: BriefSession; initialView: MapView; onViewChange: (view: MapView) => void; slot: ShootSlot; onNavigation: (navigation: MapNavigation | null) => void; tool: MapTool; onMapClick: (point: Position) => void; onToolChange: (tool: MapTool) => void; onCameraPlace: (tool: MapTool, point: Position) => void; onCameraDuplicate: (source: CameraAngle, position: Position) => void }
-export function ShadeMapPanel({ imageLayer, dimOpacity, objectSizePercent, dispatch, selectedId, selectedCameraIds, onSelect, onSelectCamera, session, initialView, onViewChange, slot, onNavigation, tool, onMapClick, onToolChange, onCameraPlace, onCameraDuplicate }: Props) {
+type Props = { imageLayer: ImageLayerState; dimOpacity: number; objectSizePercent: number; dispatch: (action: BriefAction) => void; selectedId: string | null; selectedCameraIds: string[]; onSelect: (id: string | null) => void; onSelectCamera: (id: string, additive: boolean) => void; session: BriefSession; initialView: MapView; onViewChange: (view: MapView) => void; slot: ShootSlot; onNavigation: (navigation: MapNavigation | null) => void; tool: MapTool; onMapClick: (point: Position) => void; onToolChange: (tool: MapTool) => void; onCameraPlace: (tool: MapTool, point: Position) => void; onCameraDuplicate: (source: CameraAngle, position: Position) => void; isolatedKind?: IsolatedCapture }
+export function ShadeMapPanel({ imageLayer, dimOpacity, objectSizePercent, dispatch, selectedId, selectedCameraIds, onSelect, onSelectCamera, session, initialView, onViewChange, slot, onNavigation, tool, onMapClick, onToolChange, onCameraPlace, onCameraDuplicate, isolatedKind = null }: Props) {
   const dark = useDarkMode()
   const host = useRef<HTMLDivElement>(null)
   const shade = useRef<ShadeMap | null>(null)
@@ -204,6 +205,8 @@ export function ShadeMapPanel({ imageLayer, dimOpacity, objectSizePercent, dispa
   useEffect(() => { shade.current?.setDate(new Date(timestamps)) }, [timestamps, ready])
   const editable = session.mode === 'edit'
   const interactive = tool.kind === 'idle'
+  const capture = isolatedCaptureVisibility(session.visibility, isolatedKind)
+  const captureAngles = isolatedCaptureAngles(session.brief.angles, isolatedKind)
   const pendingAngle = tool.kind === 'camera' && tool.position && tool.cameraType !== '360'
     ? { id: 'pending', label: 'Choose direction', type: tool.cameraType, position: tool.position, directionDegrees: tool.directionDegrees } : null
   const commitCamera = useCallback((updated: CameraAngle) => {
@@ -216,10 +219,10 @@ export function ShadeMapPanel({ imageLayer, dimOpacity, objectSizePercent, dispa
     <div data-image-host className="pointer-events-none absolute inset-0" />
     {ready && map && <ShadeProjection value={map}><ObjectRenderer value={{ Marker: ShadeMarker, Polygon: ShadePolygon }}><MapObjectScale value={objectScale}>
       <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden" aria-label="Brief objects">
-        {session.visibility.circleRig && session.brief.circleRig && <RigObject rig={session.brief.circleRig} pixelsToMeters={metersPerPixel(session.brief.circleRig.position.lat, view.zoom)} dark={dark} editable={editable} interactive={interactive}
+        {capture.circleRig && session.brief.circleRig && <RigObject rig={session.brief.circleRig} pixelsToMeters={metersPerPixel(session.brief.circleRig.position.lat, view.zoom)} dark={dark} editable={editable} interactive={interactive}
           selected={selectedId === session.brief.circleRig.id} onSelect={() => onSelect(session.brief.circleRig!.id)}
           onCommit={(rig) => dispatch({ type: 'update', update: (brief) => ({ ...brief, circleRig: brief.circleRig?.id === rig.id ? rig : brief.circleRig }) })} />}
-        {session.visibility.angles && <CameraMarkers angles={session.brief.angles} pendingAngle={pendingAngle} editable={editable} interactive={interactive}
+        {capture.angles && <CameraMarkers angles={captureAngles} pendingAngle={pendingAngle} editable={editable} interactive={interactive}
           selectedCameraIds={selectedCameraIds} zoom={view.zoom} dslrSettings={session.brief.typeSettings.dslr}
           onSelectCamera={onSelectCamera} onCommit={commitCamera} onDuplicate={duplicateCameraAt} />}
       </div>

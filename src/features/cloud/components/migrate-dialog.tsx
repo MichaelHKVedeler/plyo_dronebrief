@@ -5,7 +5,7 @@ import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { openSession, reduceSession } from '@/features/briefs/state/brief-session'
 import { readImageHandle } from '@/features/briefs/storage/local-images'
-import type { DroneBrief } from '@/features/briefs/model/brief'
+import { localFileSources, type DroneBrief } from '@/features/briefs/model/brief'
 import type { AssetManifest, Organization, PersonalCollection } from '../model/cloud'
 import { cloudLibrary } from '../storage/library-repository'
 import { cloudProjects } from '../storage/project-repository'
@@ -21,7 +21,7 @@ export function MigrateDialog({ brief, organizations, uid, onDirty, onClose, onS
   const [files, setFiles] = useState<Record<string, File>>({}); const [busy, setBusy] = useState(false); const [status, setStatus] = useState(''); const [error, setError] = useState<string | null>(null)
   const [started, setStarted] = useState(false)
   const uploaded = useRef<AssetManifest>({}); const controller = useRef(new AbortController())
-  const images = brief.imageOverlays.flatMap((image) => typeof image.source === 'string' ? [] : [{ id: image.source.fileId, name: image.source.fileName }])
+  const images = localFileSources(brief).map((source) => ({ id: source.fileId, name: source.fileName }))
   useEffect(() => { controller.current = new AbortController(); return () => controller.current.abort() }, [])
   useEffect(() => { onDirty(busy); return () => onDirty(false) }, [busy, onDirty])
   useEffect(() => {
@@ -43,7 +43,11 @@ export function MigrateDialog({ brief, organizations, uid, onDirty, onClose, onS
         resolved[image.id] = await handle.getFile()
       }
       setStatus('Creating cloud project…')
-      const seed = reduceSession(openSession(brief, 'edit'), { type: 'update', update: (value) => ({ ...value, imageOverlays: value.imageOverlays.filter((image) => typeof image.source === 'string') }) }).brief
+      const seed = reduceSession(openSession(brief, 'edit'), { type: 'update', update: (value) => ({
+        ...value,
+        imageOverlays: value.imageOverlays.filter((image) => typeof image.source === 'string'),
+        references: value.references.filter((image) => typeof image.source === 'string'),
+      }) }).brief
       const target = recovery.projectId ? await cloudProjects.load(recovery.projectId) : await cloudProjects.create(orgId, seed, recovery.operationId)
       if (!recovery.projectId) { recovery.projectId = target.summary.id; recovery.baseRevision = target.summary.revision; saveMigration(key, recovery) }
       setStarted(true)

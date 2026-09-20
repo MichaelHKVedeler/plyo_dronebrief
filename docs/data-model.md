@@ -14,6 +14,7 @@ The runtime contract is `src/features/briefs/model/brief.ts`. This document expl
 | typeSettings | Drone/360 heightsMeters arrays (new briefs: drone 40, 60; 360 2, 5, 8); DSLR angleCount and spacingDegrees plus preserved legacy heightsMeters |
 | polygons | Newbuild polygons with id, label, and vertices[] |
 | imageOverlays | Legacy embedded source or local file reference, plus transform metadata |
+| references | Optional reference photos `{id, caption, source}` using the same source union as image overlays (max 4) |
 
 Position coordinates use WGS84. Height is a requested photography height in meters, not a compliance limit or terrain-adjusted flight altitude. Schedule dates and times are wall-clock values at the shoot location; there is no timezone conversion in v1. `description` and `instructions` are additive schema v1 project notes fields (max 2000 characters each); older snapshots omit them and parse as empty strings. The Contents tab shows them as Property information and Instructions under Description. `shoots` is an additive schema v1 array of up to three `{date, time}` pairs used by the stacked map time sliders. The editor exposes one shared date at the top of the slider box and writes that date onto every slot. Older snapshots omit `shoots`; the UI then uses `date` plus the first three `times`. Saving from the sliders writes `shoots` and keeps `date`/`times` in sync so older readers still see the first date and the slot times. Extra times beyond three from older snapshots are dropped only after a slot edit. DB1/DB2 transport versions are unchanged.
 
@@ -83,6 +84,10 @@ Image overlays use `id`, `name`, `source`, `position`, `widthMeters`, `heightMet
 **Version decision:** this is an additive schema v1 source variant; DB1/DB2 transport and all legacy source values retain their existing meaning. No migration is required for previously valid briefs. Older builds reject briefs containing local-file sources, so new local-image snapshots require an updated app. Legacy embedded snapshots continue to round-trip unchanged. Invalid local reference IDs are rejected. Do not silently convert local references into embedded data or remote sources.
 
 Per-image opacity is an authored image setting, saved through the reducer after slider release. Layer visibility, opacity previews, selected image, and per-image editing anchor are session state and are not exported. A viewer can reconnect files and toggle the image layer without mutating its brief or writing a draft.
+
+## Reference images
+
+`references` is an additive schema v1 array of up to four `{id, caption, source}` photos. `source` uses the same embedded-or-local-file union as image overlays. Caption is 1–200 characters. These images are not placed on the map; Contents lists them below Floor plan. PDF export and the public briefing include them automatically (briefing sidebar, after capture instructions). Cloud projects upload them through the same asset manifest as floorplans. Older snapshots omit the field and parse as `[]`. Older app builds ignore the field and lose it on re-export.
 
 The whole JSON must fit within the existing 2 MB share-key limit. A local reference is device-specific rather than a portable image asset; export UI explicitly tells recipients to reconnect the matching file. Cloud storage uses the separate envelope described below without changing portable reference semantics.
 
