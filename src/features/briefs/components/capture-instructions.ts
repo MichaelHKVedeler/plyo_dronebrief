@@ -7,7 +7,6 @@ export type CaptureInstructionRow = {
   key: 'circleRig' | 'drone-image' | '360' | 'dslr'
   label: string
   rule: string
-  detail: string
   range: string
   heights: string
   images: number
@@ -37,7 +36,6 @@ export function captureInstructions(brief: DroneBrief, language: PdfLanguage): C
       key: 'circleRig',
       label: copy.rig,
       rule: copy.rigRule,
-      detail: `${rigRange}: ${droneHeights}`,
       range: rigRange,
       heights: droneHeights,
       images: counts.circleRig,
@@ -48,9 +46,9 @@ export function captureInstructions(brief: DroneBrief, language: PdfLanguage): C
       key: 'drone-image',
       label: copy.drone,
       rule: copy.droneRule,
-      detail: `${pointRangeLabel(copy.point, dronePoints)}: ${droneHeights}`,
       range: pointRangeLabel(copy.point, dronePoints),
       heights: droneHeights,
+      images: counts.droneImage,
     })
   }
   if (panoramaPoints) {
@@ -58,9 +56,9 @@ export function captureInstructions(brief: DroneBrief, language: PdfLanguage): C
       key: '360',
       label: copy.panorama,
       rule: copy.panoramaRule,
-      detail: `${pointRangeLabel(copy.point, panoramaPoints)}: ${panoramaHeights}`,
       range: pointRangeLabel(copy.point, panoramaPoints),
       heights: panoramaHeights,
+      images: counts.panorama,
     })
   }
   if (dslrPoints) {
@@ -69,9 +67,9 @@ export function captureInstructions(brief: DroneBrief, language: PdfLanguage): C
       key: 'dslr',
       label: copy.dslr,
       rule: copy.dslrRule(angleCount * spacingDegrees, angleCount),
-      detail: `${pointRangeLabel(copy.point, dslrPoints)}: ${copy.ground}`,
       range: pointRangeLabel(copy.point, dslrPoints),
       heights: copy.ground,
+      images: counts.dslr,
     })
   }
   return rows
