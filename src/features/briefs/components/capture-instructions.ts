@@ -7,6 +7,7 @@ export type CaptureInstructionRow = {
   key: 'circleRig' | 'drone-image' | '360' | 'dslr'
   label: string
   rule: string
+  detail: string
   range: string
   heights: string
   images: number
@@ -30,11 +31,15 @@ export function captureInstructions(brief: DroneBrief, language: PdfLanguage): C
   const dslrPoints = brief.angles.filter((angle) => angle.type === 'dslr').length
   const rows: CaptureInstructionRow[] = []
   if (brief.circleRig) {
+    const rigRange = pointRangeLabel(copy.arrows, brief.circleRig.arrowCount)
+
     rows.push({
       key: 'circleRig',
       label: copy.rig,
       rule: copy.rigRule,
-      detail: `${pointRangeLabel(copy.arrows, brief.circleRig.arrowCount)}: ${droneHeights}`,
+      detail: `${rigRange}: ${droneHeights}`,
+      range: rigRange,
+      heights: droneHeights,
       images: counts.circleRig,
     })
   }
