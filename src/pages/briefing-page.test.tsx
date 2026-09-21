@@ -1,9 +1,10 @@
 import { expect, it, vi } from 'vitest'
+import { useEffect, useState } from 'react'
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { ReactNode } from 'react'
 import { createBrief } from '@/features/briefs/model/brief'
-import { openSession } from '@/features/briefs/state/brief-session'
+import { openSession, reduceSession } from '@/features/briefs/state/brief-session'
 import { defaultBriefingPresentation } from '@/features/briefs/storage/public-brief-link'
 import { BriefingPage } from './briefing-page'
 
@@ -21,7 +22,9 @@ it('keeps the map in place and scrolls project details inside the information ov
   expect(screen.getByRole('button', { name: 'Show only Aerial photo' })).toBeVisible()
   expect(screen.queryByRole('banner')).not.toBeInTheDocument()
   expect(screen.queryByLabelText('Map layers')).not.toBeInTheDocument()
-  await user.click(screen.getByRole('button', { name: 'Project information' }))
+  const info = screen.getByRole('button', { name: 'Project information' })
+  expect(info).toHaveClass('absolute', 'bottom-8', 'left-3', 'lg:hidden')
+  await user.click(info)
   const details = screen.getByLabelText('Brief details')
   expect(details).toBeVisible()
   expect(within(details).getByText('Dronebrief')).toBeVisible()
@@ -36,4 +39,27 @@ it('keeps the map in place and scrolls project details inside the information ov
   expect(screen.queryByRole('button', { name: 'Project information' })).not.toBeInTheDocument()
   await user.click(screen.getByRole('button', { name: 'Close project information' }))
   expect(screen.getByRole('button', { name: 'Project information' })).toBeVisible()
+})
+
+it('hides the floorplan from the public map without writing the brief', async () => {
+  const brief = createBrief({ name: 'Cloud project', clientName: 'Client', date: '2026-05-16', times: ['09:00'] })
+  brief.angles = [{ id: 'd1', label: 'D1', type: 'drone-image', position: brief.coordinates, directionDegrees: 0 }]
+  brief.imageOverlays = [{
+    id: 'plan', name: 'Plan', source: 'data:image/png;base64,AAAA', position: brief.coordinates,
+    widthMeters: 40, heightMeters: 30, rotationDegrees: 0, opacity: 0.7,
+  }]
+  const user = userEvent.setup()
+  let current = openSession(brief, 'view')
+  function Fixture() {
+    const [session, setSession] = useState(current)
+    useEffect(() => { current = session }, [session])
+    return <BriefingPage session={session} dispatch={(action) => setSession((value) => reduceSession(value, action))} error={null} presentation={defaultBriefingPresentation} />
+  }
+  render(<Fixture />)
+  const hide = screen.getByRole('button', { name: 'Hide floorplan' })
+  expect(hide).toHaveAttribute('aria-pressed', 'true')
+  await user.click(hide)
+  expect(current.visibility.imageOverlays).toBe(false)
+  expect(current.brief).toBe(brief)
+  expect(screen.getByRole('button', { name: 'Show floorplan' })).toHaveAttribute('aria-pressed', 'false')
 })

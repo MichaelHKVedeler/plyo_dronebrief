@@ -76,6 +76,16 @@
 [data-rig-move-cursor="grabbing"], [data-rig-move-cursor="grabbing"] * { cursor: grabbing !important; }
 [data-map-panning], [data-map-panning] * { cursor: move !important; }
 
+/* Google focuses the marker host during dragging. Its rectangular outline does
+   not match our round controls; draw keyboard focus on the actual button. */
+gmp-advanced-marker:has([data-camera-marker], [data-map-handle]):focus {
+  outline: none;
+}
+gmp-advanced-marker:focus-visible :is([data-camera-marker], [data-map-handle]) > [data-slot="button"] {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
 @layer base {
   * { @apply border-border outline-ring/50; }
   body { @apply m-0 bg-background font-sans text-base text-foreground antialiased; }

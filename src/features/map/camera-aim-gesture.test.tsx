@@ -95,6 +95,8 @@ it.each(['Escape', 'pointercancel', 'blur', 'lostpointercapture'])('restores an 
   const { button, down, move, up, cone, commit } = setup({ focused: true })
   down(); move(200, 0)
   expect(cone()).toContain('180° field of view')
+  move(205, 200)
+  expect(cone()).toBeUndefined()
   if (type === 'Escape') fireEvent.keyDown(window, { key: 'Escape' })
   else fireEvent(type === 'lostpointercapture' ? button! : window, new Event(type))
   up(200, 0)
@@ -111,12 +113,38 @@ it('ignores other pointers, avoids a right-click-only edit, and keeps normal map
   expect(fireEvent.contextMenu(document.body)).toBe(true)
 })
 
-it('clamps the width near the point and preserves bearing when returning exactly to its center', () => {
-  const { down, move, up, cone, commit } = setup()
+it.each([false, true])('removes the focus when released back over the icon (ShadeMap: %s)', (shade) => {
+  const { down, move, up, cone, commit } = setup({ shade, focused: true })
   down(); move(140, 200); move(200, 200)
-  expect(cone()).toContain('10° field of view, heading 270°')
+  expect(cone()).toBeUndefined()
   up(200, 200)
-  expect(commit).toHaveBeenCalledExactlyOnceWith({ ...angle, focus: { directionDegrees: 270, fovDegrees: 10 } })
+  expect(commit).toHaveBeenCalledExactlyOnceWith(angle)
+})
+
+it.each([36, 72])('hides within the rendered %s px icon and reappears outside its circular edge', (size) => {
+  const { button, down, move, cone, up, commit } = setup({ focused: true })
+  vi.mocked(button!.getBoundingClientRect).mockReturnValue({ left: 200 - size / 2, top: 200 - size / 2, width: size, height: size } as DOMRect)
+  down()
+  expect(cone()).toBeUndefined()
+  move(200 + size / 2, 200)
+  expect(cone()).toBeUndefined()
+  move(201 + size / 2, 200)
+  expect(cone()).toContain('heading 90°')
+  move(200 + size / 3, 200 + size / 3)
+  expect(cone()).toBeUndefined()
+  move(200 + size / 2, 200 + size / 2)
+  expect(cone()).toContain('heading 135°')
+  up(260, 200)
+  expect(commit).toHaveBeenCalledExactlyOnceWith({ ...angle, focus: { directionDegrees: 90, fovDegrees: 60 } })
+})
+
+it('restores saved focus after a stationary right-click inside the icon', () => {
+  const { down, up, cone, commit } = setup({ focused: true })
+  down()
+  expect(cone()).toBeUndefined()
+  up(200, 200)
+  expect(cone()).toContain('90° field of view, heading 45°')
+  expect(commit).not.toHaveBeenCalled()
 })
 
 it('shows saved focus in the viewer and disables focus gestures during placement', () => {

@@ -40,9 +40,11 @@ export function BriefingPage({ session, dispatch, error, imageTransport, present
     <div className="relative min-h-0 min-w-0 flex-1">
       <MapPanel presentation="briefing" objectSizePercent={presentation.overlaySize} images={images} selectedCameraIds={selectedCameraIds} onSelectCamera={selectCamera} session={session} dispatch={dispatch} tool={idleTool} onToolChange={() => {}} selectedId={selectedId} onSelect={select} isolatedKind={isolatedKind}
         layerControls={<BriefingMapLayers brief={session.brief} language={presentation.language} isolatedKind={isolatedKind} onIsolate={setIsolatedKind}
-          infoAction={!infoOpen ? <Button type="button" variant="ghost" size="icon-sm" className="lg:hidden" aria-label={copy.info} aria-expanded={false} aria-controls="briefing-details" onClick={() => setInfoOpen(true)}>
-            <Info />
-          </Button> : undefined} />} />
+          floorplanVisible={session.visibility.imageOverlays}
+          onFloorplanVisible={(visible) => dispatch({ type: 'visibility', layer: 'imageOverlays', visible })} />} />
+      {!infoOpen && <Button type="button" variant="ghost" size="icon" className="pointer-events-auto absolute bottom-8 left-3 z-20 border bg-card shadow-sm lg:hidden" aria-label={copy.info} aria-expanded={false} aria-controls="briefing-details" onClick={() => setInfoOpen(true)}>
+        <Info />
+      </Button>}
       {error && <Alert variant="destructive" className="pointer-events-auto absolute inset-x-3 top-3 z-50 max-h-28 overflow-y-auto sm:left-auto sm:max-w-sm"><AlertDescription>{error}</AlertDescription></Alert>}
     </div>
     <aside id="briefing-details" aria-label="Brief details" className={infoOpen

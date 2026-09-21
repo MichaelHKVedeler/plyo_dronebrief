@@ -1,11 +1,11 @@
 import { ShadeProjection } from './shade-projection'
 import { useState, type ReactNode } from 'react'
-import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeAll, expect, it, vi } from 'vitest'
 import type { Map } from 'maplibre-gl'
 import type { CameraAngle } from '@/features/briefs/model/brief'
 import { CameraMarker } from './camera-marker'
-import { RigObject } from './rig-object'
+import { RigObject, compactRigNumberScale, compactRigStrokeScale } from './rig-object'
 import { ObjectRenderer } from './object-renderer'
 import { ShadeMarker, ShadePolygon } from './shade-object-renderer'
 import type { CircleRig } from './geometry'
@@ -18,7 +18,15 @@ beforeAll(() => {
   Element.prototype.setPointerCapture = vi.fn()
   Element.prototype.releasePointerCapture = vi.fn()
 })
-afterEach(cleanup)
+afterEach(() => {
+  cleanup()
+  vi.stubGlobal('matchMedia', (query: string) => ({
+    matches: false,
+    media: query,
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+  }))
+})
 function Surface({ children }: { children: ReactNode }) {
   return <ShadeProjection value={projection}><ObjectRenderer value={{ Marker: ShadeMarker, Polygon: ShadePolygon }}><div>{children}</div></ObjectRenderer></ShadeProjection>
 }
@@ -42,6 +50,14 @@ it.each([true, false])('scales rig decorations with radius and zoom, independent
   view.rerender(scene(200, 2, 3))
   expect(sizes()).toEqual(initial)
   expect(commit).not.toHaveBeenCalled()
+})
+
+it('thickens the rig outline and enlarges numbers on a narrow viewport', async () => {
+  vi.stubGlobal('matchMedia', () => ({ matches: true, addEventListener: vi.fn(), removeEventListener: vi.fn() }))
+  const rig: CircleRig = { id: 'rig', position: { lat: 60, lng: 10 }, arrowCount: 10, radiusMeters: 400, ovalRatio: 1, rotationDegrees: 0 }
+  render(<Surface><RigObject rig={rig} pixelsToMeters={1} editable={false} interactive selected onSelect={vi.fn()} onCommit={vi.fn()} /></Surface>)
+  await waitFor(() => expect(Number(document.querySelector('polygon')!.getAttribute('stroke-width'))).toBe(5 * compactRigStrokeScale))
+  expect(screen.getByText('1').style.zoom).toBe(String(compactRigNumberScale))
 })
 
 it.each(['Scale and rotate circle rig', 'Adjust rig ovalness'])('keeps the outline highlighted when moving onto %s', (label) => {

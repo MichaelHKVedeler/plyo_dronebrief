@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useObjectRenderer } from './object-renderer'
 import { Circle, Navigation } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
@@ -9,6 +9,22 @@ import { useHoverHandles } from './use-hover-handles'
 import { mapBrandColor } from './map-colors'
 import { MapObjectScale } from './map-object-scale'
 
+export const compactRigStrokeScale = 2
+export const compactRigNumberScale = 2
+
+function useCompactRig() {
+  const [compact, setCompact] = useState(false)
+  useEffect(() => {
+    const media = window.matchMedia?.('(max-width: 1023px)')
+    if (!media) return
+    const update = () => setCompact(media.matches)
+    update()
+    media.addEventListener('change', update)
+    return () => media.removeEventListener('change', update)
+  }, [])
+  return compact
+}
+
 type Props = { rig: CircleRig; pixelsToMeters: number; dark?: boolean; editable: boolean; selected: boolean; interactive: boolean; onSelect: () => void; onCommit: (rig: CircleRig) => void }
 export function RigObject({ rig, pixelsToMeters, dark = false, editable, interactive, onSelect, onCommit }: Props) {
   const { Marker: AdvancedMarker, Polygon } = useObjectRenderer()
@@ -17,12 +33,18 @@ export function RigObject({ rig, pixelsToMeters, dark = false, editable, interac
   const hover = useHoverHandles(!interactive, 0)
   const controlHover = useHoverHandles(!interactive, 0)
   const rigHovered = hover.hovered || controlHover.hovered
-  const strokeWeight = rigHovered ? 6 : 5
+  const compact = useCompactRig()
+  const arrowScale = compact ? 1.5 : 1
+  // Leave room for the enlarged mobile badge and rotated arrow, plus a visible gap.
+  const arrowOffset = compact ? 64 : 36
   const [draft, setDraft] = useState<{ source: CircleRig; value: CircleRig } | null>(null)
   const visible = draft?.source === rig ? draft.value : rig
   // All rig decorations keep a fixed proportion of its projected major radius.
   // A 400 px radius uses the base symbol sizes, including during resize previews.
-  const scale = visible.radiusMeters / pixelsToMeters / 400
+  const radiusScale = visible.radiusMeters / pixelsToMeters / 400
+  const scale = radiusScale
+  const baseStroke = rigHovered ? 6 : 5
+  const outlineStroke = baseStroke * radiusScale * (compact ? compactRigStrokeScale : 1)
   const path = useMemo(() => rigOutline(visible), [visible])
   const canEdit = editable && interactive
   const handles = canEdit && (rigHovered || draft !== null)
@@ -35,22 +57,22 @@ export function RigObject({ rig, pixelsToMeters, dark = false, editable, interac
   function start() { if (canEdit) onSelect() }
   return <MapObjectScale value={scale}>
     <Polygon paths={path} draggable={false} clickable={false}
-      strokeColor={color} strokeWeight={canEdit && (rigHovered || draft !== null) ? Math.max(6, 8 * scale) : strokeWeight * scale}
+      strokeColor={color} strokeWeight={canEdit && (rigHovered || draft !== null) ? Math.max(6, 8 * scale) * (compact ? compactRigStrokeScale : 1) : outlineStroke}
       fillOpacity={0} />
     {rigArrows(visible).map((arrow) => <AdvancedMarker key={arrow.number} position={arrow.position}
       anchorLeft="-50%" anchorTop="-50%" title={'Rig arrow ' + arrow.number} zIndex={10}
       clickable={false} style={{ pointerEvents: 'none' }}>
       <div data-rig-decoration={rig.id} className="relative size-8" style={{ zoom: scale }} role="img" aria-label={'Rig arrow ' + arrow.number + ', pointing toward center'}>
         <div data-rig-hover className="absolute inset-0"
-        style={{ transform: `translate(${Math.sin(arrow.directionDegrees * Math.PI / 180) * 36}px, ${-Math.cos(arrow.directionDegrees * Math.PI / 180) * 36}px)` }}
+        style={{ transform: `translate(${Math.sin(arrow.directionDegrees * Math.PI / 180) * arrowOffset}px, ${-Math.cos(arrow.directionDegrees * Math.PI / 180) * arrowOffset}px)` }}
         >
         <Navigation className="size-8 fill-white" size={32} strokeWidth={2} absoluteStrokeWidth
-          style={{ color, transform: 'rotate(' + (arrow.directionDegrees - 45) + 'deg)' }} />
+          style={{ color, transform: `rotate(${arrow.directionDegrees - 45}deg) scale(${arrowScale})` }} />
         </div>
-        <Badge data-rig-hover variant="outline" style={{ borderColor: color, borderWidth: strokeWeight, color }} className="bg-white absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 size-10 justify-center rounded-full p-0 text-lg font-semibold leading-none tabular-nums">{arrow.number}</Badge>
+        <Badge data-rig-hover variant="outline" style={{ borderColor: color, borderWidth: baseStroke, color, zoom: compact ? compactRigNumberScale : 1 }} className="bg-white absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 size-10 justify-center rounded-full p-0 text-lg font-semibold leading-none tabular-nums">{arrow.number}</Badge>
       </div>
     </AdvancedMarker>)}
-    <RigLineDragController rig={visible} interactive={canEdit} strokeWidth={strokeWeight * scale}
+    <RigLineDragController rig={visible} interactive={canEdit} strokeWidth={outlineStroke}
       onHoverChange={(hovered) => { if (hovered) hover.enter(); else hover.leave() }}
       onStart={start} onCancel={() => { setDraft(null); hover.leave() }}
       onPreview={(position) => setDraft({ source: rig, value: { ...rig, position } })}

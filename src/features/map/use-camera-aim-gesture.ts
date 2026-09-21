@@ -1,11 +1,12 @@
 import { useEffect, useRef, type PointerEvent as ReactPointerEvent } from 'react'
 import { normalizeHeading } from './geometry'
 
-export type CameraAim = { directionDegrees: number; distancePixels: number }
-function cameraAimAt(x: number, y: number): CameraAim {
+export type CameraAim = { directionDegrees: number; distancePixels: number; insideIcon: boolean }
+function cameraAimAt(x: number, y: number, width: number, height: number): CameraAim {
   return {
     directionDegrees: normalizeHeading(Math.round(Math.atan2(x, -y) * 180 / Math.PI)),
     distancePixels: Math.hypot(x, y),
+    insideIcon: width > 0 && height > 0 && (x / (width / 2)) ** 2 + (y / (height / 2)) ** 2 <= 1,
   }
 }
 
@@ -13,7 +14,7 @@ function cameraAimAt(x: number, y: number): CameraAim {
 // each camera type decides which of those values belongs in its saved settings.
 export function useCameraAimGesture({ enabled, onStart, onPreview, onCommit, onCancel }: {
   enabled: boolean
-  onStart: () => void
+  onStart: (aim: CameraAim) => void
   onPreview: (aim: CameraAim) => void
   onCommit: (aim: CameraAim) => void
   onCancel: () => void
@@ -36,7 +37,8 @@ export function useCameraAimGesture({ enabled, onStart, onPreview, onCommit, onC
       if (!latest && Math.hypot(e.clientX - start.x, e.clientY - start.y) < 3) return
       // At the center there is no bearing; retain the most recent direction.
       const x = e.clientX - center.x, y = e.clientY - center.y
-      latest = Math.hypot(x, y) < 1 && latest ? { ...latest, distancePixels: 0 } : cameraAimAt(x, y)
+      const aim = cameraAimAt(x, y, rect.width, rect.height)
+      latest = aim.distancePixels < 1 && latest ? { ...aim, directionDegrees: latest.directionDegrees } : aim
       onPreview(latest)
     }
     const move = (e: PointerEvent) => {
@@ -92,7 +94,7 @@ export function useCameraAimGesture({ enabled, onStart, onPreview, onCommit, onC
     button.setAttribute('data-camera-aiming', '')
     button.setPointerCapture?.(pointerId)
     detach.current = cleanup
-    onStart()
+    onStart(cameraAimAt(event.clientX - center.x, event.clientY - center.y, rect.width, rect.height))
     return true
   }
 }

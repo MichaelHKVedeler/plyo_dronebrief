@@ -27,6 +27,8 @@ export const briefingCopy = {
     rig: 'Circle rig',
     rigRule: '1 photo per arrow and height',
     arrows: 'Arrows',
+    showFloorplan: 'Show floorplan',
+    hideFloorplan: 'Hide floorplan',
   },
   nb: {
     shootTimes: 'Fototidspunkt',
@@ -52,5 +54,7 @@ export const briefingCopy = {
     rig: 'Sirkelrigg',
     rigRule: '1 foto per pil og høyde',
     arrows: 'Piler',
+    showFloorplan: 'Vis plantegning',
+    hideFloorplan: 'Skjul plantegning',
   },
 } as const

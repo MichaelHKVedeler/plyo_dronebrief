@@ -138,7 +138,7 @@ function MapWorkspace(props: Props) {
   const googleMap = useMap()
   const [anchors, setAnchors] = useState<Record<string, Position>>({})
   const [dimOpacity, setDimOpacity] = useState(briefing ? 0 : 15)
-  const [internalObjectSize, setInternalObjectSize] = useState(100)
+  const [internalObjectSize, setInternalObjectSize] = useState(60)
   const objectSizePercent = props.objectSizePercent ?? internalObjectSize
   if (props.overlaySizeRef) props.overlaySizeRef.current = objectSizePercent
   const [satellite, setSatellite] = useState(editing || briefing)
@@ -224,10 +224,10 @@ function MapWorkspace(props: Props) {
         onToolChange={onToolChange} onCameraPlace={handleCameraPlace} onCameraDuplicate={handleCameraDuplicate} />
     </Suspense>}
     <div className="pointer-events-none absolute inset-x-3 top-3 z-20 grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2">
-      <div className="col-span-2 min-w-0 @min-[550px]:col-span-1">
-        {!briefing && apiKey && <MapSearch navigation={shadeActive ? shadeNavigation : googleMap} />}
-      </div>
-      <div className="col-start-2 row-start-2 flex flex-col items-end @min-[550px]:row-start-1 @min-[550px]:row-span-2">
+      {!briefing && <div className="col-span-2 min-w-0 @min-[550px]:col-span-1">
+        {apiKey && <MapSearch navigation={shadeActive ? shadeNavigation : googleMap} />}
+      </div>}
+      <div className={'col-start-2 flex flex-col items-end ' + (briefing ? 'row-start-1' : 'row-start-2 @min-[550px]:row-start-1 @min-[550px]:row-span-2')}>
         <div className="pointer-events-auto grid w-fit grid-cols-[auto_auto] gap-y-2">
           {!briefing && <ButtonGroup aria-label="Map provider" className="col-span-2 grid !grid grid-cols-subgrid overflow-hidden rounded-lg bg-card shadow-sm">
             <Button size="sm" className="h-10 !rounded-none" variant={!shadeActive ? 'default' : 'ghost'} aria-pressed={!shadeActive} onClick={() => setShadeStart(null)}>Google Maps</Button>
@@ -238,7 +238,7 @@ function MapWorkspace(props: Props) {
           </Label>
         </div>
       </div>
-      <div className="col-start-1 row-start-2 grid justify-items-start gap-2 @max-[400px]:col-span-2 @max-[400px]:row-start-3">
+      <div className={'col-start-1 grid justify-items-start gap-2 ' + (briefing ? 'row-start-1' : 'row-start-2 @max-[400px]:col-span-2 @max-[400px]:row-start-3')}>
         {editing && !interactive && <Button className="pointer-events-auto shadow-sm" onClick={() => onToolChange(idleTool)}><X />Cancel placement</Button>}
         {briefing ? props.layerControls : <ViewerLayers session={session} dispatch={dispatch} />}
       </div>

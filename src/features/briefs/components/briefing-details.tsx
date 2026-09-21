@@ -26,7 +26,7 @@ export function BriefingDetails({ session, presentation, copy, isolatedKind, ref
     presentation.includeProjectName ? session.brief.project.name : '',
     presentation.includeClientName ? session.brief.project.clientName : '',
   ].filter(Boolean)
-  return <Card className="h-full min-h-0 w-full overflow-hidden bg-card/80 py-0 backdrop-blur-md lg:bg-card lg:backdrop-blur-none">
+  return <Card className="h-full min-h-0 w-full overflow-hidden rounded-none border-0 bg-card/80 py-0 shadow-none backdrop-blur-md lg:border-l lg:bg-card lg:backdrop-blur-none">
     <CardContent className="flex min-h-0 flex-1 flex-col px-0">
       <ScrollArea type="always" className="min-h-0 flex-1 [&_[data-slot=scroll-area-viewport]]:overscroll-contain">
         <div className="grid gap-6 px-4 py-4">

@@ -88,7 +88,14 @@ export function CloudApp() {
   const cloudBriefVisible = Boolean(loaded && (publicToken || (!snapshot && !account.loading && account.user && projectId)))
   const home = () => guard(() => goNow('/'))
   const headerActions = <>
-      {account.user && !publicToken && <><span className="text-sm">{account.user.displayName ?? account.user.email}</span>{!briefScreen && organization && <Choice label="Organization" value={organization.id} onChange={(id) => { setOrgId(id); goNow('/') }} options={account.organizations.map((org) => ({ value: org.id, label: org.name }))} />}<Button variant="outline" onClick={() => guard(() => { void signOutGoogle().catch((error) => setError(cloudError(error))) })}>Sign out</Button></>}
+      {account.user && !publicToken && <div className={briefScreen ? 'flex items-center gap-2' : 'grid w-full min-w-0 grid-cols-[minmax(0,1fr)_auto] items-end gap-x-4 gap-y-3 sm:w-auto sm:grid-cols-[minmax(0,12rem)_minmax(9rem,12rem)_auto]'}>
+        <div className={briefScreen ? 'min-w-0 text-sm' : 'col-span-2 grid min-w-0 gap-1 sm:col-span-1'}>
+          {!briefScreen && <span className="text-xs font-medium text-muted-foreground">Signed in as</span>}
+          <span className={briefScreen ? 'block truncate' : 'truncate text-sm font-medium sm:h-9 sm:leading-9'} title={account.user.displayName ?? account.user.email ?? undefined}>{account.user.displayName ?? account.user.email}</span>
+        </div>
+        {!briefScreen && organization && <div className="min-w-0"><Choice label="Organization" value={organization.id} onChange={(id) => { setOrgId(id); goNow('/') }} options={account.organizations.map((org) => ({ value: org.id, label: org.name }))} /></div>}
+        <Button className="h-9 shrink-0" variant="outline" onClick={() => guard(() => { void signOutGoogle().catch((error) => setError(cloudError(error))) })}>Sign out</Button>
+      </div>}
       {briefScreen && !publicToken && <Button variant="outline" onClick={home}>Home</Button>}
   </>
   return <div className={briefScreen ? 'flex h-dvh min-h-0 flex-col overflow-hidden' : 'min-h-svh'}>
