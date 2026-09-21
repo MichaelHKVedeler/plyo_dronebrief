@@ -30,11 +30,13 @@ export function captureInstructions(brief: DroneBrief, language: PdfLanguage): C
   const dslrPoints = brief.angles.filter((angle) => angle.type === 'dslr').length
   const rows: CaptureInstructionRow[] = []
   if (brief.circleRig) {
+    const rigRange = pointRangeLabel(copy.arrows, brief.circleRig.arrowCount)
+
     rows.push({
       key: 'circleRig',
       label: copy.rig,
       rule: copy.rigRule,
-      range: pointRangeLabel(copy.arrows, brief.circleRig.arrowCount),
+      range: rigRange,
       heights: droneHeights,
       images: counts.circleRig,
     })
