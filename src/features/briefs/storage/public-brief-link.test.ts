@@ -3,6 +3,11 @@ import { defaultBriefingPresentation, parsePublicShareRoute, publicShareLink, pu
 
 const token = 'x'.repeat(43)
 
+it.each([0, 6, 10, 60, 66, 100, 120, 200, 300])('preserves rendering size %s in shared links, including zero and legacy sizes', (overlaySize) => {
+  const path = publicSharePath(token, { ...defaultBriefingPresentation, overlaySize })
+  expect(parsePublicShareRoute(path)?.presentation.overlaySize).toBe(overlaySize)
+})
+
 afterEach(() => { history.replaceState(null, '', '/') })
 
 it('omits default English presentation from the path', () => {

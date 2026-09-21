@@ -61,7 +61,7 @@ export function MapHandle({ position, label, children, onCancel, onStart, onPrev
     onDragStart={() => { if (interactive) onStart() }}
     onDrag={(event) => { if (event.latLng) drag(event.latLng.toJSON(), false) }}
     onDragEnd={(event) => { if (event.latLng) drag(event.latLng.toJSON(), true) }}>
-    <div data-camera-aim-handle={cameraId} className={'flex items-center justify-center ' + className} style={{ minWidth: minHitSize, minHeight: minHitSize }}>
+    <div data-map-handle data-camera-aim-handle={cameraId} className={'flex items-center justify-center ' + className} style={{ minWidth: minHitSize, minHeight: minHitSize }}>
     <Button disabled={!interactive} type="button" size="icon-sm" variant={bare ? 'ghost' : 'outline'}
       style={{ zoom: scale }}
       className={handleClass}

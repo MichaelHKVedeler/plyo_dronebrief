@@ -65,11 +65,11 @@ export function AppHeader({
     <header className="shrink-0 border-b bg-card px-3 py-2 sm:px-4">
       <div className={context
         ? 'grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3'
-        : 'flex items-center justify-between gap-2'}>
+        : 'flex flex-wrap items-center justify-between gap-x-6 gap-y-3'}>
         {brand}
         {context && <div className="w-fit max-w-full justify-self-center">{context}</div>}
         {children && (
-          <div className={`flex shrink-0 flex-nowrap items-center gap-2 ${context ? 'justify-self-end' : ''}`}>
+          <div className={`flex items-center gap-2 ${context ? 'shrink-0 flex-nowrap justify-self-end' : 'w-full min-w-0 sm:ml-auto sm:w-auto sm:max-w-full'}`}>
             {children}
           </div>
         )}

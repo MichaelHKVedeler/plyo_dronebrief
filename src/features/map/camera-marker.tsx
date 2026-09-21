@@ -76,6 +76,10 @@ export const CameraMarker = memo(function CameraMarker({ angle, editable, select
     else onCommit(value)
   }
   function aimedAngle(aim: CameraAim): CameraAngle {
+    if (angle.type === '360' && aim.insideIcon) {
+      const { focus: _focus, ...unfocused } = angle
+      return unfocused
+    }
     if (angle.type === '360') return { ...angle, focus: {
       directionDegrees: aim.directionDegrees,
       fovDegrees: Math.max(min360Fov, Math.min(max360Fov, Math.round(aim.distancePixels))),
@@ -84,12 +88,17 @@ export const CameraMarker = memo(function CameraMarker({ angle, editable, select
   }
   const startAim = useCameraAimGesture({
     enabled: editable && interactive && !ghost,
-    onStart: () => { onSelect(); hover.enter() },
+    onStart: (aim) => {
+      onSelect(); hover.enter()
+      if (angle.type === '360') setDraft({ source: angle, value: aimedAngle(aim) })
+    },
     onPreview: (aim) => setDraft({ source: angle, value: aimedAngle(aim) }),
     onCommit: (aim) => commit(aimedAngle(aim)),
     onCancel: resetPreview,
   })
   const symbol = <Icon className="size-5" />
+  // CSS zoom: 0 is invalid and would render full-size icons at the slider minimum.
+  if (scale === 0) return null
   return <>
     {ghost && <CameraMarker angle={angle} editable selected={false} interactive={false} number={number} pixelsToMeters={pixelsToMeters}
       dslrSettings={dslrSettings} onSelect={() => {}} onCommit={() => {}} />}

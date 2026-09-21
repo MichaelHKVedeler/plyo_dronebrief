@@ -16,6 +16,17 @@ afterEach(() => {
   cleanup()
   sdk.markers.clear()
 })
+it('hides camera geometry and handles at zero size and restores them at normal size without saving', () => {
+  const commit = vi.fn()
+  const camera = <CameraMarker angle={{ id: 'a', label: 'A', type: '360', position: { lat: 60, lng: 10 }, focus: { directionDegrees: 90, fovDegrees: 60 } }}
+    editable selected pixelsToMeters={1} onSelect={vi.fn()} onCommit={commit} />
+  const view = render(<MapObjectScale value={0}>{camera}</MapObjectScale>)
+  expect(view.container).toBeEmptyDOMElement()
+  view.rerender(<MapObjectScale value={1}>{camera}</MapObjectScale>)
+  expect(screen.getByRole('button', { name: 'Move 360 1' })).toBeVisible()
+  expect(view.container.querySelector('[data-panorama-focus]')).toBeTruthy()
+  expect(commit).not.toHaveBeenCalled()
+})
 it.each([true, false])('keeps arrows fixed on the ground while zooming without saving (editable: %s)', (editable) => {
   const angle = { id: 'a', label: 'A', type: 'dslr' as const, position: { lat: 60, lng: 10 }, directionDegrees: 45 }
   const commit = vi.fn()

@@ -1,7 +1,8 @@
 import type { PdfLanguage } from '../export/pdf-copy'
 
 export const publicShareTokenPattern = /^[A-Za-z0-9_-]{43}$/
-export const minOverlaySize = 25
+// URL values remain rendering percentages for compatibility with existing links.
+export const minOverlaySize = 0
 export const maxOverlaySize = 300
 export const defaultOverlaySize = 100
 
@@ -23,7 +24,7 @@ export const defaultBriefingPresentation: BriefingPresentation = {
 
 export function clampOverlaySize(value: number) {
   if (!Number.isFinite(value)) return defaultOverlaySize
-  const stepped = Math.round(value / 5) * 5
+  const stepped = Math.round(value)
   return Math.min(maxOverlaySize, Math.max(minOverlaySize, stepped))
 }
 

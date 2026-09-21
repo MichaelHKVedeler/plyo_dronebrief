@@ -28,10 +28,10 @@ it('formats point ranges and compact meter lists', () => {
 it('describes existing capture types with counts in English', () => {
   const rows = captureInstructions(briefWithPoints(), 'en')
   expect(rows).toEqual([
-    { key: 'circleRig', label: 'Circle rig', rule: '1 photo per arrow and height', detail: 'Arrows 1-10: 40m, 60m', images: 20 },
-    { key: 'drone-image', label: 'Aerial photo', rule: 'Maximum height of 120m', detail: 'Point 1-8: 40m, 60m', images: 16 },
-    { key: '360', label: '360°', rule: 'Not stitched panorama, individual photos', detail: 'Point 1-4: 2m, 5m, 8m', images: 120 },
-    { key: 'dslr', label: 'DSLR', rule: '180°, minimum 6 photos per point', detail: 'Point 1-3: Ground-level', images: 18 },
+    { key: 'circleRig', label: 'Circle rig', rule: '1 photo per arrow and height', range: 'Arrows 1-10', heights: '40m, 60m', images: 20 },
+    { key: 'drone-image', label: 'Aerial photo', rule: 'Maximum height of 120m', range: 'Point 1-8', heights: '40m, 60m', images: 16 },
+    { key: '360', label: '360°', rule: 'Not stitched panorama, individual photos', range: 'Point 1-4', heights: '2m, 5m, 8m', images: 120 },
+    { key: 'dslr', label: 'DSLR', rule: '180°, minimum 6 photos per point', range: 'Point 1-3', heights: 'Ground-level', images: 18 },
   ])
 })
 
@@ -40,6 +40,6 @@ it('omits empty types and translates Norwegian copy', () => {
   brief.angles = [{ id: 's1', label: 'S1', type: 'dslr', position: brief.coordinates, directionDegrees: 45 }]
   brief.typeSettings.dslr = { heightsMeters: [1.6], angleCount: 1, spacingDegrees: 30 }
   expect(captureInstructions(brief, 'nb')).toEqual([
-    { key: 'dslr', label: 'DSLR', rule: '30°, minst 1 foto per punkt', detail: 'Punkt 1: Bakkenivå', images: 1 },
+    { key: 'dslr', label: 'DSLR', rule: '30°, minst 1 foto per punkt', range: 'Punkt 1', heights: 'Bakkenivå', images: 1 },
   ])
 })

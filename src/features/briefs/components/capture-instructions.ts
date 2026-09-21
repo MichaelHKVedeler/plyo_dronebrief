@@ -7,7 +7,8 @@ export type CaptureInstructionRow = {
   key: 'circleRig' | 'drone-image' | '360' | 'dslr'
   label: string
   rule: string
-  detail: string
+  range: string
+  heights: string
   images: number
 }
 
@@ -43,7 +44,8 @@ export function captureInstructions(brief: DroneBrief, language: PdfLanguage): C
       label: copy.drone,
       rule: copy.droneRule,
       detail: `${pointRangeLabel(copy.point, dronePoints)}: ${droneHeights}`,
-      images: counts.droneImage,
+      range: pointRangeLabel(copy.point, dronePoints),
+      heights: droneHeights,
     })
   }
   if (panoramaPoints) {
@@ -52,7 +54,8 @@ export function captureInstructions(brief: DroneBrief, language: PdfLanguage): C
       label: copy.panorama,
       rule: copy.panoramaRule,
       detail: `${pointRangeLabel(copy.point, panoramaPoints)}: ${panoramaHeights}`,
-      images: counts.panorama,
+      range: pointRangeLabel(copy.point, panoramaPoints),
+      heights: panoramaHeights,
     })
   }
   if (dslrPoints) {
@@ -62,7 +65,8 @@ export function captureInstructions(brief: DroneBrief, language: PdfLanguage): C
       label: copy.dslr,
       rule: copy.dslrRule(angleCount * spacingDegrees, angleCount),
       detail: `${pointRangeLabel(copy.point, dslrPoints)}: ${copy.ground}`,
-      images: counts.dslr,
+      range: pointRangeLabel(copy.point, dslrPoints),
+      heights: copy.ground,
     })
   }
   return rows
