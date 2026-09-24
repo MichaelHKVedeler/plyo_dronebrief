@@ -53,10 +53,10 @@ export function CamerasPanel({ onCenterCamera, selectedCameraIds, onSelectCamera
           (lifted ? 'z-20 bg-card/80 shadow-xl ring-2 ring-primary cursor-grabbing ' : '') +
           (dragPreview && !lifted ? 'pointer-events-none ' : '')}>
         <CameraReorderHandle onPreview={setDragPreview} angle={angle} name={name} points={points} onMove={(source, target) => onUpdate((brief) => reorderCameras(brief, source, target))} />
-        <Button variant={selectedCameraIds.includes(angle.id) ? 'secondary' : 'ghost'} className="min-w-0 flex-1 justify-start"
+        <Button variant={selectedCameraIds.includes(angle.id) ? 'secondary' : 'ghost'} className={(angle.type === '360' ? 'shrink-0' : 'min-w-0 flex-1') + ' justify-start'}
           aria-label={name} aria-pressed={selectedCameraIds.includes(angle.id)} onClick={(event) => onSelectCamera(angle.id, event.shiftKey || event.ctrlKey)}><Icon /><Badge variant="secondary" className="size-5 shrink-0 justify-center rounded-full p-0" aria-hidden="true">{index + 1}</Badge></Button>
         {angle.type === '360' && <HeightsField id={'point-heights-' + angle.id} label={'Heights for ' + name + ' (m)'}
-          className="h-8 w-28 shrink-0 px-2" allowEmpty placeholder={formatHeightsMeters(brief.typeSettings['360'].heightsMeters)}
+          className="h-8 w-auto min-w-16 flex-1 px-2" allowEmpty placeholder={formatHeightsMeters(brief.typeSettings['360'].heightsMeters)}
           value={angle.heightsMeters ?? []} onChange={(heightsMeters) => updateAngle(angle.id, (current) => {
             if (current.type !== '360') return current
             if (!heightsMeters.length) {

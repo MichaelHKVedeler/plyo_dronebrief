@@ -5,6 +5,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import { ResizableWorkspace } from '@/components/layout/resizable-workspace'
 import { MapPanel } from '@/features/map/map-panel'
 import { ProjectPanel } from '@/features/briefs/components/project-panel'
 import { LayersPanel } from '@/features/briefs/components/layers-panel'
@@ -89,13 +90,12 @@ export function BriefPage({ session, dispatch, error, pdfMapRef, imageTransport,
     </div>
     <div className="flex min-h-0 min-w-0 flex-1 flex-col p-3 sm:px-4">
     {error && <Alert variant="destructive" className="mb-4 max-h-28 shrink-0 overflow-y-auto"><AlertDescription>{error}</AlertDescription></Alert>}
-    <div className="grid min-h-0 flex-1 grid-rows-[minmax(480px,1fr)_minmax(360px,1fr)] gap-3 lg:grid-cols-[minmax(0,1fr)_360px] lg:grid-rows-[minmax(0,1fr)]">
-      <MapPanel pdfMapRef={pdfMapRef} images={images} rigPlacementRef={rigPlacement} overlaySizeRef={overlaySizeRef} focusPosition={focusPosition} onViewCenterChange={(center) => { viewCenter.current = center }} selectedCameraIds={selectedCameraIds} onSelectCamera={selectCamera} session={session} dispatch={dispatch} tool={tool} onToolChange={setTool} selectedId={selectedId} onSelect={select} />
-      <aside className="min-h-0 min-w-0" aria-label="Brief details">
+    <ResizableWorkspace sidebar={
+      <aside className="h-full min-h-0 min-w-0" aria-label="Brief details">
         <Card className="h-full min-h-0 overflow-hidden py-0"><CardContent className="flex min-h-0 flex-1 flex-col px-0">
           <Tabs defaultValue="project" className="min-h-0 flex-1 gap-0">
             <TabsList className="mx-4 my-4 w-auto shrink-0"><TabsTrigger value="project">Project</TabsTrigger><TabsTrigger value="contents">Contents</TabsTrigger></TabsList>
-            <ScrollArea type="always" className="min-h-0 flex-1 [&_[data-slot=scroll-area-viewport]]:overscroll-contain">
+            <ScrollArea type="always" className="min-h-0 flex-1 [&_[data-slot=scroll-area-viewport]]:overscroll-contain [&_[data-slot=scroll-area-viewport]>div]:block! [&_[data-slot=scroll-area-viewport]>div]:w-full! [&_[data-slot=scroll-area-viewport]>div]:min-w-0!">
               <div className="px-4 pb-4">
                 <TabsContent value="project"><ProjectPanel onCenterCamera={(angle) => setFocusPosition({ ...angle.position })} onAddRig={addRig} selectedCameraIds={selectedCameraIds} onSelectCamera={selectCamera} onRemoveCameras={removeCameras} session={session} selectedId={selectedId} onSelect={select} onAddCamera={addCamera} onUpdate={(update) => dispatch({ type: 'update', update })} /></TabsContent>
                 <TabsContent value="contents"><LayersPanel session={session} images={images} referenceImages={referenceImages} selectedId={selectedId} onSelect={(id) => { select(id); setTool(idleTool) }}
@@ -107,7 +107,9 @@ export function BriefPage({ session, dispatch, error, pdfMapRef, imageTransport,
           </Tabs>
         </CardContent></Card>
       </aside>
-    </div>
+    }>
+      <MapPanel pdfMapRef={pdfMapRef} images={images} rigPlacementRef={rigPlacement} overlaySizeRef={overlaySizeRef} focusPosition={focusPosition} onViewCenterChange={(center) => { viewCenter.current = center }} selectedCameraIds={selectedCameraIds} onSelectCamera={selectCamera} session={session} dispatch={dispatch} tool={tool} onToolChange={setTool} selectedId={selectedId} onSelect={select} />
+    </ResizableWorkspace>
     </div>
   </main>
 }

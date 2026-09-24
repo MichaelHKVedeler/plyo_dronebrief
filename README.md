@@ -96,6 +96,8 @@ Shared keys preserve image geometry and local references but do not carry the lo
 
 ## Branding and appearance
 
+On desktop, drag the divider between the map and the Project/Contents sidebar to resize it. Focus the divider and use the Left/Right arrow keys for keyboard resizing; double-click it to restore the default width. The sidebar starts at 360 px, has a 320 px minimum, and can occupy up to half the workspace. Width is temporary UI state and does not save or change the brief. Below 1024 px, the details stay stacked beneath the map.
+
 Plyo assets live in public/brand; use the supplied light-background and dark-background logo variants without recoloring them. Brand colors, neutral surfaces, focus colors and button roundness are defined in src/styles/globals.css. Keep styling changes there or at feature call sites, leaving vendored shadcn primitives intact.
 
 The small header theme button cycles System → Light → Dark → System. System is the initial default and follows OS appearance changes. Explicit preferences are stored separately under dronebrief:theme, never in brief JSON or export keys; returning to System removes the override. The page applies the preference before first paint and stays usable if storage is blocked. Google road maps follow the resolved app theme; satellite photography keeps its natural appearance. Opaque gizmos and theme-specific camera surfaces maintain contrast. Map instances are reused for each color scheme within the page to reduce repeated map initialization. Switching themes preserves the current map position and zoom.
