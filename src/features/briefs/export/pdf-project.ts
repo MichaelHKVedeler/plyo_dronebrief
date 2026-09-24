@@ -1,4 +1,4 @@
-import type { DroneBrief } from '../model/brief'
+import { effectivePanoramaHeights, type DroneBrief } from '../model/brief'
 import { numberedCameras } from '../model/camera-numbers'
 import { rigArrows } from '@/features/map/geometry'
 
@@ -14,7 +14,10 @@ export function pdfProjectSize(brief: DroneBrief): PdfProjectSize {
   const panorama = brief.angles.filter((a) => a.type === '360').length
   const dslr = brief.angles.filter((a) => a.type === 'dslr').length
   const aerialHeights = aerial ? brief.typeSettings['drone-image'].heightsMeters.length : 0
-  const panoramaHeights = panorama ? brief.typeSettings['360'].heightsMeters.length : 0
+  const panoramaPoints = brief.angles.filter((angle) => angle.type === '360')
+  const panoramaHeights = panoramaPoints.length
+    ? Math.max(...panoramaPoints.map((angle) => effectivePanoramaHeights(brief.typeSettings['360'].heightsMeters, angle).length))
+    : 0
   // Mini differs between the reference languages (one vs two 360 heights).
   // Use the more inclusive two-height limit consistently in both languages.
   if (aerial <= 2 && panorama <= 1 && dslr === 0 && aerialHeights <= 2 && panoramaHeights <= 2) return 'mini'

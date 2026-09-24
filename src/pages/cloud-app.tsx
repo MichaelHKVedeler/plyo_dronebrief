@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { CreateBriefPage } from '@/pages/create-brief-page'
 import { BriefPage } from '@/pages/brief-page'
 import { PdfExportDialog } from '@/features/briefs/components/pdf-export-dialog'
-import { parsePublicShareRoute, defaultBriefingPresentation } from '@/features/briefs/storage/public-brief-link'
+import { parsePublicShareRoute, defaultBriefingPresentation, defaultOverlaySize } from '@/features/briefs/storage/public-brief-link'
 import type { PdfMapCapture } from '@/features/briefs/export/pdf-types'
 import { ProjectLibraryPage } from '@/pages/project-library-page'
 import { OrganizationPage } from '@/pages/organization-page'
@@ -41,7 +41,7 @@ export function CloudApp() {
   const [snapshot, setSnapshot] = useState<ReturnType<typeof openSession> | null>(null)
   const [pdfOpen, setPdfOpen] = useState(false)
   const pdfMapRef = useRef<PdfMapCapture | null>(null)
-  const overlaySizeRef = useRef(100)
+  const overlaySizeRef = useRef(defaultOverlaySize)
   const [migrate, setMigrate] = useState<DroneBrief | null>(null)
   const [{ drafts, draftError }] = useState(() => {
     try { return { drafts: briefRepository.list(), draftError: null } }

@@ -1,8 +1,8 @@
 import { useContext, useEffect, useLayoutEffect, useRef } from 'react'
 import { useMap } from '@vis.gl/react-google-maps'
-import type { ImageOverlay } from '@/features/briefs/model/brief'
+import type { ImageOverlay, Position } from '@/features/briefs/model/brief'
 import { ShadeProjection } from './shade-projection'
-import { imageCorners } from './image-geometry'
+import { imageAnchorRadius, imageCorners } from './image-geometry'
 import { attachImageInteraction, type ImageLayerState, type ImageProjection } from './image-interaction'
 
 const ns = 'http://www.w3.org/2000/svg'
@@ -15,11 +15,27 @@ function createImageCanvas(getState: () => ImageLayerState, projection: ImagePro
   const outline = document.createElementNS(ns, 'polygon')
   outline.setAttribute('fill', 'none'); outline.setAttribute('stroke', '#ffffff'); outline.setAttribute('stroke-width', '2')
   outline.setAttribute('stroke-dasharray', '6 4')
-  const anchor = document.createElementNS(ns, 'path')
+  const anchor = document.createElementNS(ns, 'g')
   anchor.dataset.imageAnchor = ''
-  anchor.setAttribute('fill', 'none'); anchor.setAttribute('stroke', '#ef4444'); anchor.setAttribute('stroke-width', '3')
+  anchor.style.filter = 'drop-shadow(0 1px 2px rgb(0 0 0 / 0.16)) drop-shadow(0 4px 6px rgb(0 0 0 / 0.12))'
+  const disc = document.createElementNS(ns, 'circle')
+  // Stroke is centered on the radius, so the disc's outer edge matches an icon-sm handle.
+  disc.setAttribute('r', String(imageAnchorRadius - 1))
+  disc.setAttribute('fill', 'var(--card)')
+  disc.setAttribute('stroke', 'var(--primary)')
+  disc.setAttribute('stroke-width', '2')
+  const mark = document.createElementNS(ns, 'path')
+  mark.setAttribute('d', 'M -8 0 H -3.5 M 3.5 0 H 8 M 0 -8 V -3.5 M 0 3.5 V 8')
+  mark.setAttribute('fill', 'none')
+  mark.setAttribute('stroke', 'var(--primary)')
+  mark.setAttribute('stroke-width', '2')
+  mark.setAttribute('stroke-linecap', 'round')
+  const dot = document.createElementNS(ns, 'circle')
+  dot.setAttribute('r', '1.6')
+  dot.setAttribute('fill', 'var(--primary)')
+  anchor.append(disc, mark, dot)
   svg.append(outline, anchor)
-  const draw = (preview: ImageOverlay | null) => {
+  const draw = (preview: ImageOverlay | null, previewAnchor: Position | null = null) => {
     const state = getState()
     for (const [id, image] of images) if (!state.images.some((overlay) => overlay.id === id && state.sourceUrl(overlay))) { image.remove(); images.delete(id) }
     for (const saved of state.images) {
@@ -50,9 +66,9 @@ function createImageCanvas(getState: () => ImageLayerState, projection: ImagePro
       const overlay = preview?.id === selected.id ? preview : selected
       const corners = imageCorners(overlay).map(projection.project)
       if (corners.every(Boolean)) { outline.setAttribute('points', corners.map((p) => `${p!.x},${p!.y}`).join(' ')); outline.style.display = '' }
-      const p = projection.project(state.anchors[selected.id] ?? overlay.position)
+      const p = projection.project(previewAnchor ?? state.anchors[selected.id] ?? overlay.position)
       if (p) {
-        anchor.setAttribute('d', `M ${p.x - 10} ${p.y} H ${p.x + 10} M ${p.x} ${p.y - 10} V ${p.y + 10} M ${p.x + 5} ${p.y} A 5 5 0 1 0 ${p.x - 5} ${p.y} A 5 5 0 1 0 ${p.x + 5} ${p.y}`)
+        anchor.setAttribute('transform', `translate(${p.x} ${p.y})`)
         anchor.style.display = ''
       }
     }
@@ -70,6 +86,9 @@ export function ImageLayer(props: ImageLayerState) {
   useLayoutEffect(() => { latest.current = props; redraw.current?.() })
   useEffect(() => {
     let preview: ImageOverlay | null = null
+    let previewAnchor: Position | null = null
+    let paint = () => {}
+    const show = (image: ImageOverlay | null, anchor?: Position | null) => { preview = image; previewAnchor = anchor ?? null; paint() }
     if (shadeMap) {
       const surface = shadeMap.getContainer().parentElement!
       const projection: ImageProjection = {
@@ -80,10 +99,11 @@ export function ImageLayer(props: ImageLayerState) {
       Object.assign(canvas.svg.style, { inset: '0', width: '100%', height: '100%' })
       // The dedicated host is above the basemap/dimmer and below brief icons.
       surface.querySelector('[data-image-host]')!.append(canvas.svg)
-      const draw = () => canvas.draw(preview)
+      paint = () => canvas.draw(preview, previewAnchor)
+      const draw = () => paint()
       redraw.current = draw
       shadeMap.on('render', draw)
-      const detach = attachImageInteraction(surface, projection, () => latest.current, (image) => { preview = image; draw() })
+      const detach = attachImageInteraction(surface, projection, () => latest.current, show)
       draw()
       return () => { detach(); shadeMap.off('render', draw); canvas.svg.remove(); redraw.current = null }
     }
@@ -104,14 +124,15 @@ export function ImageLayer(props: ImageLayerState) {
     class Images extends google.maps.OverlayView {
       onAdd() { this.getPanes()?.overlayLayer.append(canvas.svg) }
       draw() {
-        canvas.draw(preview)
+        canvas.draw(preview, previewAnchor)
       }
       onRemove() { canvas.svg.remove() }
     }
     overlay = new Images()
-    redraw.current = () => overlay.draw()
+    paint = () => overlay.draw()
+    redraw.current = paint
     overlay.setMap(googleMap)
-    const detach = attachImageInteraction(surface, projection, () => latest.current, (image) => { preview = image; overlay.draw() })
+    const detach = attachImageInteraction(surface, projection, () => latest.current, show)
     const resize = new ResizeObserver(() => overlay.draw())
     resize.observe(surface)
     return () => { detach(); resize.disconnect(); overlay.setMap(null); redraw.current = null }

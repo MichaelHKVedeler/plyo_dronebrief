@@ -101,7 +101,7 @@ export function ImageOverlayControls({ overlays, editable, images, onUpdate, pla
           onValueCommit={([value]) => { onUpdate((brief) => ({ ...brief, imageOverlays: brief.imageOverlays.map((image) => image.id === overlay.id ? { ...image, opacity: value / 100 } : image) })); images.previewOpacity(overlay.id) }} />
       </div>
     })}
-    {editable && overlays.length > 0 && <p className="text-xs leading-relaxed text-muted-foreground">Drag an image edge to move it. Right-click anywhere on the map to set the selected image’s anchor. Drag inside the image to rotate and scale together. Escape cancels a drag.</p>}
+    {editable && overlays.length > 0 && <p className="text-xs leading-relaxed text-muted-foreground">Drag an image edge to move it. Right-click the map to place the selected image’s anchor, or drag the anchor to move it. Drag inside the image to rotate and scale together. Escape cancels a drag.</p>}
     <Dialog open={Boolean(preview)} onOpenChange={(open) => { if (!open) setPreview(null) }}><DialogContent className="sm:max-w-4xl"><DialogHeader><DialogTitle>{preview?.name}</DialogTitle><DialogDescription>Floorplan preview on white paper. Position and scale on the map are unchanged.</DialogDescription></DialogHeader>{preview && <img src={preview.url} alt={preview.name} className="max-h-[70dvh] w-full rounded-md bg-white object-contain" />}</DialogContent></Dialog>
   </div>
 }

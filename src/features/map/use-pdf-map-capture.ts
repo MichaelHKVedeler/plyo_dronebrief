@@ -37,7 +37,7 @@ export function usePdfMapCapture(ref: RefObject<PdfMapCapture | null> | undefine
       signal.throwIfAborted()
       const surface = root.current?.querySelector<HTMLElement>('[data-pdf-map-surface]')
       if (!surface || surface.clientWidth < 1 || surface.clientHeight < 1) throw new Error('The map could not be captured. Choose Point diagram or try again.')
-      if (surface.querySelector('[data-pdf-map-unavailable]')) throw new Error('The map is still loading or has a loading error. Wait, switch map provider, or choose Point diagram.')
+      if (surface.querySelector('[data-pdf-map-unavailable]')) throw new Error('Google Maps is still loading or has a loading error. Wait, or choose Point diagram.')
       const maps: PdfMapImage[] = []
       for (const kind of brief.imageOverlays.length ? ['floor-plan', 'map'] as const : ['map'] as const) {
         signal.throwIfAborted()
@@ -53,7 +53,7 @@ export function usePdfMapCapture(ref: RefObject<PdfMapCapture | null> | undefine
             return true
           },
         })
-        if (imageFailed || !dataUrl.startsWith('data:image/png')) throw new Error('A map image could not be captured. Retry, switch map provider, or choose Point diagram.')
+        if (imageFailed || !dataUrl.startsWith('data:image/png')) throw new Error('A Google Maps image could not be captured. Retry, or choose Point diagram.')
         maps.push({ kind, dataUrl, ...(shadowSlot ? { shadowSlot } : {}) })
       }
       signal.throwIfAborted()

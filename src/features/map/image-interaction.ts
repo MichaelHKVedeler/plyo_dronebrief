@@ -1,5 +1,5 @@
 import type { ImageOverlay, Position } from '@/features/briefs/model/brief'
-import { hitImage, imageCorners, moveImage, transformImage, type ImagePoint } from './image-geometry'
+import { hitImage, imageAnchorHitRadius, imageCorners, moveImage, transformImage, translatePosition, type ImagePoint } from './image-geometry'
 
 export type ImageProjection = { project: (point: Position) => ImagePoint | null; unproject: (point: ImagePoint) => Position | null }
 export type ImageLayerState = {
@@ -8,8 +8,8 @@ export type ImageLayerState = {
   onSelect: (id: string) => void; onAnchor: (id: string, position: Position) => void
   onCommit: (image: ImageOverlay) => void
 }
-export function attachImageInteraction(surface: HTMLElement, projection: ImageProjection, getState: () => ImageLayerState, preview: (image: ImageOverlay | null) => void) {
-  let drag: { id: number; image: ImageOverlay; start: Position; pixel: ImagePoint; anchor: Position; mode: 'edge' | 'inside'; changed: boolean; latest: ImageOverlay } | null = null
+export function attachImageInteraction(surface: HTMLElement, projection: ImageProjection, getState: () => ImageLayerState, preview: (image: ImageOverlay | null, anchor?: Position | null) => void) {
+  let drag: { id: number; image: ImageOverlay; start: Position; pixel: ImagePoint; anchor: Position; anchorAt: Position; mode: 'edge' | 'inside' | 'anchor'; changed: boolean; latest: ImageOverlay } | null = null
   let suppress = false
   const stop = (event: Event) => { event.preventDefault(); event.stopImmediatePropagation() }
   const pixel = (event: MouseEvent) => { const rect = surface.getBoundingClientRect(); return { x: event.clientX - rect.left, y: event.clientY - rect.top } }
@@ -27,6 +27,14 @@ export function attachImageInteraction(surface: HTMLElement, projection: ImagePr
     }
     return null
   }
+  const hitAnchor = (point: ImagePoint) => {
+    const state = getState()
+    const image = state.images.find((item) => item.id === state.selectedId)
+    if (!image || !state.sourceUrl(image)) return null
+    const projected = projection.project(state.anchors[image.id] ?? image.position)
+    if (!projected || Math.hypot(point.x - projected.x, point.y - projected.y) > imageAnchorHitRadius) return null
+    return image
+  }
   const feedback = (cursor: string) => { if (cursor) surface.setAttribute('data-image-cursor', cursor); else surface.removeAttribute('data-image-cursor') }
   const reset = () => {
     const current = drag
@@ -36,20 +44,23 @@ export function attachImageInteraction(surface: HTMLElement, projection: ImagePr
   const down = (event: PointerEvent) => {
     suppress = false
     if (!enabled() || !onSurface(event) || overControl(event) || event.button !== 0 || event.ctrlKey || event.shiftKey) return
-    const point = pixel(event), result = hit(point), start = projection.unproject(point)
+    const point = pixel(event), anchored = hitAnchor(point), result = anchored ? { image: anchored, mode: 'anchor' as const } : hit(point), start = projection.unproject(point)
     if (!result || !start) return
     stop(event)
     const { image, mode } = result
-    drag = { id: event.pointerId, image, start, pixel: point, anchor: getState().anchors[image.id] ?? image.position, mode, changed: false, latest: image }
+    const anchor = getState().anchors[image.id] ?? image.position
+    drag = { id: event.pointerId, image, start, pixel: point, anchor, anchorAt: anchor, mode, changed: false, latest: image }
     suppress = true
     getState().onSelect(image.id)
     surface.setPointerCapture?.(event.pointerId)
-    feedback(mode === 'edge' ? 'grabbing' : 'crosshair')
+    feedback(mode === 'inside' ? 'crosshair' : 'grabbing')
   }
   const move = (event: PointerEvent) => {
     if (!drag) {
       if (enabled() && onSurface(event) && !overControl(event)) {
-        const result = hit(pixel(event)); feedback(result?.mode === 'edge' ? 'grab' : result ? 'crosshair' : '')
+        const point = pixel(event)
+        if (hitAnchor(point)) feedback('grab')
+        else { const result = hit(point); feedback(result?.mode === 'edge' ? 'grab' : result ? 'crosshair' : '') }
       } else feedback('')
       return
     }
@@ -59,6 +70,11 @@ export function attachImageInteraction(surface: HTMLElement, projection: ImagePr
     const p = pixel(event), end = projection.unproject(p)
     if (!end || (!drag.changed && Math.hypot(p.x - drag.pixel.x, p.y - drag.pixel.y) < 3)) return
     drag.changed = true
+    if (drag.mode === 'anchor') {
+      drag.anchorAt = translatePosition(drag.anchor, drag.start, end)
+      preview(null, drag.anchorAt)
+      return
+    }
     drag.latest = drag.mode === 'edge' ? moveImage(drag.image, drag.start, end) : transformImage(drag.image, drag.anchor, drag.start, end)
     preview(drag.latest)
   }
@@ -67,7 +83,9 @@ export function attachImageInteraction(surface: HTMLElement, projection: ImagePr
     stop(event)
     const current = drag
     reset()
-    if (current.changed && enabled() && getState().images.some((image) => image.id === current.image.id)) getState().onCommit(current.latest)
+    if (!current.changed || !enabled() || !getState().images.some((image) => image.id === current.image.id)) return
+    if (current.mode === 'anchor') getState().onAnchor(current.image.id, current.anchorAt)
+    else getState().onCommit(current.latest)
   }
   const context = (event: MouseEvent) => {
     if (!enabled() || !onSurface(event)) return

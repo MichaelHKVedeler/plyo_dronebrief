@@ -7,6 +7,7 @@ import { MapPanel } from '@/features/map/map-panel'
 import { briefingCopy } from '@/features/briefs/components/briefing-copy'
 import { BriefingDetails } from '@/features/briefs/components/briefing-details'
 import { BriefingMapLayers } from '@/features/briefs/components/briefing-map-layers'
+import { PointHeightsCallout } from '@/features/briefs/components/point-heights-callout'
 import { useLocalImages } from '@/features/briefs/state/use-local-images'
 import type { BriefAction, BriefSession } from '@/features/briefs/state/brief-session'
 import type { ImageTransport } from '@/features/briefs/storage/image-transport'
@@ -32,6 +33,7 @@ export function BriefingPage({ session, dispatch, error, imageTransport, present
     setSelectedCameraIds(id && session.brief.angles.some((angle) => angle.id === id) ? [id] : [])
   }
   function selectCamera(id: string, additive: boolean) {
+    if (!additive && selectedId === id) { select(null); return }
     if (!additive) { select(id); return }
     setSelectedId(id)
     setSelectedCameraIds((ids) => ids.includes(id) ? ids : [...ids, id])
@@ -39,6 +41,7 @@ export function BriefingPage({ session, dispatch, error, imageTransport, present
   return <div className="relative flex min-h-0 w-full min-w-0 flex-1 overflow-hidden overscroll-none">
     <div className="relative min-h-0 min-w-0 flex-1">
       <MapPanel presentation="briefing" objectSizePercent={presentation.overlaySize} images={images} selectedCameraIds={selectedCameraIds} onSelectCamera={selectCamera} session={session} dispatch={dispatch} tool={idleTool} onToolChange={() => {}} selectedId={selectedId} onSelect={select} isolatedKind={isolatedKind}
+        pointCallout={selectedId ? <PointHeightsCallout brief={session.brief} angleId={selectedId} language={presentation.language} onClose={() => select(null)} /> : null}
         layerControls={<BriefingMapLayers brief={session.brief} language={presentation.language} isolatedKind={isolatedKind} onIsolate={setIsolatedKind}
           floorplanVisible={session.visibility.imageOverlays}
           onFloorplanVisible={(visible) => dispatch({ type: 'visibility', layer: 'imageOverlays', visible })} />} />

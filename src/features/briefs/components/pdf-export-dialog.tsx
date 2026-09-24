@@ -12,7 +12,6 @@ import { countBriefImages } from '../model/image-count'
 import { pdfCopy, pdfDate, pdfFilename, type PdfLanguage } from '../export/pdf-copy'
 import type { PdfMapCapture } from '../export/pdf-types'
 import { pdfProjectPosition, pdfProjectSize } from '../export/pdf-project'
-import { sunlightRange, usedSunlightDays } from '@/features/map/sunlight-times'
 import { formatShootTime, shootSlots } from '../model/brief'
 import { usePdfAddress } from './use-pdf-address'
 import { defaultOverlaySize, publicShareLink } from '../storage/public-brief-link'
@@ -47,7 +46,13 @@ export function PdfExportDialog({ brief, editable, captureRef, onSaveNotes, onCl
   const address = usePdfAddress(position)
   const copy = pdfCopy[language]
   const slots = shootSlots(brief.project)
-  const sunDays = usedSunlightDays(slots, position)
+  const shootDays = slots.reduce<{ date: string; times: string[] }[]>((groups, slot) => {
+    const time = formatShootTime(slot)
+    const last = groups.at(-1)
+    if (last?.date === slot.date) last.times.push(time)
+    else groups.push({ date: slot.date, times: [time] })
+    return groups
+  }, [])
   const [description, setDescription] = useState(brief.project.description)
   const [instructions, setInstructions] = useState(brief.project.instructions)
   const [saveNotes, setSaveNotes] = useState(editable)
@@ -145,20 +150,17 @@ export function PdfExportDialog({ brief, editable, captureRef, onSaveNotes, onCl
       </div>}
       {step === 2 && <div className="grid gap-4">
         <div className="rounded-lg border p-3 text-sm"><p className="font-semibold break-words">{brief.project.name}</p><p>{language === 'nb' ? 'Norsk bokmål' : 'English'} · {countBriefImages(brief).total} photos</p><p className="mt-2 font-semibold">{copy.projectSizes[pdfProjectSize(brief)]}</p><p className="text-xs text-muted-foreground">Automatically matched to the template's point counts and height levels. Rig arrows count as aerial positions.</p><p className="mt-2 text-muted-foreground">Download a PDF or create a read-only Google Maps briefing. Reference images from Contents are included automatically.</p></div>
-        <div className="grid gap-3 rounded-lg border p-3 text-sm" aria-label="Calculated sun times">
-          <h3 className="font-semibold">Calculated sun times</h3>
-          {sunDays.map((day) => <div key={day.date}>
-            <p className="mb-1 font-medium">{pdfDate(day.date, language)} · {day.zone}</p>
-            {day.usedPhases.length ? <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1">{day.usedPhases.map((phase) => <div key={phase} className="contents"><dt>{copy[phase]}</dt><dd>{sunlightRange(day.phases[phase], day.date, day.zone) ?? copy.noSunWindow}</dd></div>)}</dl> : <p>{copy.noSunMatch}</p>}
-            <p className="mt-2 text-xs">{copy.plannedShoots}: {slots.filter((slot) => slot.date === day.date).map(formatShootTime).join(', ')}</p>
-            {day.condition !== 'normal' && <p className="mt-1">{copy[day.condition]}</p>}
+        <div className="grid gap-3 rounded-lg border p-3 text-sm" aria-label="Shoot times">
+          <h3 className="font-semibold">Shoot times</h3>
+          {shootDays.map((day) => <div key={day.date}>
+            <p className="mb-1 font-medium">{pdfDate(day.date, language)}</p>
+            <ul className="list-disc pl-5">{day.times.map((time, index) => <li key={`${day.date}-${time}-${index}`}>{time}</li>)}</ul>
           </div>)}
-          <p className="text-xs text-muted-foreground">{copy.sunDefinitions}</p>
         </div>
         <div className="grid gap-2"><Label>Map pages</Label><div className="grid gap-2 sm:grid-cols-2" role="group" aria-label="PDF map source">
-          <Button disabled={busy} variant={!diagram ? 'default' : 'outline'} aria-pressed={!diagram} onClick={() => setDiagram(false)}>Current map provider</Button>
+          <Button disabled={busy} variant={!diagram ? 'default' : 'outline'} aria-pressed={!diagram} onClick={() => setDiagram(false)}>Google Maps</Button>
           <Button disabled={busy} variant={diagram ? 'default' : 'outline'} aria-pressed={diagram} onClick={() => setDiagram(true)}>Point diagram</Button>
-        </div><p className="text-sm text-muted-foreground">{diagram ? 'A labeled position diagram without a basemap or floor plan. Coordinates are listed in the PDF.' : 'The map frames all points for export, then restores your view. Includes a second map without the floor plan when one is present.'}</p></div>
+        </div><p className="text-sm text-muted-foreground">{diagram ? 'A labeled position diagram without a basemap or floor plan. Coordinates are listed in the PDF.' : 'Google Maps frames all points for export, then restores your view. Includes a second map without the floor plan when one is present.'}</p></div>
         {brief.references.length > 0 && <p className="text-sm text-muted-foreground">{brief.references.length} reference image{brief.references.length === 1 ? '' : 's'} from Contents will be included.</p>}
         {link?.status === 'unavailable' && <p className="text-sm text-muted-foreground">{linkUnavailable[link.reason]}</p>}
         {linkUrl && <div className="grid gap-2"><Label htmlFor="briefing-link">Public briefing link</Label><Input id="briefing-link" readOnly value={linkUrl} onFocus={(event) => event.target.select()} /></div>}

@@ -213,7 +213,7 @@ export function ShadeMapPanel({ imageLayer, dimOpacity, objectSizePercent, dispa
     dispatch({ type: 'update', update: (brief) => ({ ...brief, angles: brief.angles.map((item) => item.id === updated.id ? updated : item) }) })
   }, [dispatch])
   const duplicateCameraAt = useCallback((source: CameraAngle, position: Position) => { onCameraDuplicate(source, position) }, [onCameraDuplicate])
-  return <div data-pdf-map-surface className="absolute inset-0 isolate bg-muted" aria-label="ShadeMap preview" onContextMenu={(event) => { event.preventDefault(); if (editable) onToolChange(idleTool) }}>
+  return <div className="absolute inset-0 isolate bg-muted" aria-label="ShadeMap preview" onContextMenu={(event) => { event.preventDefault(); if (editable) onToolChange(idleTool) }}>
     <div ref={host} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }} />
     <div aria-hidden="true" className="pointer-events-none absolute inset-0" style={{ background: '#282828', opacity: dimOpacity / 100 }} />
     <div data-image-host className="pointer-events-none absolute inset-0" />

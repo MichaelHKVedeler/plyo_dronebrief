@@ -1,10 +1,11 @@
 import type { PdfLanguage } from '../export/pdf-copy'
+import { defaultOverlaySize } from '@/features/map/map-object-scale'
+
+export { defaultOverlaySize }
 
 export const publicShareTokenPattern = /^[A-Za-z0-9_-]{43}$/
-// URL values remain rendering percentages for compatibility with existing links.
 export const minOverlaySize = 0
 export const maxOverlaySize = 300
-export const defaultOverlaySize = 100
 
 export type BriefingPresentation = {
   language: PdfLanguage

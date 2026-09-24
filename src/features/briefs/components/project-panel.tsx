@@ -3,7 +3,7 @@ import { Circle, Crosshair } from 'lucide-react'
 import { Accordion } from '@/components/ui/accordion'
 import { SettingsSection } from './settings-section'
 import { Button } from '@/components/ui/button'
-import { cameraLabels, cameraTypes, type CameraAngle, type DroneBrief } from '../model/brief'
+import { cameraLabels, cameraTypes, effectivePanoramaHeights, formatHeightsMeters, type CameraAngle, type DroneBrief } from '../model/brief'
 import { CameraAddPanel } from './camera-add-panel'
 import { RigRadii } from './rig-radii'
 import { RigRadiusFields } from './rig-radius-fields'
@@ -32,6 +32,7 @@ export function ProjectPanel({ onCenterCamera, onAddRig, selectedCameraIds, onSe
       {brief.angles.length ? <CameraGroups angles={brief.angles}>{(points) => points.map((angle, index) => <div key={angle.id} className="text-sm">
         <div className="flex items-center justify-between"><p className="font-medium">{index + 1}</p><Button variant="ghost" size="icon" aria-label={'Center on ' + cameraLabels[angle.type] + ' ' + (index + 1)} onClick={() => onCenterCamera(angle)}><Crosshair /></Button></div>
         <p className="text-muted-foreground">{angle.position.lat.toFixed(6)}, {angle.position.lng.toFixed(6)}{angle.type !== '360' && ' · ' + angle.directionDegrees.toFixed(1) + '°'}</p>
+        {angle.type === '360' && <p className="text-muted-foreground">{formatHeightsMeters(effectivePanoramaHeights(brief.typeSettings['360'].heightsMeters, angle)) || 'None'} m{angle.heightsMeters ? ' · override' : ''}</p>}
       </div>)}</CameraGroups> : <p>No camera points in this brief.</p>}
     </SettingsSection>
     <SettingsSection value="heights" title="Camera settings">

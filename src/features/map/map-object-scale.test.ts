@@ -1,7 +1,14 @@
 import { expect, it } from 'vitest'
 import { metersPerPixel } from './geometry'
-import { mapObjectScale } from './map-object-scale'
+import { defaultOverlaySize, mapObjectScale, overlayDisplayPercent, overlayRenderingSize } from './map-object-scale'
 import { fromShadeView, toShadeView } from './map-view'
+
+it('maps the overlay slider onto rendering units the public link stores', () => {
+  expect(overlayDisplayPercent(defaultOverlaySize)).toBe(50)
+  expect(overlayRenderingSize(100)).toBe(120)
+  expect(mapObjectScale(17, defaultOverlaySize)).toBe(0.6)
+  expect(mapObjectScale(17, overlayRenderingSize(100))).toBe(1.2)
+})
 
 it('locks symbols to the map scale across fractional zoom, wide views and providers', () => {
   for (const latitude of [0, 59.9139, -70]) {

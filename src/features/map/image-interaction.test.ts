@@ -31,6 +31,25 @@ it('previews edge movement and commits only once on release, suppressing map cli
   expect(state.onCommit).toHaveBeenCalledExactlyOnceWith(updated)
   expect(click).not.toHaveBeenCalled()
 })
+it('left-drags the anchor without scaling the image and keeps the grab offset', () => {
+  const { state, preview, projection, down, move, up } = setup()
+  down(210, 200); move(250, 230); up()
+  expect(state.onCommit).not.toHaveBeenCalled()
+  expect(preview.mock.calls.some((call) => call[0] === null && call[1])).toBe(true)
+  expect(state.onAnchor).toHaveBeenCalledOnce()
+  const shifted = projection.unproject({ x: 240, y: 230 })
+  const placed = vi.mocked(state.onAnchor).mock.lastCall![1]
+  expect(placed.lat).toBeCloseTo(shifted.lat, 8)
+  expect(placed.lng).toBeCloseTo(shifted.lng, 8)
+})
+it('discards an anchor drag on Escape', () => {
+  const { state, down, move, up } = setup()
+  down(200, 200); move(260, 230)
+  fireEvent.keyDown(window, { key: 'Escape' })
+  up()
+  expect(state.onAnchor).not.toHaveBeenCalled()
+  expect(state.onCommit).not.toHaveBeenCalled()
+})
 it('right-clicks outside the image to set an anchor, then scales and rotates from it', () => {
   const { surface, state, projection, down, move, up } = setup()
   fireEvent.contextMenu(surface, { clientX: 100, clientY: 100 })

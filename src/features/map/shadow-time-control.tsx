@@ -1,11 +1,11 @@
 import { useId, useRef, useState, type ComponentProps } from 'react'
-import { Calendar, ChevronDown, ChevronUp, Clock3, Minus, Plus, StretchHorizontal, X } from 'lucide-react'
+import { Calendar, ChevronDown, ChevronUp, Clock3, Plus, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
-import { maxShootSlots, nextShootSlot, type Position, type ShootSlot } from '@/features/briefs/model/brief'
+import { ensureShootRange, maxShootSlots, nextShootSlot, type Position, type ShootSlot } from '@/features/briefs/model/brief'
 import { shadowTime, timeMinutes } from './shadow-time'
-import { addShootRange, previewShootSlot, type ShootEndpoint } from './shoot-time-range'
+import { previewShootSlot, type ShootEndpoint } from './shoot-time-range'
 import { ShootTimeSlider } from './shoot-time-slider'
 
 function formatSlotDate(date: string) {
@@ -25,29 +25,30 @@ export function ShadowTimeControl({ slots, activeIndex, activeEndpoint = 0, onAc
   const [open, setOpen] = useState(true)
   const panelId = useId()
   const dateInput = useRef<HTMLInputElement>(null)
-  const shown = slots[Math.min(activeIndex, slots.length - 1)] ?? slots[0]
-  const date = slots[0]?.date ?? ''
+  const ranged = slots.map(ensureShootRange)
+  const shown = ranged[Math.min(activeIndex, ranged.length - 1)] ?? ranged[0]
+  const date = ranged[0]?.date ?? ''
   const zone = shown ? shadowTime(shown.date, timeMinutes(shown.time), position).zone : ''
   function replace(index: number, slot: ShootSlot, commit = false) {
-    const next = slots.map((current, i) => i === index ? slot : current)
+    const next = ranged.map((current, i) => ensureShootRange(i === index ? slot : current))
     onChange(next)
     if (commit) onCommit(next)
   }
   function setDate(nextDate: string) {
-    const next = slots.map((slot) => ({ ...slot, date: nextDate }))
+    const next = ranged.map((slot) => ({ ...slot, date: nextDate }))
     onChange(next); onCommit(next)
   }
-  function timeButtons(slot: ShootSlot, index: number, compact = false) {
-    const name = slots.length === 1 ? 'Shadow time' : `Shadow time ${index + 1}`
+  function timeButtons(slot: ShootSlot, index: number) {
+    const name = ranged.length === 1 ? 'Shadow time' : `Shadow time ${index + 1}`
     return <span className="inline-flex items-center gap-1 tabular-nums">
-      {[slot.time, ...(slot.endTime ? [slot.endTime] : [])].map((value, endpoint) => {
+      {[slot.time, slot.endTime ?? slot.time].map((value, endpoint) => {
         const selected = index === activeIndex && endpoint === activeEndpoint
         const actual = shadowTime(slot.date, timeMinutes(value), position)
         return <span key={endpoint} className="inline-flex items-center gap-1">
           {endpoint === 1 && <span aria-hidden="true">–</span>}
           <Button type="button" variant="ghost" size="sm" className={`h-7 px-1 font-semibold ${selected ? 'text-primary' : ''}`}
             aria-current={selected ? 'true' : undefined}
-            aria-label={slot.endTime ? `${name} ${endpoint === 0 ? 'start' : 'end'}` : compact ? name : `Select ${name}`}
+            aria-label={`${name} ${endpoint === 0 ? 'start' : 'end'}`}
             onClick={() => onActivate(index, endpoint === 1 ? 1 : 0)}>
             <time dateTime={`${slot.date}T${value}`}>{actual.actualTime}</time>
           </Button>
@@ -72,7 +73,7 @@ export function ShadowTimeControl({ slots, activeIndex, activeEndpoint = 0, onAc
           </span>
         </>}
         {!open && <ul className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-4 gap-y-1 text-sm">
-          {slots.map((slot, index) => <li key={index} className={index === activeIndex ? '' : 'opacity-50'}>{timeButtons(slot, index, true)}</li>)}
+          {ranged.map((slot, index) => <li key={index} className={index === activeIndex ? '' : 'opacity-50'}>{timeButtons(slot, index)}</li>)}
         </ul>}
       </div>
       <Button type="button" variant="ghost" size="icon-sm"
@@ -80,26 +81,19 @@ export function ShadowTimeControl({ slots, activeIndex, activeEndpoint = 0, onAc
         onClick={() => setOpen((value) => !value)}>{open ? <ChevronDown /> : <ChevronUp />}</Button>
     </div>
     <div id={panelId} hidden={!open} className="grid gap-2">
-      {slots.map((slot, index) => {
+      {ranged.map((slot, index) => {
         const selected = index === activeIndex
         const endpoint = selected ? activeEndpoint : 0
         const preview = previewShootSlot(slot, endpoint)
         const time = shadowTime(slot.date, timeMinutes(preview.time), position)
-        const timeName = slots.length === 1 ? 'Shadow time' : `Shadow time ${index + 1}`
+        const timeName = ranged.length === 1 ? 'Shadow time' : `Shadow time ${index + 1}`
         return <div key={index} className={selected ? 'grid gap-1' : 'grid gap-1 opacity-50'} aria-current={selected ? 'true' : undefined}>
           <div className="flex items-center justify-between gap-2 text-sm">
             {timeButtons(slot, index)}
             <div className="flex items-center">
-              <Button type="button" variant="ghost" size="icon-sm"
-                aria-label={slot.endTime ? `Use a single time for ${timeName}` : `Make ${timeName} a range`}
-                title={slot.endTime ? 'Keep the selected time only' : 'Add a time range (or right-click the slider)'}
+              {ranged.length > 1 && <Button type="button" variant="ghost" size="icon-sm" aria-label={'Remove ' + timeName}
                 onClick={() => {
-                  const next = slot.endTime ? { slot: preview, retainedEndpoint: 0 as ShootEndpoint } : addShootRange(slot)
-                  onActivate(index, next.retainedEndpoint); replace(index, next.slot, true)
-                }}>{slot.endTime ? <Minus /> : <StretchHorizontal />}</Button>
-              {slots.length > 1 && <Button type="button" variant="ghost" size="icon-sm" aria-label={'Remove ' + timeName}
-                onClick={() => {
-                  const next = slots.filter((_, i) => i !== index)
+                  const next = ranged.filter((_, i) => i !== index)
                   onChange(next); onCommit(next)
                   onActivate(index < activeIndex ? activeIndex - 1 : Math.min(activeIndex, next.length - 1), index === activeIndex ? 0 : activeEndpoint)
                 }}><X /></Button>}
@@ -111,14 +105,14 @@ export function ShadowTimeControl({ slots, activeIndex, activeEndpoint = 0, onAc
         </div>
       })}
       <div className="flex flex-wrap items-center justify-between gap-2">
-        {slots.length < maxShootSlots && <Button type="button" variant="outline" size="sm" className="w-fit" onClick={() => {
-          const added = nextShootSlot(slots)
-          const next = [...slots, { ...added, date: slots[0]?.date ?? added.date }]
+        {ranged.length < maxShootSlots && <Button type="button" variant="outline" size="sm" className="w-fit" onClick={() => {
+          const added = nextShootSlot(ranged)
+          const next = [...ranged, { ...added, date: ranged[0]?.date ?? added.date }]
           onChange(next); onCommit(next); onActivate(next.length - 1, 0)
         }}><Plus /> Add time</Button>}
         {zone && <p className="text-xs text-muted-foreground">{zone}</p>}
       </div>
-      <p className="text-xs text-muted-foreground">Right-click a slider to add a range. Select either time to preview its shadows.</p>
+      <p className="text-xs text-muted-foreground">Select either time to preview its shadows.</p>
     </div>
   </div>
 }

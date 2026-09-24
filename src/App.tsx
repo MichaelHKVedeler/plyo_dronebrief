@@ -15,6 +15,7 @@ import { exportBriefKey } from '@/features/briefs/storage/share-key'
 import { openSession, reduceSession, type BriefAction, type BriefSession } from '@/features/briefs/state/brief-session'
 import { hasLocalFiles, type DroneBrief } from '@/features/briefs/model/brief'
 import { cloudConfigured } from '@/features/cloud/auth/config'
+import { defaultOverlaySize } from '@/features/briefs/storage/public-brief-link'
 const CloudApp = lazy(() => import('@/pages/cloud-app').then((module) => ({ default: module.CloudApp })))
 
 type Screen = { page: 'landing' } | { page: 'create' } | { page: 'brief'; session: BriefSession }
@@ -36,7 +37,7 @@ function LocalApp() {
   const [shareKey, setShareKey] = useState<string | null>(null)
   const [pdfOpen, setPdfOpen] = useState(false)
   const pdfMapRef = useRef<PdfMapCapture | null>(null)
-  const overlaySizeRef = useRef(100)
+  const overlaySizeRef = useRef(defaultOverlaySize)
   function saveBrief(brief: DroneBrief) {
     try {
       briefRepository.save(brief)

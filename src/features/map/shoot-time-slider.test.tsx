@@ -26,17 +26,13 @@ afterEach(() => {
 })
 function track() { return document.querySelector('[data-slot="slider-track"]')! }
 
-it.each([360, 840])('right-click adds one endpoint at %i without moving the current shadow instant', (clientX) => {
+it('shows a start and an end handle when a time has no saved end', () => {
   render(<Control />)
-  fireEvent.contextMenu(track(), { clientX })
+  expect(screen.getByRole('slider', { name: 'Shoot start' })).toHaveAttribute('aria-valuetext', '09:00 Europe/Oslo')
+  expect(screen.getByRole('slider', { name: 'Shoot end' })).toHaveAttribute('aria-valuetext', '17:00 Europe/Oslo')
+  fireEvent.contextMenu(track(), { clientX: 840 })
   expect(screen.getAllByRole('slider')).toHaveLength(2)
-  expect(screen.getByLabelText('Preview')).toHaveTextContent('09:00')
-  expect(commit).toHaveBeenCalledTimes(1)
-  const saved = commit.mock.calls[0][0]
-  expect(saved).toMatchObject(clientX === 360 ? { time: '06:00', endTime: '09:00' } : { time: '09:00', endTime: '14:00' })
-  fireEvent.contextMenu(track(), { clientX: 1000 })
-  expect(screen.getAllByRole('slider')).toHaveLength(2)
-  expect(commit).toHaveBeenCalledTimes(1)
+  expect(commit).not.toHaveBeenCalled()
 })
 it('selects endpoints without saving and track drags move the selected endpoint, even nearer the other one', () => {
   render(<Control initial={{ date: '2026-09-19', time: '09:00', endTime: '14:00' }} />)

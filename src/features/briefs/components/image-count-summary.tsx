@@ -1,11 +1,15 @@
-import { cameraLabels, type DroneBrief } from '../model/brief'
+import { cameraLabels, effectivePanoramaHeights, type DroneBrief } from '../model/brief'
 import { countBriefImages, imageCaptureConfig } from '../model/image-count'
 import { CaptureKindGlyph } from './capture-kind-glyph'
 
 export function ImageCountSummary({ brief }: { brief: DroneBrief }) {
   const counts = countBriefImages(brief)
   const droneHeights = brief.typeSettings['drone-image'].heightsMeters.length
-  const panoramaHeights = brief.typeSettings['360'].heightsMeters.length
+  const panoramaLevels = brief.angles.flatMap((angle) => angle.type === '360'
+    ? [effectivePanoramaHeights(brief.typeSettings['360'].heightsMeters, angle).length] : [])
+  const panoramaHeightLabel = !panoramaLevels.length || panoramaLevels.every((count) => count === panoramaLevels[0])
+    ? `${panoramaLevels[0] ?? brief.typeSettings['360'].heightsMeters.length} heights`
+    : 'heights vary'
   const dronePoints = brief.angles.filter((angle) => angle.type === 'drone-image').length
   const panoramaPoints = brief.angles.filter((angle) => angle.type === '360').length
   const dslrPoints = brief.angles.filter((angle) => angle.type === 'dslr').length
@@ -25,7 +29,7 @@ export function ImageCountSummary({ brief }: { brief: DroneBrief }) {
     {
       key: '360' as const, label: cameraLabels['360'],
       rule: `${imageCaptureConfig.panoramaPerPointAndHeight} per point, height, and time`,
-      detail: `${panoramaPoints} points · ${panoramaHeights} heights · ${counts.times} times`,
+      detail: `${panoramaPoints} points · ${panoramaHeightLabel} · ${counts.times} times`,
       images: counts.panorama,
     },
     {

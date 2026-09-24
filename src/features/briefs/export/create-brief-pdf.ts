@@ -1,13 +1,12 @@
 import { PDFDocument, rgb, type PDFPage, type PDFFont } from 'pdf-lib'
 import fontkit from '@pdf-lib/fontkit'
-import { formatShootTime, shootSlots } from '../model/brief'
+import { effectivePanoramaHeights, formatShootTime, shootSlots } from '../model/brief'
 import { countBriefImages } from '../model/image-count'
 import { pdfCopy, pdfDate } from './pdf-copy'
 import { fitPdfText, wrapPdfText } from './pdf-layout'
 import type { PdfAssets, PdfExportInput } from './pdf-types'
 import { drawPdfPointDiagram } from '@/features/map/pdf-point-diagram'
-import { pdfCapturePoints, pdfProjectPosition, pdfProjectSize } from './pdf-project'
-import { sunlightRange, usedSunlightDays } from '@/features/map/sunlight-times'
+import { pdfCapturePoints, pdfProjectSize } from './pdf-project'
 
 const width = 720, height = 405
 const ink = rgb(.04, .05, .06), muted = rgb(.35, .39, .40), teal = rgb(0, .65, .51)
@@ -66,32 +65,24 @@ export async function createBriefPdf(input: PdfExportInput, assets: PdfAssets): 
 
   const schedule = addPage(c.schedule)
   const slots = shootSlots(brief.project)
-  const sunDays = usedSunlightDays(slots, pdfProjectPosition(brief))
-  sunDays.forEach((day, i) => {
-    const top = sunDays.length === 1 ? 280 : 308 - i * 82
-    center(schedule, `${c.sunCalculated} ${pdfDate(day.date, language)} · ${c.sunMethod}: ${day.zone}`, top, 10, regular, muted)
-    day.usedPhases.forEach((phase, column) => {
-      const x = (width - day.usedPhases.length * 164) / 2 + column * 164 + 9
-      text(schedule, c[phase], x, top - 29, 14, bold, teal)
-      const value = sunlightRange(day.phases[phase], day.date, day.zone) ?? c.noSunWindow
-      text(schedule, value, x, top - 49, value.length > 20 ? 9 : 12)
-      schedule.drawLine({ start: { x, y: top - 56 }, end: { x: x + 146, y: top - 56 }, thickness: 1, color: teal })
-    })
-    if (!day.usedPhases.length) center(schedule, c.noSunMatch, top - 40, 11, regular, muted)
-    const planned = slots.filter((slot) => slot.date === day.date).map(formatShootTime).join(', ')
-    center(schedule, `${c.plannedShoots}: ${planned}${day.condition === 'normal' ? '' : ` · ${c[day.condition]}`}`, top - 72, 9, regular, muted)
+  const shootDays = [...new Map(slots.map((slot) => [slot.date, slots.filter((item) => item.date === slot.date).map(formatShootTime)])).entries()]
+  shootDays.forEach(([date, times], index) => {
+    const top = shootDays.length === 1 ? 250 : 300 - index * 64
+    center(schedule, pdfDate(date, language), top, 12, bold)
+    center(schedule, times.join('    '), top - 28, times.join(' ').length > 40 ? 12 : 16)
   })
-  paragraph(schedule, c.scheduleNote, 66, sunDays.length === 1 ? 144 : 54, 588, 9, regular, muted)
-  paragraph(schedule, c.sunDefinitions, 66, sunDays.length === 1 ? 105 : 32, 588, 8, regular, muted)
+  paragraph(schedule, c.scheduleNote, 66, 120, 588, 11, regular, muted)
 
   const counts = countBriefImages(brief)
-  const byType = { drone: brief.angles.filter((a) => a.type === 'drone-image').length, panorama: brief.angles.filter((a) => a.type === '360').length, dslr: brief.angles.filter((a) => a.type === 'dslr').length }
+  const byType = { drone: brief.angles.filter((a) => a.type === 'drone-image').length, panorama: brief.angles.filter((a) => a.type === '360'), dslr: brief.angles.filter((a) => a.type === 'dslr').length }
   const heights = (list: number[]) => list.length ? list.map((h) => `${h} m`).join(', ') : c.notSet
+  const panoramaLists = byType.panorama.map((angle) => effectivePanoramaHeights(brief.typeSettings['360'].heightsMeters, angle))
+  const panoramaHeights = panoramaLists.every((list) => heights(list) === heights(panoramaLists[0] ?? [])) ? heights(panoramaLists[0] ?? []) : c.perPoint
   const pointsLabel = (count: number) => `${count} ${count === 1 ? c.point.toLowerCase() : c.points}`
   const captureRows = [
     ...(brief.circleRig ? [{ name: c.rig, count: counts.circleRig, detail: `${brief.circleRig.arrowCount} ${c.arrows} · ${c.heights}: ${heights(brief.typeSettings['drone-image'].heightsMeters)}`, rule: c.rigRule }] : []),
     ...(byType.drone ? [{ name: c.drone, count: counts.droneImage, detail: `${pointsLabel(byType.drone)} · ${c.heights}: ${heights(brief.typeSettings['drone-image'].heightsMeters)}`, rule: c.droneRule }] : []),
-    ...(byType.panorama ? [{ name: c.panorama, count: counts.panorama, detail: `${pointsLabel(byType.panorama)} · ${c.heights}: ${heights(brief.typeSettings['360'].heightsMeters)}`, rule: `${c.individual}. ${c.panoramaRule}.` }] : []),
+    ...(byType.panorama.length ? [{ name: c.panorama, count: counts.panorama, detail: `${pointsLabel(byType.panorama.length)} · ${c.heights}: ${panoramaHeights}`, rule: `${c.individual}. ${c.panoramaRule}.` }] : []),
     ...(byType.dslr ? [{ name: c.dslr, count: counts.dslr, detail: `${pointsLabel(byType.dslr)} · ${brief.typeSettings.dslr.angleCount} ${c.arrows} · ${brief.typeSettings.dslr.spacingDegrees}°`, rule: `${c.ground}. ${c.dslrRule}.` }] : []),
   ]
   const sizeTitle = c.projectSizes[pdfProjectSize(brief)]

@@ -5,7 +5,8 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 
 import { Card, CardContent } from '@/components/ui/card'
-import { cameraLabels, min360Fov, max360Fov, type CameraAngle, type DroneBrief } from '../model/brief'
+import { cameraLabels, formatHeightsMeters, min360Fov, max360Fov, type CameraAngle, type DroneBrief } from '../model/brief'
+import { HeightsField } from './heights-field'
 import { cameraAppearance } from './camera-appearance'
 import { CameraReorderHandle, type CameraDragPreview } from './camera-reorder-handle'
 import { reorderCameras } from '../state/reorder-cameras'
@@ -29,6 +30,9 @@ export function CamerasPanel({ onCenterCamera, selectedCameraIds, onSelectCamera
   function updateSelected(update: (angle: CameraAngle) => CameraAngle) {
     if (selected) onUpdate((b) => ({ ...b, angles: b.angles.map((angle) => angle.id === selected.id ? update(angle) : angle) }))
   }
+  function updateAngle(id: string, update: (angle: CameraAngle) => CameraAngle) {
+    onUpdate((b) => ({ ...b, angles: b.angles.map((angle) => angle.id === id ? update(angle) : angle) }))
+  }
   return <div className="grid gap-3">
     {!brief.angles.length && <p className="text-sm text-muted-foreground">No camera points yet.</p>}
     <CameraGroups angles={brief.angles} selectedId={selectedId} onRemoveCameras={onRemoveCameras}>{(points) => <>
@@ -51,6 +55,16 @@ export function CamerasPanel({ onCenterCamera, selectedCameraIds, onSelectCamera
         <CameraReorderHandle onPreview={setDragPreview} angle={angle} name={name} points={points} onMove={(source, target) => onUpdate((brief) => reorderCameras(brief, source, target))} />
         <Button variant={selectedCameraIds.includes(angle.id) ? 'secondary' : 'ghost'} className="min-w-0 flex-1 justify-start"
           aria-label={name} aria-pressed={selectedCameraIds.includes(angle.id)} onClick={(event) => onSelectCamera(angle.id, event.shiftKey || event.ctrlKey)}><Icon /><Badge variant="secondary" className="size-5 shrink-0 justify-center rounded-full p-0" aria-hidden="true">{index + 1}</Badge></Button>
+        {angle.type === '360' && <HeightsField id={'point-heights-' + angle.id} label={'Heights for ' + name + ' (m)'}
+          className="h-8 w-28 shrink-0 px-2" allowEmpty placeholder={formatHeightsMeters(brief.typeSettings['360'].heightsMeters)}
+          value={angle.heightsMeters ?? []} onChange={(heightsMeters) => updateAngle(angle.id, (current) => {
+            if (current.type !== '360') return current
+            if (!heightsMeters.length) {
+              const { heightsMeters: _removed, ...rest } = current
+              return rest
+            }
+            return { ...current, heightsMeters }
+          })} />}
         <Button variant="ghost" size="icon" className="size-8 shrink-0" aria-label={'Center on ' + name} title={'Center on ' + name} onClick={() => onCenterCamera(angle)}><Crosshair /></Button>
         <Button variant="ghost" size="icon" className="size-8 shrink-0 text-destructive" aria-label={'Remove ' + name}
           title={selectedCameraIds.includes(angle.id) && selectedCameraIds.length > 1 ? 'Remove selected cameras' : 'Remove ' + name} onClick={() => remove(angle.id)}><X /></Button>

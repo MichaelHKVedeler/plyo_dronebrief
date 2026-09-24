@@ -22,6 +22,7 @@ type Props = {
   number?: number
   duplicateNumber?: number
   dslrSettings?: DroneBrief['typeSettings']['dslr']
+  selectable?: boolean
   onSelect: (additive?: boolean) => void
   onCommit: (angle: CameraAngle) => void
   onDuplicate?: (position: Position) => void
@@ -40,7 +41,7 @@ function CameraArrows({ offsets, directionDegrees, color }: { offsets: number[];
     </span>
   })
 }
-export const CameraMarker = memo(function CameraMarker({ angle, editable, selected, pixelsToMeters, interactive = true, number = 1, duplicateNumber, dslrSettings, onSelect, onCommit, onDuplicate }: Props) {
+export const CameraMarker = memo(function CameraMarker({ angle, editable, selected, pixelsToMeters, interactive = true, number = 1, duplicateNumber, dslrSettings, selectable = false, onSelect, onCommit, onDuplicate }: Props) {
   const { Marker: AdvancedMarker } = useObjectRenderer()
   const scale = useMapObjectScale()
   const hover = useHoverHandles(!interactive)
@@ -103,7 +104,7 @@ export const CameraMarker = memo(function CameraMarker({ angle, editable, select
     {ghost && <CameraMarker angle={angle} editable selected={false} interactive={false} number={number} pixelsToMeters={pixelsToMeters}
       dslrSettings={dslrSettings} onSelect={() => {}} onCommit={() => {}} />}
     <AdvancedMarker key={markerKey} position={visible.position} anchorLeft="-50%" anchorTop="-50%" title={name}
-      zIndex={selected || ghost ? 30 : 20} draggable={editable && interactive} clickable={editable && interactive}
+      zIndex={selected || ghost ? 30 : 20} draggable={editable && interactive} clickable={(editable || selectable) && interactive}
       style={{ pointerEvents: interactive ? 'auto' : 'none' }}
       onMouseEnter={hover.enter} onMouseLeave={hover.leave}
       onDragCancel={resetPreview} onDragStart={(event) => {
@@ -138,6 +139,9 @@ export const CameraMarker = memo(function CameraMarker({ angle, editable, select
             }
           }}
           onClick={(event) => { event.stopPropagation(); altCopy.current = false; onSelect(event.ctrlKey || event.shiftKey) }}>{symbol}</Button>
+          : selectable ? <Button type="button" size="icon" variant="outline" aria-label={name} aria-pressed={selected}
+            className={'relative cursor-pointer rounded-full border-2 shadow-md ' + appearance.className + (selected ? ' ring-2 ring-primary ring-offset-2' : '')}
+            onClick={(event) => { event.stopPropagation(); onSelect(event.ctrlKey || event.shiftKey) }}>{symbol}</Button>
           : <span role="img" aria-label={name} className={'relative inline-flex size-9 items-center justify-center rounded-full border-2 shadow-md ' + appearance.className}>{symbol}</span>}
         <Badge data-camera-badge aria-hidden="true" className="pointer-events-none absolute -right-1.5 -top-1.5 flex size-5 items-center justify-center rounded-full border-2 border-background p-0 text-[10px] leading-none tabular-nums shadow-sm">{shownNumber}</Badge>
         {directional && <CameraArrows offsets={offsets} directionDegrees={visible.directionDegrees} color={appearance.color} />}

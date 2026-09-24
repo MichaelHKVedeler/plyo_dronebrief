@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest'
-import { briefSchema, createBrief, next360FloorHeight, nextShootSlot, parseHeightsMeters, projectWithShoots, shootSlots, todayIsoDate } from './brief'
+import { briefSchema, createBrief, ensureShootRange, next360FloorHeight, nextShootSlot, parseHeightsMeters, projectWithShoots, shootSlots, todayIsoDate } from './brief'
 
 const brief = createBrief({ name: 'Arrows', clientName: 'Test', date: '2026-09-12', times: ['12:00'] })
 
@@ -21,10 +21,13 @@ it.each([
   expect(briefSchema.safeParse({ ...brief, typeSettings: { ...brief.typeSettings, dslr: { ...brief.typeSettings.dslr, ...settings } } }).success).toBe(false)
 })
 
-it('creates a brief with today and 09:00 when the wizard omits a schedule', () => {
+it('creates a brief with today and 07:00–17:00 when the wizard omits a schedule', () => {
   const created = createBrief({ name: 'Riverside', clientName: 'Client A' })
-  expect(created.project).toMatchObject({ name: 'Riverside', clientName: 'Client A', description: '', instructions: '', date: todayIsoDate(), times: ['09:00'] })
-  expect(created.project.shoots).toBeUndefined()
+  const date = todayIsoDate()
+  expect(created.project).toMatchObject({
+    name: 'Riverside', clientName: 'Client A', description: '', instructions: '', date, times: ['07:00'],
+    shoots: [{ date, time: '07:00', endTime: '17:00' }],
+  })
   expect(created.typeSettings['drone-image'].heightsMeters).toEqual([40, 60])
   expect(created.typeSettings['360'].heightsMeters).toEqual([2, 5, 8])
 })
@@ -78,9 +81,25 @@ it('defaults missing project notes and round-trips authored description and inst
     .toMatchObject({ description: 'South facade.', instructions: 'Use the rear gate.' })
 })
 
-it('picks unused default times when stacking shadow sliders', () => {
-  expect(nextShootSlot([{ date: '2026-09-12', time: '09:00' }])).toEqual({ date: '2026-09-12', time: '09:15' })
-  expect(nextShootSlot([{ date: '2026-09-12', time: '09:00' }, { date: '2026-09-13', time: '12:00' }])).toEqual({ date: '2026-09-13', time: '12:15' })
-  expect(nextShootSlot([{ date: '2026-09-12', time: '23:50' }])).toEqual({ date: '2026-09-12', time: '23:59' })
-  expect(nextShootSlot([{ date: '2026-09-12', time: '09:00', endTime: '12:00' }])).toEqual({ date: '2026-09-12', time: '12:15' })
+it('fills a missing end so every time is a range', () => {
+  expect(ensureShootRange({ date: '2026-09-12', time: '09:00' })).toEqual({ date: '2026-09-12', time: '09:00', endTime: '17:00' })
+  expect(ensureShootRange({ date: '2026-09-12', time: '09:00', endTime: '12:00' })).toEqual({ date: '2026-09-12', time: '09:00', endTime: '12:00' })
+  expect(ensureShootRange({ date: '2026-09-12', time: '18:00' })).toEqual({ date: '2026-09-12', time: '18:00', endTime: '23:59' })
+  expect(ensureShootRange({ date: '2026-09-12', time: '23:59' })).toEqual({ date: '2026-09-12', time: '23:44', endTime: '23:59' })
+})
+
+it('adds another 07:00–17:00 range on the latest slot date', () => {
+  expect(nextShootSlot([{ date: '2026-09-12', time: '09:00' }])).toEqual({ date: '2026-09-12', time: '07:00', endTime: '17:00' })
+  expect(nextShootSlot([{ date: '2026-09-12', time: '09:00' }, { date: '2026-09-13', time: '12:00' }])).toEqual({ date: '2026-09-13', time: '07:00', endTime: '17:00' })
+  expect(nextShootSlot([{ date: '2026-09-12', time: '23:50' }])).toEqual({ date: '2026-09-12', time: '07:00', endTime: '17:00' })
+  expect(nextShootSlot([])).toEqual({ date: todayIsoDate(), time: '07:00', endTime: '17:00' })
+})
+
+it('keeps a missing 360 height list on the shared settings and round-trips an override', () => {
+  const point = { id: 'p', label: 'Panorama', type: '360' as const, position: brief.coordinates }
+  expect(briefSchema.parse({ ...brief, angles: [point] }).angles[0]).toEqual(point)
+  const custom = { ...point, heightsMeters: [2, 11] }
+  expect(briefSchema.parse({ ...brief, angles: [custom] }).angles[0]).toEqual(custom)
+  expect(briefSchema.safeParse({ ...brief, angles: [{ ...custom, heightsMeters: [-1] }] }).success).toBe(false)
+  expect(briefSchema.safeParse({ ...brief, angles: [{ ...custom, heightsMeters: [10001] }] }).success).toBe(false)
 })

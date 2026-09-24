@@ -56,6 +56,14 @@ it.each([true, false])('keeps arrows fixed on the ground while zooming without s
   expect(commit).not.toHaveBeenCalled()
 })
 
+it('selects a read-only briefing point without moving it', () => {
+  const select = vi.fn()
+  render(<CameraMarker angle={{ id: 'a', label: 'A', type: '360', position: { lat: 60, lng: 10 }, heightsMeters: [11] }}
+    editable={false} selectable selected={false} pixelsToMeters={1} onSelect={select} onCommit={vi.fn()} />)
+  fireEvent.click(screen.getByRole('button', { name: '360 1' }))
+  expect(select).toHaveBeenCalledExactlyOnceWith(false)
+})
+
 it('preserves the group when a modifier click becomes a small drag', () => {
  const select = vi.fn()
  render(<CameraMarker angle={{ id: 'a', label: 'A', type: '360', position: { lat: 60, lng: 10 } }} editable selected={false} pixelsToMeters={1} onSelect={select} onCommit={vi.fn()} />)

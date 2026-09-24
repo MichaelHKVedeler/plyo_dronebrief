@@ -34,7 +34,11 @@ const panoramaFocusSchema = z.object({
 export type PanoramaFocus = z.infer<typeof panoramaFocusSchema>
 export const angleSchema = z.discriminatedUnion('type', [
   z.object({ ...angleBase, type: z.literal('drone-image'), directionDegrees: heading }),
-  z.object({ ...angleBase, type: z.literal('360'), focus: panoramaFocusSchema.optional() }),
+  // Additive v1: optional heightsMeters overrides the shared 360 height list for this point.
+  z.object({
+    ...angleBase, type: z.literal('360'), focus: panoramaFocusSchema.optional(),
+    heightsMeters: z.array(z.number().finite().min(0).max(10000)).max(50).optional(),
+  }),
   z.object({ ...angleBase, type: z.literal('dslr'), directionDegrees: heading }),
 ])
 const heights = z.object({ heightsMeters: z.array(z.number().finite().min(0).max(10000)).max(50) })
@@ -125,6 +129,12 @@ export function projectWithShoots(project: ProjectDetails, shoots: ShootSlot[]):
 export const floorHeightMeters = 3
 export const defaultDroneHeights = [40, 60]
 export const default360Heights = [2, 5, 8]
+export const defaultShootTime = '07:00'
+export const defaultShootEndTime = '17:00'
+
+export function effectivePanoramaHeights(shared: number[], angle: { heightsMeters?: number[] }) {
+  return angle.heightsMeters ?? shared
+}
 
 export function next360FloorHeight(heights: number[]) {
   return (heights.at(-1) ?? default360Heights[0] - floorHeightMeters) + floorHeightMeters
@@ -145,18 +155,32 @@ export function formatHeightsMeters(heights: number[]) {
 }
 
 export function nextShootSlot(slots: ShootSlot[]): ShootSlot {
-  const last = slots.at(-1)
-  const [hours, minutes] = (last?.endTime ?? last?.time ?? '09:00').split(':').map(Number)
-  const next = Math.min(hours * 60 + minutes + 15, 23 * 60 + 59)
-  const time = `${String(Math.floor(next / 60)).padStart(2, '0')}:${String(next % 60).padStart(2, '0')}`
-  return { date: last?.date ?? todayIsoDate(), time }
+  return {
+    date: slots.at(-1)?.date ?? todayIsoDate(),
+    time: defaultShootTime,
+    endTime: defaultShootEndTime,
+  }
+}
+
+/** Every slider is a range. A stored instant keeps its start and gains 17:00 when that is later. */
+export function ensureShootRange(slot: ShootSlot): ShootSlot {
+  if (slot.endTime && slot.endTime > slot.time) return slot
+  if (slot.time < defaultShootEndTime) return { ...slot, endTime: defaultShootEndTime }
+  if (slot.time < '23:59') return { ...slot, endTime: '23:59' }
+  return { date: slot.date, time: '23:44', endTime: '23:59' }
 }
 
 export function createBrief(project: Pick<ProjectDetails, 'name' | 'clientName'> & Partial<ProjectDetails>): DroneBrief {
   const now = new Date().toISOString()
+  const date = project.date ?? todayIsoDate()
+  const hasSchedule = project.times !== undefined || project.shoots !== undefined
   return briefSchema.parse({
     schemaVersion: 1, id: crypto.randomUUID(), createdAt: now, updatedAt: now,
-    project: { date: todayIsoDate(), times: ['09:00'], ...project },
+    project: {
+      date, times: [defaultShootTime],
+      ...(hasSchedule ? {} : { shoots: [{ date, time: defaultShootTime, endTime: defaultShootEndTime }] }),
+      ...project,
+    },
     coordinates: { lat: 59.9139, lng: 10.7522 }, circleRig: null,
     angles: [], typeSettings: {
       'drone-image': { heightsMeters: defaultDroneHeights },
