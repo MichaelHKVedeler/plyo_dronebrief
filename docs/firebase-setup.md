@@ -92,7 +92,7 @@ Public links contain an unguessable token in the URL fragment, submitted to the 
 
 `projectIndex` and `libraryIndex` perform retryable, paginated projection updates. Monitor failed invocations and outstanding `indexJobs` if indexing stalls. `janitor` runs daily and writes its completion to `maintenance/cleanup`. It clears expired unused assets and permanently deletes up to 100 projects past the 30-day recovery period per run. Retry failures safely. Monitor Functions failures, indexing backlog, cleanup completion, upload durations and Storage/Firestore usage.
 
-Projects are marked as purging before physical cleanup, preventing restoration during deletion. Trash revokes public sharing; restore never reactivates the old token. Deploy backend operations and security rules together.
+Projects are marked as purging before physical cleanup, preventing restoration during deletion. Moving a project to Deleted projects revokes public sharing; restore never reactivates the old token. Administrators can restore a project from Deleted projects within 30 days or delete it permanently. Deploy backend operations and security rules together.
 
 ## Verification status — 2026-09-19
 

@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { briefSchema } from '../../briefs/model/brief.js'
+import { mapViewSchema } from './map-view.js'
 
 export const cloudId = z.string().regex(/^[A-Za-z0-9_-]{1,128}$/)
 export const cloudName = z.string().trim().min(1).max(200)
@@ -23,6 +24,7 @@ export const summarySchema = z.object({
   createdBy: actorSchema, editedBy: actorSchema, createdAt: z.iso.datetime(), updatedAt: z.iso.datetime(),
   revision: z.number().int().nonnegative(), deletedAt: z.iso.datetime().nullable(),
   collectionId: cloudId.nullable().default(null), collectionName: z.string().max(200).default(''),
+  map: mapViewSchema.optional(),
 })
 export const projectSchema = z.object({ envelopeVersion: z.literal(1), summary: summarySchema, brief: briefSchema, assets: assetsSchema })
 export const libraryQuerySchema = z.object({

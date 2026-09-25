@@ -15,7 +15,7 @@ npm run dev
 
 Open the URL printed by Vite. No API key is needed for the create, save, export, or load workflow.
 
-With Firebase configured, Google sign-in opens **Create project** and **Load projects**. Organization members share editing access, personal collections organize the library, and revision checks prevent silent overwrites. Creators/admins can create public briefing links from **Export → Create Link** (or Share). Recipients open Google Maps with cameras, floorplan and circle rig, plus shoot times and capture instructions, without signing in. Local drafts and DB1/DB2 snapshots keep their existing format.
+With Firebase configured, Google sign-in opens the project home: create a project, browse the library, rename a project from its card, and filter personal collections from the left sidebar. Administrators can restore or permanently delete projects from Deleted projects. Each project card shows a satellite thumbnail framed like the editor map. Organization members share editing access, and revision checks prevent silent overwrites. Creators/admins can create public briefing links from **Export → Create Link** (or Share). Recipients open Google Maps with cameras, floorplan and circle rig, plus shoot times and capture instructions, without signing in. Local drafts and DB1/DB2 snapshots keep their existing format.
 
 See [Firebase setup and operations](docs/firebase-setup.md) for emulators, EU provisioning, admin bootstrap, deployment, permissions, uploads and recovery. `npm run check` additionally requires Java 21+ for rules/backend emulator tests. Cloud deployment needs your Firebase project, billing and operator credentials; it is separate from a successful local build.
 
@@ -105,7 +105,7 @@ The small header theme button cycles System → Light → Dark → System. Syste
 ## Google Maps setup
 
 1. Copy `.env.example` to `.env.local`.
-2. Set `VITE_GOOGLE_MAPS_API_KEY` using your own Google Cloud project with Maps JavaScript API enabled.
+2. Set `VITE_GOOGLE_MAPS_API_KEY` using your own Google Cloud project with Maps JavaScript API enabled. Library cards use that same map, in satellite, framed like the editor.
 3. Optionally set `VITE_GOOGLE_MAPS_MAP_ID`; the skeleton otherwise uses `DEMO_MAP_ID`.
 4. Restart Vite.
 

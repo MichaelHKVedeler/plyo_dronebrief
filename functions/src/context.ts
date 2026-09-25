@@ -27,5 +27,5 @@ export async function requireMember(tx: Transaction, orgId: string, uid: string,
   return doc.data() as Membership
 }
 export function canManage(project: ProjectSummary, member: Membership) { return project.createdBy.uid === member.uid || member.role === 'admin' }
-export function requireActive(project: ProjectSummary) { if (project.deletedAt) throw new HttpsError('not-found', 'This project is in the trash.') }
+export function requireActive(project: ProjectSummary) { if (project.deletedAt) throw new HttpsError('not-found', 'This project is in Deleted projects.') }
 export const actorOnly = ({ uid, name }: Actor): Actor => ({ uid, name })

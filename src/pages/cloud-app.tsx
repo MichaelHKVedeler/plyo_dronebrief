@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { AppHeader } from '@/components/layout/app-header'
+import { ThemeToggle } from '@/components/layout/theme-toggle'
 import { FileDown } from 'lucide-react'
 import { BriefHeaderTitle } from '@/features/briefs/components/brief-header-title'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -87,6 +87,7 @@ export function CloudApp() {
   const projectOrganization = account.organizations.find((org) => org.id === loaded?.summary.orgId)
   const cloudBriefVisible = Boolean(loaded && (publicToken || (!snapshot && !account.loading && account.user && projectId)))
   const home = () => guard(() => goNow('/'))
+  const libraryHome = Boolean(account.user && organization && !briefScreen && (route === '/' || route === '/library'))
   const headerActions = <>
       {account.user && !publicToken && <div className={briefScreen ? 'flex items-center gap-2' : 'grid w-full min-w-0 grid-cols-[minmax(0,1fr)_auto] items-end gap-x-4 gap-y-3 sm:w-auto sm:grid-cols-[minmax(0,12rem)_minmax(9rem,12rem)_auto]'}>
         <div className={briefScreen ? 'min-w-0 text-sm' : 'col-span-2 grid min-w-0 gap-1 sm:col-span-1'}>
@@ -98,8 +99,8 @@ export function CloudApp() {
       </div>}
       {briefScreen && !publicToken && <Button variant="outline" onClick={home}>Home</Button>}
   </>
-  return <div className={briefScreen ? 'flex h-dvh min-h-0 flex-col overflow-hidden' : 'min-h-svh'}>
-    {!cloudBriefVisible && !publicToken && <AppHeader onHome={home} status={snapshot && <Badge variant="secondary">Read-only</Badge>} context={snapshot && <BriefHeaderTitle name={snapshot.brief.project.name} clientName={snapshot.brief.project.clientName} mode="view" />}>
+  return <div className={briefScreen || libraryHome ? 'flex h-dvh min-h-0 flex-col overflow-hidden' : 'min-h-svh'}>
+    {!cloudBriefVisible && !publicToken && !libraryHome && <AppHeader onHome={home} status={snapshot && <Badge variant="secondary">Read-only</Badge>} context={snapshot && <BriefHeaderTitle name={snapshot.brief.project.name} clientName={snapshot.brief.project.clientName} mode="view" />}>
       {headerActions}
       {snapshot && <Button variant="outline" onClick={() => setPdfOpen(true)}><FileDown /> Export</Button>}
     </AppHeader>}
@@ -111,9 +112,14 @@ export function CloudApp() {
       : projectId ? (loaded ? <CloudBrief key={`${account.user.uid}-${projectId}-${loadTick}`} initial={loaded} organization={projectOrganization} uid={account.user.uid} onDirty={onDirty} onOpen={openProject} onHome={home} headerActions={headerActions} /> : !error && <p role="status" className="p-6">Loading project…</p>)
       : !organization ? <main className="mx-auto grid max-w-xl gap-4 p-6"><h1 className="text-2xl font-semibold">Organization access required</h1><p>Ask an administrator to add your Google account email to an organization.</p><Button onClick={() => void account.refresh()}>Refresh access</Button><Button variant="outline" onClick={() => setImportOpen(true)}>Open portable snapshot</Button></main>
       : route === '/create' ? <>{busy && <p role="status" className="px-6">Creating your project…</p>}<CreateBriefPage onCreate={(brief) => void create(brief)} onCancel={() => goNow('/')} /></>
-      : route === '/library' ? <ProjectLibraryPage key={organization.id} organization={organization} uid={account.user.uid} onOpen={openProject} />
       : route === '/organization' && organization.role === 'admin' ? <OrganizationPage key={organization.id} organization={organization} onChange={account.refresh} />
-      : route === '/' ? <main className="mx-auto grid w-full max-w-3xl gap-6 px-6 py-12"><h1 className="text-3xl font-semibold">Plan your next shoot.</h1><div className="grid gap-4 sm:grid-cols-2"><Card><CardHeader><CardTitle>Create project</CardTitle></CardHeader><CardContent><Button onClick={() => goNow('/create')}>Create project</Button></CardContent></Card><Card><CardHeader><CardTitle>Load projects</CardTitle></CardHeader><CardContent><Button variant="outline" onClick={() => goNow('/library')}>Load projects</Button></CardContent></Card></div><div className="flex flex-wrap gap-2"><Button variant="outline" onClick={() => setImportOpen(true)}>Import portable snapshot</Button><Button variant="outline" onClick={() => void account.refresh()}>Refresh access</Button>{organization.role === 'admin' && <Button variant="outline" onClick={() => goNow('/organization')}>Manage organization</Button>}</div>{drafts.length > 0 && <section className="grid gap-3"><h2 className="text-lg font-medium">Local drafts on this device</h2>{drafts.map((draft) => <div key={draft.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border p-3"><span>{draft.project.name}</span><Button variant="outline" onClick={() => setMigrate(draft)}>Save to organization</Button></div>)}</section>}</main>
+      : route === '/' || route === '/library' ? <ProjectLibraryPage key={organization.id} organization={organization} uid={account.user.uid} onOpen={openProject} onCreate={() => goNow('/create')} drafts={drafts} onSaveDraft={setMigrate} header={<div className="flex w-full min-w-0 flex-wrap items-center justify-end gap-6">
+        <ThemeToggle className="-mx-2.5" />
+        {account.organizations.length > 1 && <Choice label="Organization" value={organization.id} onChange={(id) => { setOrgId(id); goNow('/') }} options={account.organizations.map((org) => ({ value: org.id, label: org.name }))} />}
+        {organization.role === 'admin' && <Button variant="ghost" className="-mx-2 px-2" onClick={() => goNow('/organization')}>Manage organization</Button>}
+        <span className="max-w-48 truncate text-sm leading-9" title={account.user.displayName ?? account.user.email ?? undefined}>{account.user.displayName ?? account.user.email}</span>
+        <Button variant="outline" onClick={() => guard(() => { void signOutGoogle().catch((error) => setError(cloudError(error))) })}>Sign out</Button>
+      </div>} />
       : <main className="p-6"><Problem message="This page is unavailable, or you do not have permission to open it." /></main>}
     <Dialog open={importOpen} onOpenChange={setImportOpen}><DialogContent><DialogHeader><DialogTitle>Open portable snapshot</DialogTitle><DialogDescription>A snapshot is a frozen copy. Local floorplan references may need reconnecting.</DialogDescription></DialogHeader><Problem message={error} /><Label htmlFor="snapshot-key">Export key</Label><Textarea id="snapshot-key" value={importKey} onChange={(event) => setImportKey(event.target.value)} /><Button onClick={() => { try { setSnapshot(openSession(importBriefKey(importKey), 'view')); setImportOpen(false); setError(null) } catch (error) { setError(cloudError(error)) } }}>Open read-only brief</Button></DialogContent></Dialog>
     {migrate && account.user && <MigrateDialog brief={migrate} organizations={account.organizations} uid={account.user.uid} onDirty={onDirty} onClose={() => setMigrate(null)} onSaved={(id) => { setMigrate(null); openProject(id) }} />}
