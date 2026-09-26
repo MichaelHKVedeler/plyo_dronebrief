@@ -38,7 +38,7 @@ export function AppHeader({
   const brand = <div className="flex shrink-0 items-center gap-2">
     {onHome ? <Button
       variant="ghost"
-      className="gap-3 px-0 text-base text-foreground hover:bg-transparent"
+      className="gap-3 px-3 text-base text-foreground hover:bg-transparent"
       onClick={onHome}
       aria-label="Dronebrief home"
     >

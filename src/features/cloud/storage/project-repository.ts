@@ -8,6 +8,8 @@ export const cloudProjects = {
   async load(projectId: string) { return projectSchema.parse(await callCloud('loadProject', { projectId })) },
   async save(projectId: string, expectedRevision: number, operationId: string, brief: DroneBrief, assets: AssetManifest) { return summarySchema.parse(await callCloud('saveProject', { projectId, expectedRevision, operationId, brief, assets })) },
   async trash(projectId: string, restore = false) { await callCloud('trashProject', { projectId, restore }) },
+  async purge(projectId: string) { await callCloud('purgeProject', { projectId }) },
+  async rename(projectId: string, name: string) { return summarySchema.parse(await callCloud('renameProject', { projectId, name })) },
   watch(projectId: string, onRevision: (revision: number) => void, onError: (error: Error) => void) {
     return onSnapshot(doc(firebase().db, 'projects', projectId), (snapshot) => { if (snapshot.exists()) onRevision(snapshot.get('revision') as number); else onError(new Error('Project unavailable.')) }, onError)
   },

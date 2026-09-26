@@ -23,9 +23,15 @@ export function imageCorners(overlay: ImageOverlay): Position[] {
     return imagePosition({ x: center.x + dx * Math.cos(rotation) - dy * Math.sin(rotation), y: center.y + dx * Math.sin(rotation) + dy * Math.cos(rotation) })
   })
 }
+// Screen size of the floor-plan pivot, matching an icon-sm map handle.
+export const imageAnchorRadius = 16
+export const imageAnchorHitRadius = imageAnchorRadius + 2
+export function translatePosition(origin: Position, start: Position, end: Position): Position {
+  const a = imageWorld(start), b = near(imageWorld(end), a), center = imageWorld(origin)
+  return imagePosition({ x: center.x + b.x - a.x, y: center.y + b.y - a.y })
+}
 export function moveImage(image: ImageOverlay, start: Position, end: Position): ImageOverlay {
-  const a = imageWorld(start), b = near(imageWorld(end), a), center = imageWorld(image.position)
-  return { ...image, position: imagePosition({ x: center.x + b.x - a.x, y: center.y + b.y - a.y }) }
+  return { ...image, position: translatePosition(image.position, start, end) }
 }
 export function transformImage(image: ImageOverlay, anchor: Position, start: Position, end: Position): ImageOverlay {
   const pivot = imageWorld(anchor), a = near(imageWorld(start), pivot), b = near(imageWorld(end), pivot)

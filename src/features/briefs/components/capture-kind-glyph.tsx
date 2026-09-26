@@ -1,14 +1,19 @@
-import { Circle } from 'lucide-react'
+import { Circle, Scan } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import type { CameraAngle } from '../model/brief'
 import { cameraAppearance } from './camera-appearance'
 
-export type CaptureKind = 'circleRig' | CameraAngle['type']
+export type CaptureKind = 'circleRig' | 'droneScan' | CameraAngle['type']
 
 export function CaptureKindGlyph({ kind }: { kind: CaptureKind }) {
   if (kind === 'circleRig') {
     return <span aria-hidden className="inline-flex size-8 shrink-0 items-center justify-center rounded-full border-2 border-primary bg-background text-primary shadow-sm">
       <Circle className="size-4" />
+    </span>
+  }
+  if (kind === 'droneScan') {
+    return <span aria-hidden className="inline-flex size-8 shrink-0 items-center justify-center rounded-full border-2 border-purple-700 bg-purple-50 text-purple-800 shadow-sm dark:border-purple-400 dark:bg-purple-950 dark:text-purple-200">
+      <Scan className="size-4" />
     </span>
   }
   const appearance = cameraAppearance[kind]

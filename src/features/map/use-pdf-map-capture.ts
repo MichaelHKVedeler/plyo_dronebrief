@@ -5,6 +5,9 @@ import type { PdfMapCapture, PdfMapImage } from '@/features/briefs/export/pdf-ty
 import type { MapNavigation } from './map-navigation'
 import type { MapView } from './map-view'
 import { sceneBounds, scenePoints } from './scene-bounds'
+import { droneScanOutlinePoints, hasDroneScan } from './drone-scan'
+
+export type PdfCapturePass = 'full' | 'drone-scan'
 
 export function usePdfMapCapture(ref: RefObject<PdfMapCapture | null> | undefined, { root, navigation, view, brief, sourceUrl, setCapturing, shadowSlot }: {
   root: RefObject<HTMLDivElement | null>
@@ -12,7 +15,7 @@ export function usePdfMapCapture(ref: RefObject<PdfMapCapture | null> | undefine
   view: RefObject<MapView>
   brief: DroneBrief
   sourceUrl: (overlay: ImageOverlay) => string | undefined
-  setCapturing: (value: boolean) => void
+  setCapturing: (value: PdfCapturePass | false) => void
   shadowSlot?: ShootSlot
 }) {
   useImperativeHandle(ref, () => async (signal) => {
@@ -22,25 +25,22 @@ export function usePdfMapCapture(ref: RefObject<PdfMapCapture | null> | undefine
     const saved = { ...view.current, center: { ...view.current.center } }
     const { toPng } = await import('html-to-image')
     signal.throwIfAborted()
-    flushSync(() => setCapturing(true))
+    flushSync(() => setCapturing('full'))
     try {
-      // Tighter export framing, with room for direction arrows and 360 focus.
-      navigation.fitBounds(sceneBounds(scenePoints(brief)), 56)
-      // Map SDKs animate and fetch tiles asynchronously. Wait for the provider's
-      // idle event, then two paint frames so DOM overlays match the final view.
-      await navigation.waitForIdle?.(signal)
-      if ((navigation.getZoom() ?? 0) > 18.5) {
-        navigation.setZoom(18.5)
-        await navigation.waitForIdle?.(signal)
-      }
-      await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())))
-      signal.throwIfAborted()
       const surface = root.current?.querySelector<HTMLElement>('[data-pdf-map-surface]')
       if (!surface || surface.clientWidth < 1 || surface.clientHeight < 1) throw new Error('The map could not be captured. Choose Point diagram or try again.')
-      if (surface.querySelector('[data-pdf-map-unavailable]')) throw new Error('The map is still loading or has a loading error. Wait, switch map provider, or choose Point diagram.')
-      const maps: PdfMapImage[] = []
-      for (const kind of brief.imageOverlays.length ? ['floor-plan', 'map'] as const : ['map'] as const) {
+      const frame = async (points: Parameters<typeof sceneBounds>[0]) => {
+        navigation.fitBounds(sceneBounds(points), 56)
+        await navigation.waitForIdle?.(signal)
+        if ((navigation.getZoom() ?? 0) > 18.5) {
+          navigation.setZoom(18.5)
+          await navigation.waitForIdle?.(signal)
+        }
+        await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())))
         signal.throwIfAborted()
+        if (surface.querySelector('[data-pdf-map-unavailable]')) throw new Error('Google Maps is still loading or has a loading error. Wait, or choose Point diagram.')
+      }
+      const shoot = async (kind: PdfMapImage['kind'], hideImages: boolean) => {
         let imageFailed = false
         const dataUrl = await toPng(surface, {
           pixelRatio: 2, skipFonts: true, includeQueryParams: true,
@@ -49,12 +49,25 @@ export function usePdfMapCapture(ref: RefObject<PdfMapCapture | null> | undefine
           filter: (element) => {
             if (!(element instanceof Element)) return true
             if (element.matches('iframe, [data-pdf-exclude]')) return false
-            if (kind === 'map' && element.matches('[data-image-layer]')) return false
+            if (hideImages && element.matches('[data-image-layer]')) return false
             return true
           },
         })
-        if (imageFailed || !dataUrl.startsWith('data:image/png')) throw new Error('A map image could not be captured. Retry, switch map provider, or choose Point diagram.')
-        maps.push({ kind, dataUrl, ...(shadowSlot ? { shadowSlot } : {}) })
+        if (imageFailed || !dataUrl.startsWith('data:image/png')) throw new Error('A Google Maps image could not be captured. Retry, or choose Point diagram.')
+        return { kind, dataUrl, ...(shadowSlot ? { shadowSlot } : {}) }
+      }
+      // Tighter export framing, with room for direction arrows and 360 focus.
+      await frame(scenePoints(brief))
+      const maps: PdfMapImage[] = []
+      for (const kind of brief.imageOverlays.length ? ['floor-plan', 'map'] as const : ['map'] as const) {
+        signal.throwIfAborted()
+        maps.push(await shoot(kind, kind !== 'floor-plan'))
+      }
+      if (hasDroneScan(brief.droneScan)) {
+        signal.throwIfAborted()
+        flushSync(() => setCapturing('drone-scan'))
+        await frame(droneScanOutlinePoints(brief.droneScan))
+        maps.push(await shoot('drone-scan', true))
       }
       signal.throwIfAborted()
       return maps

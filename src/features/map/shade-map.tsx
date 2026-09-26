@@ -14,6 +14,8 @@ import { idleTool, type MapTool } from './placement'
 import { shadowBuildings } from './shadow-buildings'
 import { CameraMarkers } from './camera-markers'
 import { RigObject } from './rig-object'
+import { DroneScanObject } from './drone-scan-object'
+import { hasDroneScan } from './drone-scan'
 import { ObjectRenderer } from './object-renderer'
 import { ShadeMarker, ShadePolygon } from './shade-object-renderer'
 import { metersPerPixel } from './geometry'
@@ -213,12 +215,15 @@ export function ShadeMapPanel({ imageLayer, dimOpacity, objectSizePercent, dispa
     dispatch({ type: 'update', update: (brief) => ({ ...brief, angles: brief.angles.map((item) => item.id === updated.id ? updated : item) }) })
   }, [dispatch])
   const duplicateCameraAt = useCallback((source: CameraAngle, position: Position) => { onCameraDuplicate(source, position) }, [onCameraDuplicate])
-  return <div data-pdf-map-surface className="absolute inset-0 isolate bg-muted" aria-label="ShadeMap preview" onContextMenu={(event) => { event.preventDefault(); if (editable) onToolChange(idleTool) }}>
+  return <div className="absolute inset-0 isolate bg-muted" aria-label="ShadeMap preview" onContextMenu={(event) => { event.preventDefault(); if (editable) onToolChange(idleTool) }}>
     <div ref={host} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }} />
     <div aria-hidden="true" className="pointer-events-none absolute inset-0" style={{ background: '#282828', opacity: dimOpacity / 100 }} />
     <div data-image-host className="pointer-events-none absolute inset-0" />
     {ready && map && <ShadeProjection value={map}><ObjectRenderer value={{ Marker: ShadeMarker, Polygon: ShadePolygon }}><MapObjectScale value={objectScale}>
       <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden" aria-label="Brief objects">
+        {capture.droneScan && hasDroneScan(session.brief.droneScan) && <DroneScanObject scan={session.brief.droneScan} zoom={view.zoom} editable={editable} interactive={interactive}
+          onSelect={onSelect}
+          onCommit={(next) => dispatch({ type: 'update', update: (brief) => brief.droneScan?.id === next.id ? { ...brief, droneScan: next } : brief })} />}
         {capture.circleRig && session.brief.circleRig && <RigObject rig={session.brief.circleRig} pixelsToMeters={metersPerPixel(session.brief.circleRig.position.lat, view.zoom)} dark={dark} editable={editable} interactive={interactive}
           selected={selectedId === session.brief.circleRig.id} onSelect={() => onSelect(session.brief.circleRig!.id)}
           onCommit={(rig) => dispatch({ type: 'update', update: (brief) => ({ ...brief, circleRig: brief.circleRig?.id === rig.id ? rig : brief.circleRig }) })} />}

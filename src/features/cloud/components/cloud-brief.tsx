@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { FileDown } from 'lucide-react'
 import { BriefingPage } from '@/pages/briefing-page'
-import { defaultBriefingPresentation, type BriefingPresentation } from '@/features/briefs/storage/public-brief-link'
+import { defaultBriefingPresentation, defaultOverlaySize, type BriefingPresentation } from '@/features/briefs/storage/public-brief-link'
 import { PdfExportDialog, type ExportLink } from '@/features/briefs/components/pdf-export-dialog'
 import { AppHeader } from '@/components/layout/app-header'
 import { Badge } from '@/components/ui/badge'
@@ -38,7 +38,7 @@ export function CloudBrief({ initial, publicToken, presentation = defaultBriefin
   const [share, setShare] = useState(false); const [key, setKey] = useState<string | null>(null); const [reloadConfirm, setReloadConfirm] = useState(false)
   const [pdfOpen, setPdfOpen] = useState(false)
   const pdfMapRef = useRef<PdfMapCapture | null>(null)
-  const overlaySizeRef = useRef(100)
+  const overlaySizeRef = useRef(defaultOverlaySize)
   const [copying, setCopying] = useState(false); const copyOperation = useRef(crypto.randomUUID())
   const copyRequest = useRef<{ project: CloudProject; brief: CloudProject['brief']; assets: AssetManifest } | null>(null)
   const alive = useRef(true); const observedRevision = useRef(initial.summary.revision)

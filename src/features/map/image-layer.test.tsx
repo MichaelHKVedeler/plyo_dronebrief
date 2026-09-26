@@ -2,6 +2,7 @@ import { afterEach, expect, it, vi } from 'vitest'
 import { cleanup, render } from '@testing-library/react'
 import type { Map as LibreMap } from 'maplibre-gl'
 import { ImageLayer } from './image-layer'
+import { imageAnchorRadius } from './image-geometry'
 import { ShadeProjection } from './shade-projection'
 import type { ImageLayerState } from './image-interaction'
 
@@ -50,6 +51,26 @@ it('keeps Google imagery in pane coordinates throughout fractional zoom', () => 
   expect(svg.style.left).toBe('0px')
   expect(svg.style.overflow).toBe('visible')
   expect(insert).not.toHaveBeenCalled()
+})
+
+it('draws the selected anchor as a round primary control', () => {
+  const surface = document.createElement('div')
+  surface.innerHTML = '<div data-map></div><div data-image-host></div>'
+  document.body.append(surface)
+  const map = {
+    getContainer: () => surface.firstElementChild,
+    project: ([lng, lat]: number[]) => ({ x: lng + 40, y: lat + 24 }),
+    on: () => {}, off: vi.fn(),
+  }
+  render(<ShadeProjection value={map as unknown as LibreMap}><ImageLayer {...state} editable interactive selectedId="image" /></ShadeProjection>)
+  const anchor = surface.querySelector('[data-image-anchor]')!
+  const disc = anchor.querySelector('circle')!
+  expect(disc.getAttribute('fill')).toBe('var(--card)')
+  expect(disc.getAttribute('stroke')).toBe('var(--primary)')
+  expect(disc.getAttribute('r')).toBe(String(imageAnchorRadius - 1))
+  expect(anchor.querySelector('path')!.getAttribute('stroke')).toBe('var(--primary)')
+  expect(anchor.getAttribute('transform')).toBe('translate(40 24)')
+  expect(anchor.getAttribute('stroke')).toBeNull()
 })
 
 it('updates ShadeMap imagery in each render frame without reinserting the image', () => {

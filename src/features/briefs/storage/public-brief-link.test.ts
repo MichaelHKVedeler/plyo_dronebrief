@@ -43,5 +43,5 @@ it('rejects malformed public routes', () => {
 it('builds an origin link from the current location', () => {
   history.replaceState(null, '', '/app?x=1')
   expect(publicShareLink(token, { language: 'nb', address: '', includeProjectName: true, includeClientName: false, overlaySize: 100 }))
-    .toBe(`${location.origin}/app?x=1#/s/${token}?lang=nb&client=0`)
+    .toBe(`${location.origin}/app?x=1#/s/${token}?lang=nb&client=0&size=100`)
 })

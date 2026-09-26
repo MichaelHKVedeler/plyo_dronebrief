@@ -6,6 +6,7 @@ export type RigLineDragProps = {
   rig: CircleRig
   interactive: boolean
   strokeWidth: number
+  hitRadius?: number
   onStart: () => void
   onPreview: (position: Position) => void
   onCommit: (position: Position) => void
@@ -13,6 +14,9 @@ export type RigLineDragProps = {
   onHoverChange?: (hovered: boolean) => void
 }
 export type RigProjection = { project: (point: Position) => Pixel | null; unproject: (point: Pixel) => Position | null }
+
+// Each outline owns its feedback; a non-hovered sibling must not clear it.
+const cursorOwners = new WeakMap<HTMLElement, Map<symbol, string>>()
 
 function segmentDistance(point: Pixel, a: Pixel, b: Pixel) {
   const dx = b.x - a.x, dy = b.y - a.y
@@ -28,9 +32,18 @@ export function attachRigLineDrag(surface: HTMLElement, projection: RigProjectio
   let drag: { id: number; x: number; y: number; center: Pixel; started: boolean } | null = null
   let suppressClick = false
   let hovered = false
+  const cursorOwner = Symbol()
   const feedback = (next: boolean, dragging = false) => {
-    if (next) surface.setAttribute('data-rig-move-cursor', dragging ? 'grabbing' : 'grab')
-    else surface.removeAttribute('data-rig-move-cursor')
+    const owners = cursorOwners.get(surface) ?? new Map<symbol, string>()
+    if (next) owners.set(cursorOwner, dragging ? 'grabbing' : 'grab')
+    else owners.delete(cursorOwner)
+    if (owners.size) {
+      cursorOwners.set(surface, owners)
+      surface.setAttribute('data-rig-move-cursor', [...owners.values()].includes('grabbing') ? 'grabbing' : 'grab')
+    } else {
+      cursorOwners.delete(surface)
+      surface.removeAttribute('data-rig-move-cursor')
+    }
     if (next !== hovered) { hovered = next; latest().onHoverChange?.(next) }
   }
   const stop = (event: Event) => { event.preventDefault(); event.stopImmediatePropagation() }
@@ -54,7 +67,7 @@ export function attachRigLineDrag(surface: HTMLElement, projection: RigProjectio
     const pointer = { x: event.clientX - rect.left, y: event.clientY - rect.top }
     const path = rigOutline(props.rig).map(projection.project)
     if (path.some((p) => !p)) return false
-    const nearOutline = (point: Pixel) => path.some((p, i) => segmentDistance(point, p!, path[(i + 1) % path.length]!) <= Math.max(rigOutlineHitRadius, props.strokeWidth / 2))
+    const nearOutline = (point: Pixel) => path.some((p, i) => segmentDistance(point, p!, path[(i + 1) % path.length]!) <= (props.hitRadius ?? Math.max(rigOutlineHitRadius, props.strokeWidth / 2)))
     if (forHover) {
       const containsPointer = (element: Element) => {
         const bounds = element.getBoundingClientRect()

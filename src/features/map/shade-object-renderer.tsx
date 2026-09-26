@@ -1,4 +1,4 @@
-import { forwardRef, useContext, useRef, useEffect, useLayoutEffect, type PointerEvent } from 'react'
+import { forwardRef, useContext, useRef, useEffect, useLayoutEffect, type MouseEvent as ReactMouseEvent, type PointerEvent } from 'react'
 import type { PolygonProps } from '@vis.gl/react-google-maps'
 import { ShadeProjection } from './shade-projection'
 import type { ObjectMarkerProps } from './object-renderer'
@@ -6,6 +6,34 @@ import type { Position } from '@/features/briefs/model/brief'
 import { rigOutlineHitRadius } from './geometry'
 
 const literal = (point: google.maps.LatLng | google.maps.LatLngLiteral): Position => 'toJSON' in point ? point.toJSON() : point
+
+function isPosition(value: unknown): value is Position {
+  return !!value && typeof value === 'object' && 'lat' in value && 'lng' in value
+}
+
+function polygonRings(paths: PolygonProps['paths']): Position[][] {
+  if (!Array.isArray(paths) || paths.length === 0) return []
+  if (isPosition(paths[0])) return [paths as Position[]]
+  return (paths as unknown[]).filter((ring): ring is Position[] => Array.isArray(ring) && ring.every(isPosition))
+}
+
+function ringPoints(map: { project: (point: [number, number]) => { x: number; y: number } }, ring: Position[]) {
+  return ring.map((point) => {
+    const projected = map.project([point.lng, point.lat])
+    return `${projected.x},${projected.y}`
+  }).join(' ')
+}
+
+function ringsPath(map: { project: (point: [number, number]) => { x: number; y: number } }, rings: Position[][]) {
+  return rings.map((ring) => {
+    const points = ring.map((point) => {
+      const projected = map.project([point.lng, point.lat])
+      return `${projected.x},${projected.y}`
+    })
+    if (!points.length) return ''
+    return `M ${points[0]} ` + points.slice(1).map((point) => `L ${point}`).join(' ') + ' Z'
+  }).join(' ')
+}
 
 function listenToRender(map: { on?(event: string, listener: () => void): void; off?(event: string, listener: () => void): void }, sync: () => void) {
   sync()
@@ -86,25 +114,33 @@ export const ShadeMarker = forwardRef<google.maps.marker.AdvancedMarkerElement, 
 export const ShadePolygon = forwardRef<google.maps.Polygon, PolygonProps>(function ShadePolygon(props, _ref) {
   const map = useContext(ShadeProjection)!
   const visual = useRef<SVGPolygonElement>(null)
+  const visualPath = useRef<SVGPathElement>(null)
   const hit = useRef<SVGPolygonElement>(null)
   const pathsRef = useRef(props.paths)
   useLayoutEffect(() => { pathsRef.current = props.paths })
   useLayoutEffect(() => listenToRender(map, () => {
-    const points = (pathsRef.current as Position[]).map((point) => {
-      const p = map.project([point.lng, point.lat])
-      return `${p.x},${p.y}`
-    }).join(' ')
+    const rings = polygonRings(pathsRef.current)
+    if (rings.length > 1) { visualPath.current?.setAttribute('d', ringsPath(map, rings)); return }
+    const points = ringPoints(map, rings[0] ?? [])
     visual.current?.setAttribute('points', points)
     hit.current?.setAttribute('points', points)
   }), [map])
-  const points = (props.paths as Position[]).map((point) => { const p = map.project([point.lng, point.lat]); return `${p.x},${p.y}` }).join(' ')
+  const rings = polygonRings(props.paths)
+  const holed = rings.length > 1
+  const points = holed ? '' : ringPoints(map, rings[0] ?? [])
+  const paint = {
+    stroke: props.strokeColor ?? undefined, strokeWidth: props.strokeWeight ?? undefined,
+    fill: props.fillColor ?? undefined, fillOpacity: props.fillOpacity ?? undefined,
+    style: { pointerEvents: props.clickable ? 'auto' as const : 'none' as const, touchAction: 'none' as const },
+    onMouseEnter: (e: ReactMouseEvent) => props.onMouseOver?.({ domEvent: e.nativeEvent } as google.maps.MapMouseEvent),
+    onMouseLeave: (e: ReactMouseEvent) => props.onMouseOut?.({ domEvent: e.nativeEvent } as google.maps.MapMouseEvent),
+    onClick: (e: ReactMouseEvent) => { e.stopPropagation(); props.onClick?.({ domEvent: e.nativeEvent } as google.maps.MapMouseEvent) },
+  }
   return <svg className="pointer-events-none absolute inset-0 size-full overflow-visible">
-    <polygon ref={visual} data-shade-pan-surface points={points} stroke={props.strokeColor ?? undefined} strokeWidth={props.strokeWeight ?? undefined} fill={props.fillColor ?? undefined} fillOpacity={props.fillOpacity ?? undefined}
-      style={{ pointerEvents: props.clickable ? 'auto' : 'none', touchAction: 'none' }}
-      onMouseEnter={(e) => props.onMouseOver?.({ domEvent: e.nativeEvent } as google.maps.MapMouseEvent)}
-      onMouseLeave={(e) => props.onMouseOut?.({ domEvent: e.nativeEvent } as google.maps.MapMouseEvent)}
-      onClick={(e) => { e.stopPropagation(); props.onClick?.({ domEvent: e.nativeEvent } as google.maps.MapMouseEvent) }} />
-    {props.clickable && <polygon ref={hit} data-shade-object data-rig-outline points={points} fill="none" stroke="transparent" strokeWidth={Math.max(rigOutlineHitRadius * 2, props.strokeWeight ?? 0)}
+    {holed
+      ? <path ref={visualPath} data-shade-pan-surface d={ringsPath(map, rings)} fillRule="evenodd" {...paint} />
+      : <polygon ref={visual} data-shade-pan-surface points={points} {...paint} />}
+    {props.clickable && !holed && <polygon ref={hit} data-shade-object data-rig-outline points={points} fill="none" stroke="transparent" strokeWidth={Math.max(rigOutlineHitRadius * 2, props.strokeWeight ?? 0)}
       style={{ pointerEvents: 'stroke', touchAction: 'none', cursor: 'pointer' }}
       onMouseEnter={(e) => props.onMouseOver?.({ domEvent: e.nativeEvent } as google.maps.MapMouseEvent)}
       onMouseLeave={(e) => props.onMouseOut?.({ domEvent: e.nativeEvent } as google.maps.MapMouseEvent)}

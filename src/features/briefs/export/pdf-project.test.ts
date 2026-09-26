@@ -31,6 +31,14 @@ it('includes rig positions in the size and coordinate list, using the rig for lo
   expect(points[1].position).not.toEqual(brief.circleRig.position)
   expect(points[1].direction).toBeGreaterThanOrEqual(0)
 })
+it('classifies from the tallest 360 height override', () => {
+  const brief = briefWith(0, 1, 0, 2)
+  expect(pdfProjectSize(brief)).toBe('mini')
+  const point = brief.angles[0]
+  if (point.type !== '360') throw new Error('expected a 360 point')
+  point.heightsMeters = [1, 2, 3, 4, 5, 6, 7]
+  expect(pdfProjectSize(brief)).toBe('large')
+})
 it('uses the first camera, then the project coordinate if there is no rig', () => {
   const brief = briefWith(1, 0, 0)
   brief.angles[0].position = { lat: 40, lng: -74 }

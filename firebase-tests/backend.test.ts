@@ -6,7 +6,7 @@ import { ref, uploadBytes, getBytes } from 'firebase/storage'
 import sharp from 'sharp'
 import { db, bucket, emailKey, principal } from '../functions/src/context'
 import { initializeAccount, manageOrganization, createOrganization } from '../functions/src/organizations'
-import { createProject, loadProject, saveProject, trashProject } from '../functions/src/projects'
+import { createProject, loadProject, purgeProject, renameProject, saveProject, trashProject } from '../functions/src/projects'
 import { prepareUpload, finalizeUpload, copyAsset } from '../functions/src/assets'
 import { cleanup as cleanExpired } from '../functions/src/cleanup'
 import { shareProject, loadPublicProject, publicAsset } from '../functions/src/sharing'
@@ -120,6 +120,21 @@ describe('projects and persistence', () => {
     await cleanExpired()
     expect((await db.doc(`projects/${project.summary.id}`).get()).exists).toBe(false)
   })
+  it('renames the stored brief and permanently deletes only a trashed project', async () => {
+    const project = await create()
+    await expect(renameProject(outsider, { projectId: project.summary.id, name: 'Stolen' })).rejects.toMatchObject({ code: 'permission-denied' })
+    const renamed = await renameProject(member, { projectId: project.summary.id, name: 'Renamed project' })
+    expect(renamed.name).toBe('Renamed project')
+    expect(renamed.revision).toBe(2)
+    expect((await loadProject(owner, { projectId: project.summary.id })).brief.project.name).toBe('Renamed project')
+    await expect(purgeProject(owner, { projectId: project.summary.id })).rejects.toThrow('Deleted projects')
+    await expect(purgeProject(member, { projectId: project.summary.id })).rejects.toMatchObject({ code: 'permission-denied' })
+    await trashProject(owner, { projectId: project.summary.id })
+    await expect(renameProject(owner, { projectId: project.summary.id, name: 'Still gone' })).rejects.toThrow('Deleted projects')
+    await purgeProject(owner, { projectId: project.summary.id })
+    expect((await db.doc(`projects/${project.summary.id}`).get()).exists).toBe(false)
+    await expect(loadProject(owner, { projectId: project.summary.id })).rejects.toMatchObject({ code: 'not-found' })
+  })
 })
 
 describe('rules and optimized assets', () => {
@@ -177,6 +192,18 @@ describe('rules and optimized assets', () => {
 })
 
 describe('library and personal collections', () => {
+  it('stores the editor map frame and restores it when an older project is listed', async () => {
+    const project = await create()
+    expect(project.summary.map).toEqual({ lat: 59.9139, lng: 10.7522, zoom: 10 })
+    const ref = db.doc(`projects/${project.summary.id}`)
+    const stored = (await ref.get()).data()!
+    delete stored.map
+    await ref.set(stored)
+    await updateProjection(owner.uid, project.summary.id)
+    const page = await listLibrary(owner, { orgId: 'org', view: 'mine' })
+    expect(page.projects[0].map).toEqual({ lat: 59.9139, lng: 10.7522, zoom: 10 })
+    expect((await db.doc(`projects/${project.summary.id}`).get()).get('map')).toEqual({ lat: 59.9139, lng: 10.7522, zoom: 10 })
+  })
   it('keeps collection assignments personal and refreshes projections from current source data', async () => {
     const project = await create(); const id = crypto.randomUUID()
     await collections(owner, { orgId: 'org', action: 'create', id, name: 'Private collection' })

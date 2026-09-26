@@ -43,6 +43,7 @@ export function RigObject({ rig, pixelsToMeters, dark = false, editable, interac
   // A 400 px radius uses the base symbol sizes, including during resize previews.
   const radiusScale = visible.radiusMeters / pixelsToMeters / 400
   const scale = radiusScale
+  const numberScale = compact ? compactRigNumberScale : 1
   const baseStroke = rigHovered ? 6 : 5
   const outlineStroke = baseStroke * radiusScale * (compact ? compactRigStrokeScale : 1)
   const path = useMemo(() => rigOutline(visible), [visible])
@@ -55,7 +56,7 @@ export function RigObject({ rig, pixelsToMeters, dark = false, editable, interac
     if (canEdit) onCommit(value)
   }
   function start() { if (canEdit) onSelect() }
-  return <MapObjectScale value={scale}>
+  return <MapObjectScale value={scale * numberScale}>
     <Polygon paths={path} draggable={false} clickable={false}
       strokeColor={color} strokeWeight={canEdit && (rigHovered || draft !== null) ? Math.max(6, 8 * scale) * (compact ? compactRigStrokeScale : 1) : outlineStroke}
       fillOpacity={0} />
@@ -69,7 +70,7 @@ export function RigObject({ rig, pixelsToMeters, dark = false, editable, interac
         <Navigation className="size-8 fill-white" size={32} strokeWidth={2} absoluteStrokeWidth
           style={{ color, transform: `rotate(${arrow.directionDegrees - 45}deg) scale(${arrowScale})` }} />
         </div>
-        <Badge data-rig-hover variant="outline" style={{ borderColor: color, borderWidth: baseStroke, color, zoom: compact ? compactRigNumberScale : 1 }} className="bg-white absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 size-10 justify-center rounded-full p-0 text-lg font-semibold leading-none tabular-nums">{arrow.number}</Badge>
+        <Badge data-rig-hover variant="outline" style={{ borderColor: color, borderWidth: baseStroke, color, zoom: numberScale }} className="bg-white absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 size-10 justify-center rounded-full p-0 text-lg font-semibold leading-none tabular-nums">{arrow.number}</Badge>
       </div>
     </AdvancedMarker>)}
     <RigLineDragController rig={visible} interactive={canEdit} strokeWidth={outlineStroke}

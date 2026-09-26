@@ -231,3 +231,22 @@ it('leaves the rig interior to map navigation, omits the center icon and commits
   drag(screen.getByRole('button', { name: 'Scale and rotate circle rig' }))
   expect(commit.mock.lastCall![0].radiusMeters).not.toBe(80)
 })
+
+it.each([false, true])('keeps both rig handles proportional to the numbers across radius and zoom (compact: %s)', (compact) => {
+  vi.stubGlobal('matchMedia', () => ({ matches: compact, addEventListener: vi.fn(), removeEventListener: vi.fn() }))
+  const rig: CircleRig = { id: 'rig', position: { lat: 60, lng: 10 }, arrowCount: 10, radiusMeters: 400, ovalRatio: 0.6, rotationDegrees: 0 }
+  const commit = vi.fn()
+  const scene = (radiusMeters: number, pixelsToMeters: number) => <Surface><canvas /><MapObjectScale value={9}>
+    <RigObject rig={{ ...rig, radiusMeters }} pixelsToMeters={pixelsToMeters} editable interactive selected onSelect={vi.fn()} onCommit={commit} />
+  </MapObjectScale></Surface>
+  const view = render(scene(400, 1))
+  for (const [radius, metersPerPixel] of [[400, 1], [800, 1], [800, 2], [120, 3.5]]) {
+    view.rerender(scene(radius, metersPerPixel))
+    fireEvent.pointerMove(view.container.querySelector('canvas')!, { clientX: 10, clientY: 60 })
+    const badgeScale = Number(screen.getByText('1').style.zoom) * Number(screen.getByRole('img', { name: 'Rig arrow 1, pointing toward center' }).style.zoom)
+    for (const label of ['Scale and rotate circle rig', 'Adjust rig ovalness']) {
+      expect(Number(screen.getByRole('button', { name: label }).style.zoom)).toBeCloseTo(badgeScale)
+    }
+  }
+  expect(commit).not.toHaveBeenCalled()
+})

@@ -5,7 +5,7 @@ import { setGlobalOptions } from 'firebase-functions/v2'
 import { z } from 'zod'
 import { db, now, principal } from './context.js'
 import { createOrganization, initializeAccount, manageOrganization } from './organizations.js'
-import { createProject, loadProject, saveProject, trashProject } from './projects.js'
+import { createProject, loadProject, purgeProject, renameProject, saveProject, trashProject } from './projects.js'
 import { prepareUpload, finalizeUpload, copyAsset } from './assets.js'
 import { collections, listLibrary, processIndexJob } from './library.js'
 import { loadPublicProject, publicAsset, shareProject } from './sharing.js'
@@ -24,6 +24,8 @@ export const api = onCall({ memory: '2GiB', timeoutSeconds: 300, concurrency: 1 
       case 'loadProject': return await loadProject(user, data)
       case 'saveProject': return await saveProject(user, data)
       case 'trashProject': return await trashProject(user, data)
+      case 'purgeProject': return await purgeProject(user, data)
+      case 'renameProject': return await renameProject(user, data)
       case 'prepareUpload': return await prepareUpload(user, data)
       case 'finalizeUpload': return await finalizeUpload(user, data)
       case 'copyAsset': return await copyAsset(user, data)

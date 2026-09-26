@@ -1,6 +1,6 @@
-import { expect, it, vi } from 'vitest'
+import { afterEach, expect, it, vi } from 'vitest'
 import { useEffect, useState } from 'react'
-import { render, screen, within } from '@testing-library/react'
+import { cleanup, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { ReactNode } from 'react'
 import { createBrief } from '@/features/briefs/model/brief'
@@ -8,8 +8,14 @@ import { openSession, reduceSession } from '@/features/briefs/state/brief-sessio
 import { defaultBriefingPresentation } from '@/features/briefs/storage/public-brief-link'
 import { BriefingPage } from './briefing-page'
 
+afterEach(cleanup)
 vi.mock('@/features/map/map-panel', () => ({
-  MapPanel: ({ layerControls }: { layerControls?: ReactNode }) => <div role="region" aria-label="Brief map">{layerControls}</div>,
+  MapPanel: ({ layerControls, onSelectCamera, pointCallout }: { layerControls?: ReactNode; onSelectCamera?: (id: string, additive: boolean) => void; pointCallout?: ReactNode }) => <div role="region" aria-label="Brief map">
+    <button type="button" onClick={() => onSelectCamera?.('p1', false)}>Select 360 point</button>
+    <button type="button" onClick={() => onSelectCamera?.('d1', false)}>Select drone point</button>
+    {layerControls}
+    {pointCallout}
+  </div>,
 }))
 
 it('keeps the map in place and scrolls project details inside the information overlay', async () => {
@@ -39,6 +45,25 @@ it('keeps the map in place and scrolls project details inside the information ov
   expect(screen.queryByRole('button', { name: 'Project information' })).not.toBeInTheDocument()
   await user.click(screen.getByRole('button', { name: 'Close project information' }))
   expect(screen.getByRole('button', { name: 'Project information' })).toBeVisible()
+})
+
+it('shows the clicked point heights, including a 360 override', async () => {
+  const brief = createBrief({ name: 'Cloud project', clientName: 'Client', date: '2026-05-16', times: ['09:00'] })
+  brief.angles = [
+    { id: 'd1', label: 'D1', type: 'drone-image', position: brief.coordinates, directionDegrees: 20 },
+    { id: 'p1', label: 'P1', type: '360', position: brief.coordinates, heightsMeters: [11, 14] },
+  ]
+  const user = userEvent.setup()
+  render(<BriefingPage session={openSession(brief, 'view')} dispatch={() => {}} error={null} presentation={defaultBriefingPresentation} />)
+  await user.click(screen.getByRole('button', { name: 'Select 360 point' }))
+  const heights = screen.getByRole('status', { name: '360 1 Heights' })
+  expect(heights).toHaveTextContent('11 m, 14 m')
+  expect(heights).toHaveTextContent('Custom heights')
+  expect(heights).not.toHaveTextContent('360 1')
+  await user.click(screen.getByRole('button', { name: 'Select drone point' }))
+  expect(screen.getByRole('status', { name: 'Drone image 1 Heights' })).toHaveTextContent('40 m, 60 m')
+  await user.click(screen.getByRole('button', { name: 'Close point heights' }))
+  expect(screen.queryByRole('status', { name: /Heights/ })).not.toBeInTheDocument()
 })
 
 it('hides the floorplan from the public map without writing the brief', async () => {

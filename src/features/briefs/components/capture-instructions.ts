@@ -1,4 +1,4 @@
-import type { DroneBrief } from '../model/brief'
+import { effectivePanoramaHeights, type DroneBrief } from '../model/brief'
 import { countBriefImages } from '../model/image-count'
 import type { PdfLanguage } from '../export/pdf-copy'
 import { briefingCopy } from './briefing-copy'
@@ -24,7 +24,9 @@ export function captureInstructions(brief: DroneBrief, language: PdfLanguage): C
   const copy = briefingCopy[language]
   const counts = countBriefImages(brief)
   const droneHeights = formatCaptureHeights(brief.typeSettings['drone-image'].heightsMeters)
-  const panoramaHeights = formatCaptureHeights(brief.typeSettings['360'].heightsMeters)
+  const panoramaLists = brief.angles.flatMap((angle) => angle.type === '360'
+    ? [formatCaptureHeights(effectivePanoramaHeights(brief.typeSettings['360'].heightsMeters, angle))] : [])
+  const panoramaHeights = panoramaLists.every((list) => list === panoramaLists[0]) ? (panoramaLists[0] ?? '') : copy.perPoint
   const dronePoints = brief.angles.filter((angle) => angle.type === 'drone-image').length
   const panoramaPoints = brief.angles.filter((angle) => angle.type === '360').length
   const dslrPoints = brief.angles.filter((angle) => angle.type === 'dslr').length

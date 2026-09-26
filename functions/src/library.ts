@@ -3,6 +3,8 @@ import { FieldPath, type Query } from 'firebase-admin/firestore'
 import { HttpsError } from 'firebase-functions/v2/https'
 import { z } from 'zod'
 import { cloudId, cloudName, libraryQuerySchema, namePrefixes, normalizeName, summarySchema, type Actor, type ProjectSummary } from '../../src/features/cloud/model/cloud.js'
+import { editorMapView, mapViewSchema } from '../../src/features/cloud/model/map-view.js'
+import { readBody } from './body.js'
 import { db, hash, memberRef, now, projectRef, requireMember } from './context.js'
 
 export async function updateProjection(uid: string, projectId: string) {
@@ -66,6 +68,7 @@ export async function listLibrary(user: Actor, input: unknown) {
   const page = await query.limit(51).get()
   const documents = page.docs.slice(0, 50)
   // An index is not an authorization boundary. Recheck membership and project state at response time.
+  const missingMaps: string[] = []
   const projects = await db.runTransaction(async (tx) => {
     await requireMember(tx, data.orgId, user.uid, data.view === 'trash')
     const current = documents.length ? await tx.getAll(...documents.map((doc) => projectRef(doc.id))) : []
@@ -73,13 +76,37 @@ export async function listLibrary(user: Actor, input: unknown) {
       if (!doc.exists || doc.get('orgId') !== data.orgId || Boolean(doc.get('deletedAt')) !== (data.view === 'trash')) return []
       const item = summarySchema.parse(doc.data())
       if (creator && item.createdBy.uid !== creator) return []
+      const count = doc.get('chunkCount')
+      if (!item.map && Number.isInteger(count) && count >= 1 && count <= 5) missingMaps.push(doc.id)
       return [{ ...item, collectionId: documents[i].get('collectionId'), collectionName: documents[i].get('collectionName') }]
     })
   })
+  await Promise.all(missingMaps.map(async (id) => {
+    const map = await storedMap(id)
+    const project = projects.find((item) => item.id === id)
+    if (project && map) project.map = map
+  }))
   const last = documents.at(-1)
   const cursor = page.size > 50 && last ? Buffer.from(JSON.stringify({ signature, value: last.get(sort), id: last.id })).toString('base64url') : null
   const membership = await db.doc(`users/${user.uid}/organizations/${data.orgId}`).get()
   return { projects, cursor, indexing: membership.get('indexing') === true }
+}
+
+async function storedMap(projectId: string) {
+  try {
+    return await db.runTransaction(async (tx) => {
+      const ref = projectRef(projectId)
+      const doc = await tx.get(ref)
+      if (!doc.exists) return undefined
+      const stored = mapViewSchema.safeParse(doc.get('map'))
+      if (stored.success) return stored.data
+      const count = doc.get('chunkCount')
+      if (!Number.isInteger(count) || count < 1 || count > 5) return undefined
+      const map = editorMapView((await readBody(tx, ref, count)).brief)
+      tx.update(ref, { map })
+      return map
+    })
+  } catch { return undefined }
 }
 
 export async function collections(user: Actor, input: unknown) {

@@ -1,10 +1,13 @@
+import { DroneScanEditing } from '@/features/briefs/state/drone-scan-editing'
 import { defaultRigArrowCount, type Position } from '@/features/briefs/model/brief'
+import { addDroneScanCircle, type ScanRole } from '@/features/map/drone-scan'
 import { useEffect, useRef, useState, type ReactNode, type RefObject } from 'react'
 import type { PdfMapCapture } from '@/features/briefs/export/pdf-types'
 import { Card, CardContent } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import { ResizableWorkspace } from '@/components/layout/resizable-workspace'
 import { MapPanel } from '@/features/map/map-panel'
 import { ProjectPanel } from '@/features/briefs/components/project-panel'
 import { LayersPanel } from '@/features/briefs/components/layers-panel'
@@ -15,10 +18,12 @@ import type { BriefAction, BriefSession } from '@/features/briefs/state/brief-se
 import type { ImageTransport } from '@/features/briefs/storage/image-transport'
 
 export function BriefPage({ session, dispatch, error, pdfMapRef, imageTransport, overlaySizeRef, statusLeading, statusTrailing }: { session: BriefSession; dispatch: (action: BriefAction) => void; error: string | null; pdfMapRef?: RefObject<PdfMapCapture | null>; imageTransport?: ImageTransport; overlaySizeRef?: RefObject<number>; statusLeading?: ReactNode; statusTrailing?: ReactNode }) {
+  const [scanLocked, setScanLocked] = useState(true)
   const images = useLocalImages(session.brief.imageOverlays, imageTransport)
   const referenceImages = useLocalImages(session.brief.references, imageTransport)
   const [focusPosition, setFocusPosition] = useState<Position | null>(null)
   const pendingRig = useRef<string | null>(null)
+  const pendingScan = useRef<string | null>(null)
   const viewCenter = useRef(session.brief.coordinates)
   const rigPlacement = useRef<(() => { position: Position; radiusMeters: number }) | null>(null)
   function addRig() {
@@ -36,6 +41,29 @@ export function BriefPage({ session, dispatch, error, pdfMapRef, imageTransport,
       if (!session.visibility.circleRig) dispatch({ type: 'visibility', layer: 'circleRig', visible: true })
     }
   }, [dispatch, session.brief.circleRig, session.visibility.circleRig])
+  function addScan(role: ScanRole) {
+    if (session.mode !== 'edit') return
+    if (role === 'high' && session.brief.droneScan?.highRes) return
+    if (role === 'low' && session.brief.droneScan?.lowRes) return
+    const placement = rigPlacement.current?.() ?? { position: { ...viewCenter.current }, radiusMeters: 50 }
+    const ids = { scanId: session.brief.droneScan?.id ?? crypto.randomUUID(), circleId: crypto.randomUUID() }
+    pendingScan.current = ids.circleId
+    dispatch({ type: 'update', update: (brief) => {
+      if (role === 'high' && brief.droneScan?.highRes) return brief
+      if (role === 'low' && brief.droneScan?.lowRes) return brief
+      return { ...brief, droneScan: addDroneScanCircle(brief.droneScan, role, placement, ids) }
+    } })
+    setTool(idleTool)
+    select(ids.circleId)
+  }
+  useEffect(() => {
+    const id = pendingScan.current
+    const scan = session.brief.droneScan
+    if (id && (scan?.highRes?.id === id || scan?.lowRes?.id === id)) {
+      pendingScan.current = null
+      if (!session.visibility.droneScan) dispatch({ type: 'visibility', layer: 'droneScan', visible: true })
+    }
+  }, [dispatch, session.brief.droneScan, session.visibility.droneScan])
   const [tool, setTool] = useState<MapTool>(idleTool)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [selectedCameraIds, setSelectedCameraIds] = useState<string[]>([])
@@ -81,7 +109,7 @@ export function BriefPage({ session, dispatch, error, pdfMapRef, imageTransport,
     setSelectedCameraIds([])
     setTool(startCameraPlacement(type))
   }
-  return <main className="flex min-h-0 w-full min-w-0 flex-1 flex-col overflow-y-auto lg:overflow-visible">
+  return <DroneScanEditing value={{ locked: scanLocked, setLocked: setScanLocked }}><main className="flex min-h-0 w-full min-w-0 flex-1 flex-col overflow-y-auto lg:overflow-visible">
     <div className="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-2 border-b px-4 py-2 text-sm">
       {statusLeading}
       <ShootTimes brief={session.brief} />
@@ -89,15 +117,14 @@ export function BriefPage({ session, dispatch, error, pdfMapRef, imageTransport,
     </div>
     <div className="flex min-h-0 min-w-0 flex-1 flex-col p-3 sm:px-4">
     {error && <Alert variant="destructive" className="mb-4 max-h-28 shrink-0 overflow-y-auto"><AlertDescription>{error}</AlertDescription></Alert>}
-    <div className="grid min-h-0 flex-1 grid-rows-[minmax(480px,1fr)_minmax(360px,1fr)] gap-3 lg:grid-cols-[minmax(0,1fr)_360px] lg:grid-rows-[minmax(0,1fr)]">
-      <MapPanel pdfMapRef={pdfMapRef} images={images} rigPlacementRef={rigPlacement} overlaySizeRef={overlaySizeRef} focusPosition={focusPosition} onViewCenterChange={(center) => { viewCenter.current = center }} selectedCameraIds={selectedCameraIds} onSelectCamera={selectCamera} session={session} dispatch={dispatch} tool={tool} onToolChange={setTool} selectedId={selectedId} onSelect={select} />
-      <aside className="min-h-0 min-w-0" aria-label="Brief details">
+    <ResizableWorkspace sidebar={
+      <aside className="h-full min-h-0 min-w-0" aria-label="Brief details">
         <Card className="h-full min-h-0 overflow-hidden py-0"><CardContent className="flex min-h-0 flex-1 flex-col px-0">
           <Tabs defaultValue="project" className="min-h-0 flex-1 gap-0">
             <TabsList className="mx-4 my-4 w-auto shrink-0"><TabsTrigger value="project">Project</TabsTrigger><TabsTrigger value="contents">Contents</TabsTrigger></TabsList>
-            <ScrollArea type="always" className="min-h-0 flex-1 [&_[data-slot=scroll-area-viewport]]:overscroll-contain">
+            <ScrollArea type="always" className="min-h-0 flex-1 [&_[data-slot=scroll-area-viewport]]:overscroll-contain [&_[data-slot=scroll-area-viewport]>div]:block! [&_[data-slot=scroll-area-viewport]>div]:w-full! [&_[data-slot=scroll-area-viewport]>div]:min-w-0!">
               <div className="px-4 pb-4">
-                <TabsContent value="project"><ProjectPanel onCenterCamera={(angle) => setFocusPosition({ ...angle.position })} onAddRig={addRig} selectedCameraIds={selectedCameraIds} onSelectCamera={selectCamera} onRemoveCameras={removeCameras} session={session} selectedId={selectedId} onSelect={select} onAddCamera={addCamera} onUpdate={(update) => dispatch({ type: 'update', update })} /></TabsContent>
+                <TabsContent value="project"><ProjectPanel onCenterCamera={(angle) => setFocusPosition({ ...angle.position })} onAddRig={addRig} onAddScan={addScan} selectedCameraIds={selectedCameraIds} onSelectCamera={selectCamera} onRemoveCameras={removeCameras} session={session} selectedId={selectedId} onSelect={select} onAddCamera={addCamera} onUpdate={(update) => dispatch({ type: 'update', update })} /></TabsContent>
                 <TabsContent value="contents"><LayersPanel session={session} images={images} referenceImages={referenceImages} selectedId={selectedId} onSelect={(id) => { select(id); setTool(idleTool) }}
                   placement={() => rigPlacement.current?.() ?? { position: viewCenter.current, radiusMeters: 50 }}
                   onUpdate={(update) => dispatch({ type: 'update', update })}
@@ -107,7 +134,9 @@ export function BriefPage({ session, dispatch, error, pdfMapRef, imageTransport,
           </Tabs>
         </CardContent></Card>
       </aside>
+    }>
+      <MapPanel pdfMapRef={pdfMapRef} images={images} rigPlacementRef={rigPlacement} overlaySizeRef={overlaySizeRef} focusPosition={focusPosition} onViewCenterChange={(center) => { viewCenter.current = center }} selectedCameraIds={selectedCameraIds} onSelectCamera={selectCamera} session={session} dispatch={dispatch} tool={tool} onToolChange={setTool} selectedId={selectedId} onSelect={select} />
+    </ResizableWorkspace>
     </div>
-    </div>
-  </main>
+  </main></DroneScanEditing>
 }

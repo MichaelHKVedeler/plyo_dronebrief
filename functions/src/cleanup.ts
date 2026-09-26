@@ -1,6 +1,16 @@
 import { type QueryDocumentSnapshot } from 'firebase-admin/firestore'
 import { bucket, db, now, projectRef } from './context.js'
 
+export async function eraseProject(projectId: string, orgId: string) {
+  await bucket().deleteFiles({ prefix: `organizations/${orgId}/projects/${projectId}/` })
+  await db.recursiveDelete(projectRef(projectId))
+  await db.doc(`projectPrivate/${projectId}`).delete()
+  const entries = await db.collectionGroup('library').where('id', '==', projectId).get()
+  for (let i = 0; i < entries.size; i += 400) {
+    const batch = db.batch(); entries.docs.slice(i, i + 400).forEach((entry) => batch.delete(entry.ref)); await batch.commit()
+  }
+}
+
 export async function cleanup() {
   const cutoff = new Date(Date.now() - 30 * 86400_000).toISOString()
   const expired = await db.collection('projects').where('deletedAt', '<=', cutoff).limit(100).get()
@@ -11,13 +21,7 @@ export async function cleanup() {
       tx.update(project.ref, { purging: true }); return true
     })
     if (!purge) continue
-    await bucket().deleteFiles({ prefix: `organizations/${project.get('orgId')}/projects/${project.id}/` })
-    await db.recursiveDelete(project.ref)
-    await db.doc(`projectPrivate/${project.id}`).delete()
-    const entries = await db.collectionGroup('library').where('id', '==', project.id).get()
-    for (let i = 0; i < entries.size; i += 400) {
-      const batch = db.batch(); entries.docs.slice(i, i + 400).forEach((entry) => batch.delete(entry.ref)); await batch.commit()
-    }
+    await eraseProject(project.id, String(project.get('orgId')))
   }
   let cursor: QueryDocumentSnapshot | undefined
   const orphanCutoff = new Date(Date.now() - 86400_000).toISOString()

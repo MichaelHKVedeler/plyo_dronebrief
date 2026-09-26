@@ -22,14 +22,17 @@ it('creates without a schedule step, saves stacked shadow times, exports, and re
   await user.click(screen.getByRole('button', { name: 'Create brief' }))
   expect(screen.getByText('Saved on this device')).toBeInTheDocument()
   const today = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}-${String(new Date().getDate()).padStart(2, '0')}`
-  expect(briefRepository.latest()?.project.times).toEqual(['09:00'])
+  expect(briefRepository.latest()?.project.times).toEqual(['07:00'])
   expect(briefRepository.latest()?.project.date).toBe(today)
-  expect(screen.getByRole('slider', { name: 'Shadow time' })).toBeInTheDocument()
+  expect(briefRepository.latest()?.project.shoots).toEqual([{ date: today, time: '07:00', endTime: '17:00' }])
+  expect(screen.getByRole('slider', { name: 'Shadow time start' })).toBeInTheDocument()
+  expect(screen.getByRole('slider', { name: 'Shadow time end' })).toHaveAttribute('aria-valuetext', expect.stringContaining('17:00'))
   fireEvent.change(screen.getByLabelText('Shadow date'), { target: { value: '2026-09-11' } })
   await user.click(screen.getByRole('button', { name: 'Add time' }))
-  expect(briefRepository.latest()?.project.times).toEqual(['09:00', '09:15'])
+  expect(briefRepository.latest()?.project.times).toEqual(['07:00', '07:00'])
   expect(briefRepository.latest()?.project.shoots).toEqual([
-    { date: '2026-09-11', time: '09:00' }, { date: '2026-09-11', time: '09:15' },
+    { date: '2026-09-11', time: '07:00', endTime: '17:00' },
+    { date: '2026-09-11', time: '07:00', endTime: '17:00' },
   ])
   expect(briefRepository.latest()?.coordinates).toEqual({ lat: 59.9139, lng: 10.7522 })
   expect(screen.getByText('Map setup pending')).toBeInTheDocument()
@@ -109,9 +112,10 @@ it('loads a viewer and toggles layers without writing or replacing the local dra
   expect(overlaySize).toHaveAttribute('aria-valuenow', '100')
   await user.keyboard('{Home}{ArrowRight}')
   expect(overlaySize).toHaveAttribute('aria-valuenow', '5')
-  expect(screen.getByRole('slider', { name: 'Shadow time' })).toBeInTheDocument()
+  expect(screen.getByRole('slider', { name: 'Shadow time start' })).toHaveAttribute('aria-valuetext', expect.stringContaining('10:00'))
+  expect(screen.getByRole('slider', { name: 'Shadow time end' })).toHaveAttribute('aria-valuetext', expect.stringContaining('17:00'))
   await user.click(screen.getByRole('button', { name: 'Add time' }))
-  expect(screen.getByRole('slider', { name: 'Shadow time 2' })).toBeInTheDocument()
+  expect(screen.getByRole('slider', { name: 'Shadow time 2 start' })).toBeInTheDocument()
   expect(writes).not.toHaveBeenCalled()
   expect(briefRepository.latest()?.id).toBe(own.id)
 })
@@ -134,6 +138,23 @@ it('defaults camera heights and appends 360 floors in 3 m steps', async () => {
   await user.click(screen.getByRole('button', { name: 'Add floor (3m)' }))
   expect(screen.getByLabelText('360 heights (m)')).toHaveValue('2, 5, 8, 11')
   expect(briefRepository.latest()?.typeSettings['360'].heightsMeters).toEqual([2, 5, 8, 11])
+})
+
+it('saves a 360 height override on the added point without changing the shared list', async () => {
+  const brief = createBrief({ name: 'Heights', clientName: 'Test', date: '2026-09-12', times: ['12:00'] })
+  brief.angles = [{ id: 'p1', label: 'Panorama', type: '360', position: brief.coordinates }]
+  briefRepository.save(brief)
+  const user = userEvent.setup()
+  render(<App />)
+  await user.click(screen.getByRole('button', { name: 'Resume editing' }))
+  const heights = screen.getByLabelText('Heights for 360 1 (m)')
+  expect(heights).toHaveValue('')
+  expect(heights).toHaveAttribute('placeholder', '2, 5, 8')
+  fireEvent.change(heights, { target: { value: '11, 14' } })
+  expect(briefRepository.latest()?.typeSettings['360'].heightsMeters).toEqual([2, 5, 8])
+  expect(briefRepository.latest()?.angles[0]).toMatchObject({ type: '360', heightsMeters: [11, 14] })
+  fireEvent.change(heights, { target: { value: '' } })
+  expect(briefRepository.latest()?.angles[0]).not.toHaveProperty('heightsMeters')
 })
 
 it('saves live DSLR settings for existing and future points, clamps spacing, and rejects invalid input', async () => {

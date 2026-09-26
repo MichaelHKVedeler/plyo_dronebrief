@@ -15,10 +15,11 @@ type Props = {
   onSelectCamera: (id: string, additive: boolean) => void
   onCommit: (angle: CameraAngle) => void
   onDuplicate?: (source: CameraAngle, position: Position) => void
+  selectable?: boolean
 }
 
 export const CameraMarkers = memo(function CameraMarkers({
-  angles, pendingAngle, editable, interactive, selectedCameraIds, zoom, dslrSettings, onSelectCamera, onCommit, onDuplicate,
+  angles, pendingAngle, editable, interactive, selectedCameraIds, zoom, dslrSettings, onSelectCamera, onCommit, onDuplicate, selectable = false,
 }: Props) {
   const nextNumbers = {
     'drone-image': nextCameraNumber(angles, 'drone-image'),
@@ -29,7 +30,7 @@ export const CameraMarkers = memo(function CameraMarkers({
   return <>
     {numberedCameras(angles).map(({ angle, number }) => <CameraPoint key={angle.id} angle={angle} number={number}
       duplicateNumber={nextNumbers[angle.type]} editable={editable} interactive={interactive}
-      selected={selectedCameraIds.includes(angle.id)} zoom={zoom} dslrSettings={dslrSettings}
+      selected={selectedCameraIds.includes(angle.id)} zoom={zoom} dslrSettings={dslrSettings} selectable={selectable}
       onSelectCamera={onSelectCamera} onCommit={onCommit} onDuplicate={canDuplicate ? onDuplicate : undefined} />)}
     {pendingAngle && <CameraMarker angle={pendingAngle} editable={false} interactive={false} selected={false}
       number={nextNumbers[pendingAngle.type]} dslrSettings={dslrSettings}
@@ -40,7 +41,7 @@ export const CameraMarkers = memo(function CameraMarkers({
 const ignoreSelect = () => {}
 const ignoreCommit = () => {}
 
-const CameraPoint = memo(function CameraPoint({ angle, number, duplicateNumber, editable, interactive, selected, zoom, dslrSettings, onSelectCamera, onCommit, onDuplicate }: {
+const CameraPoint = memo(function CameraPoint({ angle, number, duplicateNumber, editable, interactive, selected, zoom, dslrSettings, selectable = false, onSelectCamera, onCommit, onDuplicate }: {
   angle: CameraAngle
   number: number
   duplicateNumber: number
@@ -49,6 +50,7 @@ const CameraPoint = memo(function CameraPoint({ angle, number, duplicateNumber, 
   selected: boolean
   zoom: number
   dslrSettings: DroneBrief['typeSettings']['dslr']
+  selectable?: boolean
   onSelectCamera: (id: string, additive: boolean) => void
   onCommit: (angle: CameraAngle) => void
   onDuplicate?: (source: CameraAngle, position: Position) => void
@@ -56,6 +58,6 @@ const CameraPoint = memo(function CameraPoint({ angle, number, duplicateNumber, 
   const onSelect = useCallback((additive = false) => onSelectCamera(angle.id, additive), [onSelectCamera, angle.id])
   const duplicate = useCallback((position: Position) => onDuplicate?.(angle, position), [onDuplicate, angle])
   return <CameraMarker angle={angle} editable={editable} interactive={interactive} selected={selected} number={number}
-    duplicateNumber={duplicateNumber} dslrSettings={dslrSettings} pixelsToMeters={metersPerPixel(angle.position.lat, zoom)}
+    duplicateNumber={duplicateNumber} dslrSettings={dslrSettings} selectable={selectable} pixelsToMeters={metersPerPixel(angle.position.lat, zoom)}
     onSelect={onSelect} onCommit={onCommit} onDuplicate={onDuplicate ? duplicate : undefined} />
 })

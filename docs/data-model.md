@@ -10,6 +10,7 @@ The runtime contract is `src/features/briefs/model/brief.ts`. This document expl
 | project | name, clientName, optional description and instructions (max 2000 each), calendar date YYYY-MM-DD, times HH:mm[], optional shoots[{date, time, endTime?}] (max 3) |
 | coordinates | Project/map reference point {lat, lng}; new briefs default to Oslo (59.9139, 10.7522) |
 | circleRig | null or {id, position, radiusMeters, ovalRatio, rotationDegrees, arrowCount} |
+| droneScan | null or {id, highRes, lowRes}; each circle is null or {id, position, radiusMeters} |
 | angles | Discriminated camera-angle array |
 | typeSettings | Drone/360 heightsMeters arrays (new briefs: drone 40, 60; 360 2, 5, 8); DSLR angleCount and spacingDegrees plus preserved legacy heightsMeters |
 | polygons | Newbuild polygons with id, label, and vertices[] |
@@ -20,9 +21,9 @@ Position coordinates use WGS84. Height is a requested photography height in mete
 
 ### Shoot ranges
 
-Optional `shoots[].endTime` (HH:mm) turns a slot into a range on its saved date. `time` is the start; `endTime` must be strictly later, with both between 00:00 and 23:59. Midnight-crossing ranges require separate dates/slots. A range counts as one shoot for capture totals. The legacy `project.times` list stores each slot's start, and `project.date` stores the first slot's date. Updated apps preserve the entire range through draft storage, DB1/DB2 import/export and PDF export.
+Every shoot slot is a range. `shoots[].endTime` (HH:mm) is the end on the slot's saved date. `time` is the start; `endTime` must be strictly later, with both between 00:00 and 23:59. Midnight-crossing ranges require separate dates/slots. A range counts as one shoot for capture totals. The legacy `project.times` list stores each slot's start, and `project.date` stores the first slot's date. Updated apps preserve the entire range through draft storage, DB1/DB2 import/export and PDF export. A new brief, and each newly added slot, starts as 07:00–17:00 on the current slot date. The editor always shows two handles. A stored time without `endTime` is shown from its start through 17:00 when that is later, otherwise through 23:59 (or 23:44–23:59 when the start is 23:59). Opening that brief in the editor saves the filled range. The viewer shows the same two handles without saving.
 
-**Version decision:** this is an additive schema v1 field; DB1/DB2 transport versions are unchanged. Old snapshots remain single times, with no migration. Older app builds ignore `endTime`, display the start time, and lose the end on re-export. Invalid or reversed ranges are rejected at import and at the session update boundary. Selection of the start/end handle is ephemeral: ShadeMap receives only that endpoint's instant, and selection never changes the saved range. Viewer adjustments remain temporary and do not alter the saved PDF schedule.
+**Version decision:** this is an additive schema v1 field; DB1/DB2 transport versions are unchanged. Old snapshots import as stored, with no migration until an editor save fills a missing end. Older app builds ignore `endTime`, display the start time, and lose the end on re-export. Invalid or reversed ranges are rejected at import and at the session update boundary. Selection of the start/end handle is ephemeral: ShadeMap receives only that endpoint's instant, and selection never changes the saved range. Viewer adjustments remain temporary and do not alter the saved PDF schedule.
 
 ## Circle and oval
 
@@ -31,6 +32,12 @@ Optional `shoots[].endTime` (HH:mm) turns a slot into a range on its saved date.
 Map geometry uses spherical distances and bearings with longitude wrapping. The rig outline has 64 vertices. The combined edge dot sits half a numbered-point interval after point 1, between badges. Dragging changes the semi-major axis and rotation together, compensating for the handle’s angular offset and oval ratio so it stays under the pointer. The center and oval ratio remain fixed. The oval handle sits halfway along the minor axis and changes the ratio without changing the major radius. These are planning graphics, not survey geometry.
 
 `arrowCount` is an integer from 1–50, defaulting to 10 for new rigs and imported rigs missing the field. Numbered arrows follow clockwise parametric intervals around the circle/oval edge, starting at the rotated major-axis endpoint, and aim toward the center. Arrow symbols are offset 36 screen pixels toward the center; numbered badges are centered on the outline. Arrows have white fills and crisp 2-pixel colored strokes without shadows. They follow rig movement, rotation, and reshaping in both maps. This is an additive schema v1 extension; DB1/DB2 transport versions are unchanged. Older app builds ignore the field and lose it on re-export.
+
+## Drone scan
+
+`droneScan` is an optional planning graphic, separate from the arrow circle rig. It does not add arrows or image counts. `highRes` and `lowRes` are each null or a true circle `{id, position, radiusMeters}`. `radiusMeters` is the radius; the editor and map label show the diameter. Either circle can exist alone. When both exist, the high-res circle stays fully inside the low-res circle, with at least 2 m between the outlines (more while dragging, so the strokes stay easy to grab). The low-res fill is punched out by the high-res circle. The map draws both like the 360 focus sector: an outline and translucent fill, plus an east-west diameter line labeled in meters. High res is blue and low res is red. Dragging, keyboard steps, and the diameter fields snap each diameter to the nearest 5 m that still keeps the circles nested.
+
+**Version decision:** this is an additive schema v1 field; DB1/DB2 transport versions are unchanged. Older snapshots omit `droneScan` and parse as null. Older app builds ignore the field and lose it on re-export.
 
 ## Angles
 
@@ -72,6 +79,10 @@ This is an additive **schema v1** extension, with unchanged DB1/DB2 transport ve
 Right-dragging an existing icon previews focus in both maps, with one CSS pixel of radial mouse distance corresponding to one degree of width, clamped to the allowed range. Heading follows the pointer around the icon. Release commits through the session reducer; Escape, pointer cancellation and window blur discard the preview. The cone's radius is a 50-pixel visualization at zoom 17 and 100% Overlay size, scaled with the other camera graphics; it is not a stored capture distance. Both maps are locked north-up. Movement and duplication preserve focus. The viewer renders saved focus without editing it.
 
 **Version decision:** optional focus is an additive schema v1 extension; DB1/DB2 transport versions stay unchanged. Previously valid snapshots require no migration and retain their original position-only meaning. Updated apps round-trip the focus through draft storage and share keys. Older builds ignore the optional field and lose it on re-export. Invalid focus is rejected at import and at the session update boundary.
+
+### 360 height override
+
+A 360 angle may store optional `heightsMeters`, the same meter list as `typeSettings['360'].heightsMeters` (up to 50 finite values from 0 to 10,000). The editor shows that list in a text field beside the point number. A non-empty list is the override and is used for image counts, project size and the public briefing. Clearing the field omits `heightsMeters`, and the point uses the shared 360 list. An imported empty array remains an override with no heights. Drone points and the circle rig still use the shared drone heights. Duplication copies the override. This is an additive schema v1 field; DB1/DB2 transport versions are unchanged. Older snapshots need no migration. Older builds ignore the field and lose it on re-export. Invalid lists are rejected at import and at the session update boundary.
 
 ## Polygons and image overlays
 

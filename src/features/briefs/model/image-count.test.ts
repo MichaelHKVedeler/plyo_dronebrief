@@ -51,6 +51,16 @@ it('counts drone, 360, and DSLR images from the locked capture rules', () => {
   })
 })
 
+it('counts each 360 point from its own height override', () => {
+  const brief = briefWith({
+    angles: [
+      { id: 'p1', label: 'P1', type: '360', position },
+      { id: 'p2', label: 'P2', type: '360', position, heightsMeters: [11] },
+    ],
+  })
+  expect(countBriefImages(brief).panorama).toBe(40)
+})
+
 it('multiplies every capture count by the number of shoot times', () => {
   const brief = briefWith({
     project: {

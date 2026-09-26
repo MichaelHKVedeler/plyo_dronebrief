@@ -13,7 +13,7 @@ function readTheme(): Theme {
   return 'system'
 }
 
-export function ThemeToggle() {
+export function ThemeToggle({ className }: { className?: string }) {
   const [theme, setTheme] = useState<Theme>(readTheme)
   useEffect(() => {
     const media = window.matchMedia?.('(prefers-color-scheme: dark)')
@@ -30,7 +30,7 @@ export function ThemeToggle() {
   }, [theme])
   const Icon = theme === 'system' ? Monitor : theme === 'dark' ? Moon : Sun
   const label = `Theme: ${theme}. Switch to ${nextTheme[theme]}`
-  return <Button variant="ghost" size="icon" title={label} aria-label={label} onClick={() => {
+  return <Button className={className} variant="ghost" size="icon" title={label} aria-label={label} onClick={() => {
     const next = nextTheme[theme]
     setTheme(next)
     try { if (next === 'system') localStorage.removeItem(storageKey); else localStorage.setItem(storageKey, next) } catch { /* Keep the choice for this session. */ }

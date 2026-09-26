@@ -1,7 +1,7 @@
 import { useEffect, useRef, type PointerEvent } from 'react'
 import { Slider } from '@/components/ui/slider'
-import type { ShootSlot } from '@/features/briefs/model/brief'
-import { addShootRange, moveShootEndpoint, type ShootEndpoint } from './shoot-time-range'
+import { ensureShootRange, type ShootSlot } from '@/features/briefs/model/brief'
+import { moveShootEndpoint, type ShootEndpoint } from './shoot-time-range'
 import { shadowSliderMax, shadowSliderStep, timeMinutes } from './shadow-time'
 
 type Props = {
@@ -19,7 +19,8 @@ function pointerMinutes(x: number, rect: DOMRect) {
   return Math.min(shadowSliderMax, Math.round(fraction * shadowSliderMax / shadowSliderStep) * shadowSliderStep)
 }
 
-export function ShootTimeSlider({ slot, name, zone, active, endpoint, onSelect, onPreview, onCommit }: Props) {
+export function ShootTimeSlider({ slot: stored, name, zone, active, endpoint, onSelect, onPreview, onCommit }: Props) {
+  const slot = ensureShootRange(stored)
   const drag = useRef<Drag | null>(null)
   useEffect(() => {
     const cancel = () => { const current = drag.current; drag.current = null; current?.cancel() }
@@ -35,15 +36,9 @@ export function ShootTimeSlider({ slot, name, zone, active, endpoint, onSelect, 
     current.preview = moveShootEndpoint(current.initial, current.endpoint, pointerMinutes(event.clientX, current.rect))
     onPreview(current.preview)
   }
-  return <Slider value={[timeMinutes(slot.time), ...(slot.endTime ? [timeMinutes(slot.endTime)] : [])]}
+  return <Slider value={[timeMinutes(slot.time), timeMinutes(slot.endTime ?? slot.time)]}
     min={0} max={shadowSliderMax} step={1} className="my-1 min-h-5"
-    onContextMenu={(event) => {
-      event.preventDefault(); event.stopPropagation()
-      if (slot.endTime) return
-      const rect = event.currentTarget.getBoundingClientRect()
-      const next = addShootRange(slot, event.clientX && rect.width ? pointerMinutes(event.clientX, rect) : undefined)
-      onSelect(next.retainedEndpoint); onPreview(next.slot); onCommit(next.slot)
-    }}
+    onContextMenu={(event) => { event.preventDefault(); event.stopPropagation() }}
     onPointerDownCapture={(event) => {
       // Radix normally moves the nearest thumb. Track drags here move the
       // selected endpoint; clicking a thumb selects it without moving it.
@@ -86,7 +81,7 @@ export function ShootTimeSlider({ slot, name, zone, active, endpoint, onSelect, 
     }}
     thumbProps={(index) => ({
       'data-endpoint': index,
-      'aria-label': slot.endTime ? `${name} ${index === 0 ? 'start' : 'end'}` : name,
+      'aria-label': `${name} ${index === 0 ? 'start' : 'end'}`,
       'aria-valuetext': `${index === 1 ? slot.endTime : slot.time} ${zone}`,
       className: active && index === endpoint ? 'ring-2 ring-primary' : undefined,
       onFocus: () => onSelect(index === 1 ? 1 : 0),
