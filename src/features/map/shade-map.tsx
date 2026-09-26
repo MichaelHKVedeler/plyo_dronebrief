@@ -208,7 +208,7 @@ export function ShadeMapPanel({ imageLayer, dimOpacity, objectSizePercent, dispa
   const editable = session.mode === 'edit'
   const interactive = tool.kind === 'idle'
   const capture = isolatedCaptureVisibility(session.visibility, isolatedKind)
-  const captureAngles = isolatedCaptureAngles(session.brief.angles, isolatedKind)
+  const captureAngles = isolatedCaptureAngles(session.brief.angles, isolatedKind, false, session.visibility)
   const pendingAngle = tool.kind === 'camera' && tool.position && tool.cameraType !== '360'
     ? { id: 'pending', label: 'Choose direction', type: tool.cameraType, position: tool.position, directionDegrees: tool.directionDegrees } : null
   const commitCamera = useCallback((updated: CameraAngle) => {

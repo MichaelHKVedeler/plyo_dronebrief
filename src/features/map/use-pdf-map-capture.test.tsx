@@ -7,11 +7,12 @@ import { usePdfMapCapture } from './use-pdf-map-capture'
 const capture = vi.hoisted(() => ({ image: vi.fn(async () => 'data:image/png;base64,test') }))
 vi.mock('html-to-image', () => ({ toPng: capture.image }))
 afterEach(() => { cleanup(); vi.clearAllMocks(); vi.unstubAllGlobals() })
-function setup(images = false, scan = false) {
+function setup(images = false, scan = false, extras = false) {
   vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => { callback(0); return 1 })
   const brief = createBrief({ name: 'Map export', clientName: 'Test' })
   if (images) brief.imageOverlays = [{ id: 'img', name: 'Plan', source: 'data:image/png;base64,test', position: brief.coordinates, widthMeters: 20, heightMeters: 20, rotationDegrees: 0, opacity: 1 }]
   if (scan) brief.droneScan = { id: 'scan', highRes: { id: 'high', position: brief.coordinates, radiusMeters: 20 }, lowRes: { id: 'low', position: brief.coordinates, radiusMeters: 50 } }
+  if (extras) brief.angles = [{ id: 'extra', label: 'Extra coverage 1', type: 'extra-coverage', position: brief.coordinates, directionDegrees: 90 }]
   const root = document.createElement('div'), surface = document.createElement('div')
   surface.dataset.pdfMapSurface = ''
   Object.defineProperties(surface, { clientWidth: { value: 640 }, clientHeight: { value: 400 } })
@@ -63,4 +64,13 @@ it('rejects a provider loading error instead of including it in the PDF', async 
   expect(capture.image).not.toHaveBeenCalled()
   expect(navigation.moveCamera).toHaveBeenLastCalledWith(view.current)
   expect(setCapturing).toHaveBeenLastCalledWith(false)
+})
+
+it('exports a scan page when extra coverage exists without scan circles', async () => {
+  const { ref, setCapturing } = setup(false, false, true)
+  await act(async () => {
+    const result = await ref.current!(new AbortController().signal)
+    expect(result.map((image) => image.kind)).toEqual(['map', 'drone-scan'])
+  })
+  expect(setCapturing.mock.calls.map(([value]) => value)).toEqual(['full', 'drone-scan', false])
 })

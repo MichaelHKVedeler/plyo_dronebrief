@@ -2,13 +2,14 @@ import { rgb, type PDFPage, type PDFFont } from 'pdf-lib'
 import type { DroneBrief, Position } from '@/features/briefs/model/brief'
 import { numberedCameras } from '@/features/briefs/model/camera-numbers'
 import { rigOutline, rigArrows, destination } from './geometry'
-import { circleOutline, droneScanFillOpacity, formatScanDiameter, hasDroneScan } from './drone-scan'
+import { circleOutline, droneScanFillOpacity, formatScanDiameter } from './drone-scan'
 import { sceneBounds, scenePoints } from './scene-bounds'
 import { cameraDirectionLayout } from './camera-directions'
 
 // An explicit offline alternative, never presented as a basemap screenshot.
 export function drawPdfPointDiagram(page: PDFPage, brief: DroneBrief, font: PDFFont) {
-  const bounds = sceneBounds(scenePoints({ ...brief, droneScan: null }))
+  brief = { ...brief, droneScan: null, angles: brief.angles.filter((angle) => angle.type !== 'extra-coverage') }
+  const bounds = sceneBounds(scenePoints(brief))
   const west = bounds.west, east = bounds.east < west ? bounds.east + 360 : bounds.east
   const mercatorY = (lat: number) => Math.log(Math.tan(Math.PI / 4 + Math.max(-85, Math.min(85, lat)) * Math.PI / 360)) * 180 / Math.PI
   const south = mercatorY(bounds.south), north = mercatorY(bounds.north)
@@ -55,9 +56,9 @@ export function drawPdfPointDiagram(page: PDFPage, brief: DroneBrief, font: PDFF
 }
 
 export function drawPdfDroneScan(page: PDFPage, brief: DroneBrief, font: PDFFont) {
-  if (!hasDroneScan(brief.droneScan)) return
-  const circles = [brief.droneScan.lowRes, brief.droneScan.highRes].flatMap((circle) => circle ? [circle] : [])
-  const bounds = sceneBounds(circles.flatMap((circle) => circleOutline(circle)))
+  const extras = brief.angles.filter((angle) => angle.type === 'extra-coverage')
+  const circles = [brief.droneScan?.lowRes, brief.droneScan?.highRes].flatMap((circle) => circle ? [circle] : [])
+  const bounds = sceneBounds([...circles.flatMap((circle) => circleOutline(circle)), ...extras.map((angle) => angle.position)])
   const west = bounds.west, east = bounds.east < west ? bounds.east + 360 : bounds.east
   const mercatorY = (lat: number) => Math.log(Math.tan(Math.PI / 4 + Math.max(-85, Math.min(85, lat)) * Math.PI / 360)) * 180 / Math.PI
   const south = mercatorY(bounds.south), north = mercatorY(bounds.north)
@@ -72,8 +73,8 @@ export function drawPdfDroneScan(page: PDFPage, brief: DroneBrief, font: PDFFont
     const ordered = reverse ? [...points].reverse() : points
     return ordered.map((point, index) => `${index ? 'L' : 'M'} ${point.x} ${-point.y}`).join(' ') + ' Z'
   }
-  const low = brief.droneScan.lowRes
-  const high = brief.droneScan.highRes
+  const low = brief.droneScan?.lowRes ?? null
+  const high = brief.droneScan?.highRes ?? null
   if (low && high) {
     page.drawSvgPath(ring(low) + ring(high, true), { color: lowColor, opacity: droneScanFillOpacity })
     page.drawSvgPath(ring(high), { color: highColor, opacity: droneScanFillOpacity })
@@ -89,4 +90,11 @@ export function drawPdfDroneScan(page: PDFPage, brief: DroneBrief, font: PDFFont
     const center = project(circle.position)
     page.drawText(label, { x: center.x - font.widthOfTextAtSize(label, 8) / 2, y: center.y - (circle === high ? 12 : -4), size: 8, font, color })
   }
+  const green = rgb(21 / 255, 128 / 255, 61 / 255)
+  extras.forEach((angle, index) => {
+    const point = project(angle.position)
+    page.drawCircle({ ...point, size: 8, color: green, borderColor: rgb(1, 1, 1), borderWidth: 1 })
+    const label = `E${index + 1}`
+    page.drawText(label, { x: point.x - font.widthOfTextAtSize(label, 7) / 2, y: point.y - 2.5, size: 7, font, color: rgb(1, 1, 1) })
+  })
 }

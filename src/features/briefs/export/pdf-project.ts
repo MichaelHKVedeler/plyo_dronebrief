@@ -10,7 +10,7 @@ export function pdfProjectPosition(brief: DroneBrief) {
 
 /** Smallest template tier that contains the actual capture plan, not image totals. */
 export function pdfProjectSize(brief: DroneBrief): PdfProjectSize {
-  const aerial = (brief.circleRig?.arrowCount ?? 0) + brief.angles.filter((a) => a.type === 'drone-image').length
+  const aerial = (brief.circleRig?.arrowCount ?? 0) + brief.angles.filter((a) => (a.type === 'drone-image' || a.type === 'extra-coverage')).length
   const panorama = brief.angles.filter((a) => a.type === '360').length
   const dslr = brief.angles.filter((a) => a.type === 'dslr').length
   const aerialHeights = aerial ? brief.typeSettings['drone-image'].heightsMeters.length : 0
@@ -32,9 +32,9 @@ export function pdfCapturePoints(brief: DroneBrief) {
     ...(rig ? [{ label: 'R0', position: rig.position, direction: undefined as number | undefined, fov: undefined as number | undefined },
       ...rigArrows(rig).map((a) => ({ label: `R${a.number}`, position: a.position, direction: a.directionDegrees, fov: undefined as number | undefined }))] : []),
     ...numberedCameras(brief.angles).map(({ angle, number }) => ({
-      label: `${angle.type === 'drone-image' ? 'D' : angle.type === '360' ? 'P' : 'S'}${number}`,
+      label: `${angle.type === 'extra-coverage' ? 'E' : angle.type === 'drone-image' ? 'D' : angle.type === '360' ? 'P' : 'S'}${number}`,
       position: angle.position,
-      direction: angle.type === '360' ? angle.focus?.directionDegrees : angle.directionDegrees,
+      direction: angle.type === 'extra-coverage' ? undefined : angle.type === '360' ? angle.focus?.directionDegrees : angle.directionDegrees,
       fov: angle.type === '360' ? angle.focus?.fovDegrees : undefined,
     })),
   ]

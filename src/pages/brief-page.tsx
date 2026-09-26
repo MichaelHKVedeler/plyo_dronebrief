@@ -104,7 +104,7 @@ export function BriefPage({ session, dispatch, error, pdfMapRef, imageTransport,
   }, [dispatch, selectedCameraIds, session, tool.kind])
   function addCamera(type: CameraType) {
     if (session.mode !== 'edit') return
-    dispatch({ type: 'visibility', layer: 'angles', visible: true })
+    dispatch({ type: 'visibility', layer: type === 'extra-coverage' ? 'droneScan' : 'angles', visible: true })
     setSelectedId(null)
     setSelectedCameraIds([])
     setTool(startCameraPlacement(type))

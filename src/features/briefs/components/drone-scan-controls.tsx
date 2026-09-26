@@ -17,20 +17,20 @@ export function DroneScanControls({ brief, editing, onAdd, onUpdate }: {
   if (!editing) {
     if (!scan?.highRes && !scan?.lowRes) return <p>No drone scan in this brief.</p>
     return <div className="grid gap-2 text-sm">
-      <p>High res: {scan.highRes ? `${formatScanDiameter(scan.highRes.radiusMeters)} m diameter` : 'Not added'}</p>
-      <p>Low res: {scan.lowRes ? `${formatScanDiameter(scan.lowRes.radiusMeters)} m diameter` : 'Not added'}</p>
+      <p>High Detail: {scan.highRes ? `${formatScanDiameter(scan.highRes.radiusMeters)} m diameter` : 'Not added'}</p>
+      <p>Low Detail: {scan.lowRes ? `${formatScanDiameter(scan.lowRes.radiusMeters)} m diameter` : 'Not added'}</p>
     </div>
   }
   return <>
     <div className="grid grid-cols-2 items-start gap-2">
-    <ScanControl role="high" label="High res" brief={brief} onAdd={onAdd} onUpdate={onUpdate} />
-    <ScanControl role="low" label="Low res" brief={brief} onAdd={onAdd} onUpdate={onUpdate} />
+    <ScanControl role="high" label="High Detail" brief={brief} onAdd={onAdd} onUpdate={onUpdate} />
+    <ScanControl role="low" label="Low Detail" brief={brief} onAdd={onAdd} onUpdate={onUpdate} />
     </div>
     <div className="flex gap-2">
       <Button size="xs" variant={locked ? 'secondary' : 'outline'} disabled={!scan?.highRes || !scan?.lowRes} aria-pressed={locked} aria-label="Lock drone scan circles together" title="Move both circles together" onClick={() => setLocked(!locked)}>
         {locked ? <Lock /> : <LockOpen />}{locked ? 'Locked' : 'Lock'}
       </Button>
-      <Button size="xs" variant="outline" disabled={!scan?.highRes || !scan?.lowRes} aria-label="Center drone scan circles" title="Align high res with the low-res center" onClick={() => onUpdate((current) => current.droneScan ? { ...current, droneScan: centerScanCircles(current.droneScan) } : current)}><Crosshair />Center</Button>
+      <Button size="xs" variant="outline" disabled={!scan?.highRes || !scan?.lowRes} aria-label="Center drone scan circles" title="Align High Detail with the Low Detail center" onClick={() => onUpdate((current) => current.droneScan ? { ...current, droneScan: centerScanCircles(current.droneScan) } : current)}><Crosshair />Center</Button>
     </div>
   </>
 }
@@ -45,11 +45,14 @@ function ScanControl({ role, label, brief, onAdd, onUpdate }: {
   const scan = brief.droneScan
   const circle = role === 'high' ? scan?.highRes : scan?.lowRes
   const other = role === 'high' ? scan?.lowRes ?? null : scan?.highRes ?? null
-  if (!circle) return <Button variant="outline" className="justify-start border-primary bg-primary/10 text-primary hover:bg-primary/20 hover:text-primary" onClick={() => onAdd(role)}><Circle />{label}</Button>
+  const colorClass = role === 'high'
+    ? 'border-blue-700 bg-blue-50 text-blue-800 hover:bg-blue-100 hover:text-blue-800 dark:border-blue-400 dark:bg-blue-950 dark:text-blue-200 dark:hover:bg-blue-900 dark:hover:text-blue-200'
+    : 'border-red-700 bg-red-50 text-red-800 hover:bg-red-100 hover:text-red-800 dark:border-red-400 dark:bg-red-950 dark:text-red-200 dark:hover:bg-red-900 dark:hover:text-red-200'
+  if (!circle) return <Button variant="outline" className={'justify-start ' + colorClass} onClick={() => onAdd(role)}><Circle />{label}</Button>
   const limits = scanDiameterBounds(circle, role, other)
   const value = Math.min(limits.max, Math.max(limits.min, Math.round(circle.radiusMeters * 2)))
   return <div className="grid min-w-0 gap-3">
-    <Button variant="ghost" className="px-1 text-xs" onClick={() => onUpdate((current) => withoutScanCircle(current, role))}>Remove {label.toLowerCase()}</Button>
+    <Button variant="ghost" size="sm" className="bg-red-50 text-xs text-red-800 hover:bg-red-100 hover:text-red-800 dark:bg-red-950 dark:text-red-200 dark:hover:bg-red-900 dark:hover:text-red-200" onClick={() => onUpdate((current) => withoutScanCircle(current, role))}>Remove {label.toLowerCase()}</Button>
     <NumberField label={`${label} diameter (m)`} value={value} min={limits.min} max={limits.max} step={scanDiameterStep} live
       onChange={(diameter) => onUpdate((current) => {
         const currentScan = current.droneScan

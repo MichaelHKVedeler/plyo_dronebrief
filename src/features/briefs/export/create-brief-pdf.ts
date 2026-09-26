@@ -74,12 +74,13 @@ export async function createBriefPdf(input: PdfExportInput, assets: PdfAssets): 
   paragraph(schedule, c.scheduleNote, 66, 120, 588, 11, regular, muted)
 
   const counts = countBriefImages(brief)
-  const byType = { drone: brief.angles.filter((a) => a.type === 'drone-image').length, panorama: brief.angles.filter((a) => a.type === '360'), dslr: brief.angles.filter((a) => a.type === 'dslr').length }
+  const byType = { extra: brief.angles.filter((a) => a.type === 'extra-coverage').length, drone: brief.angles.filter((a) => a.type === 'drone-image').length, panorama: brief.angles.filter((a) => a.type === '360'), dslr: brief.angles.filter((a) => a.type === 'dslr').length }
   const heights = (list: number[]) => list.length ? list.map((h) => `${h} m`).join(', ') : c.notSet
   const panoramaLists = byType.panorama.map((angle) => effectivePanoramaHeights(brief.typeSettings['360'].heightsMeters, angle))
   const panoramaHeights = panoramaLists.every((list) => heights(list) === heights(panoramaLists[0] ?? [])) ? heights(panoramaLists[0] ?? []) : c.perPoint
   const pointsLabel = (count: number) => `${count} ${count === 1 ? c.point.toLowerCase() : c.points}`
   const captureRows = [
+    ...(byType.extra ? [{ name: c.extraCoverage, count: counts.extraCoverage, detail: `${pointsLabel(byType.extra)} · ${c.heights}: ${heights(brief.typeSettings['drone-image'].heightsMeters)}`, rule: c.droneRule }] : []),
     ...(brief.circleRig ? [{ name: c.rig, count: counts.circleRig, detail: `${brief.circleRig.arrowCount} ${c.arrows} · ${c.heights}: ${heights(brief.typeSettings['drone-image'].heightsMeters)}`, rule: c.rigRule }] : []),
     ...(byType.drone ? [{ name: c.drone, count: counts.droneImage, detail: `${pointsLabel(byType.drone)} · ${c.heights}: ${heights(brief.typeSettings['drone-image'].heightsMeters)}`, rule: c.droneRule }] : []),
     ...(byType.panorama.length ? [{ name: c.panorama, count: counts.panorama, detail: `${pointsLabel(byType.panorama.length)} · ${c.heights}: ${panoramaHeights}`, rule: `${c.individual}. ${c.panoramaRule}.` }] : []),
@@ -158,7 +159,7 @@ export async function createBriefPdf(input: PdfExportInput, assets: PdfAssets): 
     drawPdfPointDiagram(page, brief, regular)
     text(page, c.diagramNote, 32, 44, 9, regular, muted)
     text(page, `D: ${c.drone}   P: 360°   S: DSLR   R: ${c.rig}`, 32, 30, 8, regular, muted)
-    if (brief.droneScan?.highRes || brief.droneScan?.lowRes) {
+    if (brief.droneScan?.highRes || brief.droneScan?.lowRes || byType.extra) {
       const scanPage = addPage(c.droneScan)
       drawPdfDroneScan(scanPage, brief, regular)
       text(scanPage, c.diagramNote, 32, 44, 9, regular, muted)

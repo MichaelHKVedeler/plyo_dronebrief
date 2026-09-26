@@ -18,10 +18,13 @@ it('places a new rig at the current view center without changing the legacy coor
   }
   render(<Editor />)
   view.change({ lat: 60.123456789, lng: 11.987654321 })
-  fireEvent.click(screen.getByRole('button', { name: 'Add Circle Rig' }))
+  const addRig = screen.getByRole('button', { name: 'Add Circle Rig' })
+  expect(addRig).toHaveClass('border-emerald-700', 'bg-emerald-50', 'dark:bg-emerald-950')
+  fireEvent.click(addRig)
   expect(current.brief.circleRig?.position).toEqual({ lat: 60.123456789, lng: 11.987654321 })
   expect(current.brief.coordinates).toEqual(brief.coordinates)
   expect(current.visibility.circleRig).toBe(true)
+  expect(screen.getByRole('button', { name: 'Remove rig' })).toHaveClass('bg-red-50', 'text-red-800', 'dark:bg-red-950')
 })
 
 it('shows the two oval radii in the read-only brief without exposing rig creation', () => {

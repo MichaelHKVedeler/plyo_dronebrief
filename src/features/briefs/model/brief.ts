@@ -34,6 +34,8 @@ const panoramaFocusSchema = z.object({
 export type PanoramaFocus = z.infer<typeof panoramaFocusSchema>
 export const angleSchema = z.discriminatedUnion('type', [
   z.object({ ...angleBase, type: z.literal('drone-image'), directionDegrees: heading }),
+  // Additive v1 variant: older readers reject it instead of displaying it as a normal drone point.
+  z.object({ ...angleBase, type: z.literal('extra-coverage'), directionDegrees: heading }),
   // Additive v1: optional heightsMeters overrides the shared 360 height list for this point.
   z.object({
     ...angleBase, type: z.literal('360'), focus: panoramaFocusSchema.optional(),
@@ -115,8 +117,8 @@ export type CameraAngle = z.infer<typeof angleSchema>
 export type BriefMode = 'edit' | 'view'
 export type LayerVisibility = { circleRig: boolean; angles: boolean; polygons: boolean; imageOverlays: boolean; droneScan: boolean }
 export const defaultVisibility: LayerVisibility = { circleRig: true, angles: true, polygons: true, imageOverlays: true, droneScan: true }
-export const cameraTypes = ['drone-image', '360', 'dslr'] as const
-export const cameraLabels = { 'drone-image': 'Drone image', '360': '360', dslr: 'DSLR' }
+export const cameraTypes = ['drone-image', '360', 'dslr', 'extra-coverage'] as const
+export const cameraLabels = { 'drone-image': 'Drone image', '360': '360', dslr: 'DSLR', 'extra-coverage': 'Extra coverage' }
 
 export function todayIsoDate(now = new Date()) {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`

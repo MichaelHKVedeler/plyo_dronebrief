@@ -43,7 +43,7 @@ function CameraArrows({ offsets, directionDegrees, color }: { offsets: number[];
 }
 export const CameraMarker = memo(function CameraMarker({ angle, editable, selected, pixelsToMeters, interactive = true, number = 1, duplicateNumber, dslrSettings, selectable = false, onSelect, onCommit, onDuplicate }: Props) {
   const { Marker: AdvancedMarker } = useObjectRenderer()
-  const scale = useMapObjectScale()
+  const scale = useMapObjectScale() * (angle.type === 'extra-coverage' ? 2 : 1)
   const hover = useHoverHandles(!interactive)
   const altCopy = useRef(false)
   const duplicating = useRef(false)
@@ -55,7 +55,7 @@ export const CameraMarker = memo(function CameraMarker({ angle, editable, select
   const name = cameraLabels[angle.type] + ' ' + shownNumber
   const appearance = cameraAppearance[angle.type]
   const Icon = appearance.Icon
-  const directional = visible.type !== '360'
+  const directional = visible.type !== '360' && visible.type !== 'extra-coverage'
   const { offsets, radiusPixels } = cameraDirectionLayout(angle.type === 'dslr' ? dslrSettings : undefined)
   const directionRadius = pixelsToMeters * radiusPixels * scale
   const moving = draft !== null && (draft.value.position.lat !== draft.source.position.lat || draft.value.position.lng !== draft.source.position.lng)
@@ -88,7 +88,7 @@ export const CameraMarker = memo(function CameraMarker({ angle, editable, select
     return { ...angle, directionDegrees: aim.directionDegrees }
   }
   const startAim = useCameraAimGesture({
-    enabled: editable && interactive && !ghost,
+    enabled: editable && interactive && !ghost && angle.type !== 'extra-coverage',
     onStart: (aim) => {
       onSelect(); hover.enter()
       if (angle.type === '360') setDraft({ source: angle, value: aimedAngle(aim) })
@@ -119,8 +119,8 @@ export const CameraMarker = memo(function CameraMarker({ angle, editable, select
       <div data-camera-marker={angle.id} className="relative" style={{ zoom: scale }} onMouseEnter={hover.enter} onMouseLeave={hover.leave}>
         {visible.type === '360' && visible.focus && <PanoramaFocusCone focus={visible.focus} color={appearance.color} />}
         {editable ? <Button disabled={!interactive} size="icon" variant="outline" aria-label={'Move ' + name}
-          data-camera-aim-control={interactive ? '' : undefined}
-          title={name + (angle.type === '360' ? ' · Right-drag to set focus width and direction' : ' · Right-drag to aim the camera') + (onDuplicate ? ' · Alt-drag to duplicate' : '')}
+          data-camera-aim-control={interactive && angle.type !== 'extra-coverage' ? '' : undefined}
+          title={name + (angle.type === 'extra-coverage' ? '' : angle.type === '360' ? ' · Right-drag to set focus width and direction' : ' · Right-drag to aim the camera') + (onDuplicate ? ' · Alt-drag to duplicate' : '')}
           className={'relative cursor-pointer touch-none rounded-full border-2 shadow-md active:cursor-grabbing ' + appearance.className + (selected || ghost ? ' ring-2 ring-primary ring-offset-2' : '')}
           onFocus={hover.enter} onBlur={hover.leave} onMouseEnter={hover.enter} onMouseLeave={hover.leave}
           onPointerDownCapture={(event) => {

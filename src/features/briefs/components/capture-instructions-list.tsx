@@ -12,7 +12,7 @@ export function CaptureInstructionsList({ brief, language, isolatedKind }: {
   if (!rows.length) return null
   return <ul className="grid gap-4" aria-label="Capture instructions">
     {rows.map((row) => {
-      const dimmed = Boolean(isolatedKind && isolatedKind !== row.key)
+      const dimmed = row.key === 'extra-coverage' ? isolatedKind !== 'droneScan' : Boolean(isolatedKind && isolatedKind !== row.key)
       return <li key={row.key} className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 items-start gap-2">
           <CaptureKindGlyph kind={row.key} />

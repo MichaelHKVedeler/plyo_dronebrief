@@ -106,6 +106,12 @@ Updated the live `api` and `publicView` functions in `plyo-dronebrief` to includ
 
 All 390 application/backend unit tests and both builds passed. Firestore/Storage emulator checks remain blocked by the local emulator startup socket error.
 
+## Extra coverage verification - 2026-09-26
+
+Deployed the updated `api` and `publicView` schema for `extra-coverage` points. In the existing synthetic **Drone scan persistence verification** project, placed a green point in ShadeMap, checked it in Google Maps, added a normal drone-image point, waited for Saved, and reloaded. Both point categories and the 500/800 m circles survived. A temporary public link opened with normal points only; Drone scan showed circles plus green coverage exclusively, and toggling it off restored normal points. The temporary link was revoked after verification. Checked the green control at 390 px without horizontal overflow.
+
+The 396-test suite and frontend/backend builds passed; the expanded placement suite also passed afterward. The rules stage remains blocked by the local Java loopback/socket startup error. Frontend changes still require the normal release workflow.
+
 ## Verification status — 2026-09-19
 
 - `npm run check` passed: 216 unit/integration tests, 14 Firestore/Storage emulator tests, frontend/backend type checks, clean lint and production builds. Emulator cases include 10,000-project search, filtering and sorting, multi-document bodies, conflicts, permissions and cleanup. Vite still reports large lazy-loaded Firebase/map bundles.

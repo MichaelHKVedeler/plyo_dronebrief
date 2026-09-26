@@ -57,16 +57,17 @@ export function usePdfMapCapture(ref: RefObject<PdfMapCapture | null> | undefine
         return { kind, dataUrl, ...(shadowSlot ? { shadowSlot } : {}) }
       }
       // Tighter export framing, with room for direction arrows and 360 focus.
-      await frame(scenePoints(brief))
+      await frame(scenePoints({ ...brief, droneScan: null, angles: brief.angles.filter((angle) => angle.type !== 'extra-coverage') }))
       const maps: PdfMapImage[] = []
       for (const kind of brief.imageOverlays.length ? ['floor-plan', 'map'] as const : ['map'] as const) {
         signal.throwIfAborted()
         maps.push(await shoot(kind, kind !== 'floor-plan'))
       }
-      if (hasDroneScan(brief.droneScan)) {
+      const extraPoints = brief.angles.filter((angle) => angle.type === 'extra-coverage').map((angle) => angle.position)
+      if (hasDroneScan(brief.droneScan) || extraPoints.length) {
         signal.throwIfAborted()
         flushSync(() => setCapturing('drone-scan'))
-        await frame(droneScanOutlinePoints(brief.droneScan))
+        await frame([...(hasDroneScan(brief.droneScan) ? droneScanOutlinePoints(brief.droneScan) : []), ...extraPoints])
         maps.push(await shoot('drone-scan', true))
       }
       signal.throwIfAborted()

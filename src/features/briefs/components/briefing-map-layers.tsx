@@ -33,10 +33,10 @@ export function BriefingMapLayers({ brief, language, isolatedKind, onIsolate, fl
   floorplanVisible?: boolean
   onFloorplanVisible?: (visible: boolean) => void
 }) {
-  const rows = captureInstructions(brief, language)
+  const rows = captureInstructions(brief, language).filter((row) => row.key !== 'extra-coverage')
   const copy = briefingCopy[language]
   const hasFloorplan = brief.imageOverlays.length > 0
-  const hasScan = !!(brief.droneScan?.highRes || brief.droneScan?.lowRes)
+  const hasScan = !!(brief.droneScan?.highRes || brief.droneScan?.lowRes) || brief.angles.some((angle) => angle.type === 'extra-coverage')
   if (!rows.length && !hasFloorplan && !hasScan) return null
   return <div className="pointer-events-auto grid w-fit justify-items-center gap-2.5 rounded-lg border bg-card p-2 shadow-sm">
     {rows.map((row) => <CaptureKindIsolateButton key={row.key} kind={row.key} label={row.label} pressed={isolatedKind === row.key}
