@@ -64,6 +64,12 @@ The following steps apply when provisioning another installation. The Plyo insta
 8. Clear emulator variables. Configure Application Default Credentials, `GCLOUD_PROJECT=YOUR_PROJECT_ID`, and Firebase configuration identifying the real bucket. Run `npm run bootstrap`. This is an operator command, never an HTTP endpoint.
 9. Build Vite and deploy with `npx -y firebase-tools@latest deploy --project YOUR_PROJECT_ID --only hosting`. The configured Firebase Hosting root is `dist`. Verify real Google sign-in, membership, uploads, public links and cleanup before relying on a new installation.
 
+## Releasing brief data-model changes
+
+The browser and Cloud Functions both compile `src/features/briefs/model/brief.ts`. When adding a saved field such as `droneScan`, deploy the updated `api` and `publicView` functions before releasing the frontend. An older backend strips fields its Zod schema does not recognize, which can acknowledge a save while dropping new content or omit it when loading. A GitHub push or GitHub Pages deployment only updates source/frontend content; it does not deploy Firebase Functions.
+
+Run `npm run check`, then `npx firebase deploy --project plyo-dronebrief --only functions:dronebrief:api,functions:dronebrief:publicView` for the save/load and public-view handlers. Update other functions too if their behavior changed. Validate a save-and-reopen round trip after deployment. Existing data already stripped during a save cannot be recovered from that saved snapshot; re-add it or restore from an intact export.
+
 ## Administration and persistence
 
 Bootstrap creates Plyo and pending admin grants for `kristian.nordahl@plyo.com` and `michael.vedeler@plyo.com`. Each activates only after a matching verified Google sign-in. Its persistent marker prevents reruns from restoring removed admins.
@@ -93,6 +99,12 @@ Public links contain an unguessable token in the URL fragment, submitted to the 
 `projectIndex` and `libraryIndex` perform retryable, paginated projection updates. Monitor failed invocations and outstanding `indexJobs` if indexing stalls. `janitor` runs daily and writes its completion to `maintenance/cleanup`. It clears expired unused assets and permanently deletes up to 100 projects past the 30-day recovery period per run. Retry failures safely. Monitor Functions failures, indexing backlog, cleanup completion, upload durations and Storage/Firestore usage.
 
 Projects are marked as purging before physical cleanup, preventing restoration during deletion. Moving a project to Deleted projects revokes public sharing; restore never reactivates the old token. Administrators can restore a project from Deleted projects within 30 days or delete it permanently. Deploy backend operations and security rules together.
+
+## Drone scan persistence verification - 2026-09-26
+
+Updated the live `api` and `publicView` functions in `plyo-dronebrief` to include the drone scan schema. Verified the deployed API from the signed-in local app: created the separate **Drone scan persistence verification** project, added 500 m high-res and 800 m low-res circles, waited for Saved, and fully reloaded the project. Both circles and diameters remained. The test project remains in the library.
+
+All 390 application/backend unit tests and both builds passed. Firestore/Storage emulator checks remain blocked by the local emulator startup socket error.
 
 ## Verification status — 2026-09-19
 

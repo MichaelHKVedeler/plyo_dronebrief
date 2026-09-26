@@ -32,10 +32,10 @@ async function resume() {
 }
 it('adds a local image to a hidden layer, saves metadata, adjusts visibility, and recovers after reopening', async () => {
   const { user, app } = await resume()
-  await user.click(within(screen.getByRole('region', { name: 'Brief map' })).getByRole('switch', { name: 'Image overlays' }))
+  await user.click(within(screen.getByRole('region', { name: 'Brief map' })).getByRole('switch', { name: 'Floor plan' }))
   await user.upload(screen.getByLabelText('Local image file'), file)
   await waitFor(() => expect(briefRepository.latest()?.imageOverlays).toHaveLength(1))
-  expect(within(screen.getByRole('region', { name: 'Brief map' })).getByRole('switch', { name: 'Image overlays' })).toHaveAttribute('aria-checked', 'true')
+  expect(within(screen.getByRole('region', { name: 'Brief map' })).getByRole('switch', { name: 'Floor plan' })).toHaveAttribute('aria-checked', 'true')
   const overlay = briefRepository.latest()!.imageOverlays[0]
   expect(overlay.source).toMatchObject({ kind: 'local-file', fileName: 'plan.png' })
   expect(JSON.stringify(briefRepository.latest())).not.toMatch(/blob:|base64|fakepath/)
@@ -78,7 +78,7 @@ it('reconnects local images in a viewer without saving or permitting edits', asy
   await user.click(screen.getByRole('button', { name: 'View floorplan' }))
   expect(screen.getByRole('img', { name: 'plan.png' })).toHaveAttribute('src', 'blob:local-only')
   await user.keyboard('{Escape}')
-  await user.click(within(screen.getByRole('region', { name: 'Brief map' })).getByRole('switch', { name: 'Image overlays' }))
+  await user.click(within(screen.getByRole('region', { name: 'Brief map' })).getByRole('switch', { name: 'Floor plan' }))
   expect(writes).not.toHaveBeenCalled()
   expect(briefRepository.latest()!.project.name).toBe(project.name)
 })
