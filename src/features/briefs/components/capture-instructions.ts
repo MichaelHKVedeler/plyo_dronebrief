@@ -7,8 +7,8 @@ export type CaptureInstructionRow = {
   key: 'circleRig' | 'drone-image' | '360' | 'dslr' | 'extra-coverage'
   label: string
   rule: string
-  range: string
-  heights: string
+  range?: string
+  heights?: string
   images: number
 }
 
@@ -75,6 +75,6 @@ export function captureInstructions(brief: DroneBrief, language: PdfLanguage): C
     })
   }
   const extraPoints = brief.angles.filter((angle) => angle.type === 'extra-coverage').length
-  if (extraPoints) rows.push({ key: 'extra-coverage', label: copy.extraCoverage, rule: copy.droneRule, range: pointRangeLabel(copy.point, extraPoints), heights: droneHeights, images: counts.extraCoverage })
+  if (extraPoints) rows.push({ key: 'extra-coverage', label: copy.extraCoverage, rule: copy.droneRule, images: counts.extraCoverage })
   return rows
 }

@@ -43,3 +43,16 @@ it('omits empty types and translates Norwegian copy', () => {
     { key: 'dslr', label: 'DSLR', rule: '30°, minst 1 foto per punkt', range: 'Punkt 1', heights: 'Bakkenivå', images: 1 },
   ])
 })
+
+it('omits heights from the extra coverage description', () => {
+  const brief = createBrief({ name: 'Extra coverage', clientName: 'Client' })
+  brief.angles = [{
+    id: 'extra-1', label: 'Extra coverage 1', type: 'extra-coverage',
+    position: brief.coordinates, directionDegrees: 0,
+  }]
+
+  expect(captureInstructions(brief, 'en')).toEqual([{
+    key: 'extra-coverage', label: 'Extra coverage', rule: 'Maximum height of 120m',
+    images: 2,
+  }])
+})

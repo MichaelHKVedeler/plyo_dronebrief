@@ -20,10 +20,10 @@ export function CaptureInstructionsList({ brief, language, isolatedKind }: {
             <p className={`text-sm font-medium ${dimmed ? 'lg:opacity-50' : ''}`}>{row.label} <span className="font-normal text-muted-foreground">| {row.rule}</span></p>
           </div>
         </div>
-        <div className={`shrink-0 text-right text-sm font-medium ${dimmed ? 'lg:opacity-50' : ''}`}>
-          <p className="whitespace-nowrap">{row.range}:</p>
-          <p className="whitespace-nowrap">{row.heights}</p>
-        </div>
+        {(row.range || row.heights) && <div className={`shrink-0 text-right text-sm font-medium ${dimmed ? 'lg:opacity-50' : ''}`}>
+          {row.range && <p className="whitespace-nowrap">{row.range}:</p>}
+          {row.heights && <p className="whitespace-nowrap">{row.heights}</p>}
+        </div>}
       </li>
     })}
   </ul>

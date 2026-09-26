@@ -40,6 +40,20 @@ it('keeps description icons at full opacity while dimming other copy on wide scr
   expect(within(dslr!).getByText('Ground-level')).toHaveClass('whitespace-nowrap')
 })
 
+it('does not show points or heights in the extra coverage description', () => {
+  const brief = captureBrief()
+  brief.angles = [{
+    id: 'extra-1', label: 'Extra coverage 1', type: 'extra-coverage',
+    position: brief.coordinates, directionDegrees: 0,
+  }]
+
+  render(<CaptureInstructionsList brief={brief} language="en" isolatedKind="droneScan" />)
+
+  const extraCoverage = screen.getByText('Extra coverage', { exact: false }).closest('li')
+  expect(within(extraCoverage!).queryByText('Point 1:')).not.toBeInTheDocument()
+  expect(within(extraCoverage!).queryByText('40m, 60m')).not.toBeInTheDocument()
+})
+
 it('isolates a capture type from the map overlay and restores all types on a second click', async () => {
   const onIsolate = vi.fn()
   const user = userEvent.setup()
