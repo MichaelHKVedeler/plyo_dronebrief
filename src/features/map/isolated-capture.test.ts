@@ -15,14 +15,16 @@ it('toggles one capture kind on and off', () => {
 })
 
 it('hides other capture types while isolated and keeps layer toggles', () => {
-  expect(isolatedCaptureVisibility(defaultVisibility, 'drone-image')).toEqual({ circleRig: false, angles: true })
-  expect(isolatedCaptureVisibility(defaultVisibility, 'circleRig')).toEqual({ circleRig: true, angles: false })
-  expect(isolatedCaptureVisibility({ ...defaultVisibility, angles: false }, 'drone-image')).toEqual({ circleRig: false, angles: false })
-  expect(isolatedCaptureVisibility({ ...defaultVisibility, circleRig: false }, null)).toEqual({ circleRig: false, angles: true })
+  expect(isolatedCaptureVisibility(defaultVisibility, 'drone-image')).toEqual({ circleRig: false, angles: true, droneScan: false })
+  expect(isolatedCaptureVisibility(defaultVisibility, 'circleRig')).toEqual({ circleRig: true, angles: false, droneScan: false })
+  expect(isolatedCaptureVisibility(defaultVisibility, 'droneScan')).toEqual({ circleRig: false, angles: false, droneScan: true })
+  expect(isolatedCaptureVisibility({ ...defaultVisibility, angles: false }, 'drone-image')).toEqual({ circleRig: false, angles: false, droneScan: false })
+  expect(isolatedCaptureVisibility({ ...defaultVisibility, circleRig: false, droneScan: false }, null)).toEqual({ circleRig: false, angles: true, droneScan: false })
 })
 
 it('filters camera points to the isolated type', () => {
   expect(isolatedCaptureAngles(angles, null).map((angle) => angle.id)).toEqual(['d1', 'p1', 's1'])
   expect(isolatedCaptureAngles(angles, 'drone-image').map((angle) => angle.id)).toEqual(['d1'])
   expect(isolatedCaptureAngles(angles, 'circleRig')).toEqual([])
+  expect(isolatedCaptureAngles(angles, 'droneScan')).toEqual([])
 })

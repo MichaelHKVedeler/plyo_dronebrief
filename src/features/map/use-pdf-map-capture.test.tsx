@@ -7,10 +7,11 @@ import { usePdfMapCapture } from './use-pdf-map-capture'
 const capture = vi.hoisted(() => ({ image: vi.fn(async () => 'data:image/png;base64,test') }))
 vi.mock('html-to-image', () => ({ toPng: capture.image }))
 afterEach(() => { cleanup(); vi.clearAllMocks(); vi.unstubAllGlobals() })
-function setup(images = false) {
+function setup(images = false, scan = false) {
   vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => { callback(0); return 1 })
   const brief = createBrief({ name: 'Map export', clientName: 'Test' })
   if (images) brief.imageOverlays = [{ id: 'img', name: 'Plan', source: 'data:image/png;base64,test', position: brief.coordinates, widthMeters: 20, heightMeters: 20, rotationDegrees: 0, opacity: 1 }]
+  if (scan) brief.droneScan = { id: 'scan', highRes: { id: 'high', position: brief.coordinates, radiusMeters: 20 }, lowRes: { id: 'low', position: brief.coordinates, radiusMeters: 50 } }
   const root = document.createElement('div'), surface = document.createElement('div')
   surface.dataset.pdfMapSurface = ''
   Object.defineProperties(surface, { clientWidth: { value: 640 }, clientHeight: { value: 400 } })
@@ -29,7 +30,18 @@ it('exports both floor-plan and clean map views, then restores the original view
   expect(result).toEqual([{ kind: 'floor-plan', dataUrl: 'data:image/png;base64,test' }, { kind: 'map', dataUrl: 'data:image/png;base64,test' }])
   expect(navigation.setZoom).toHaveBeenCalledWith(18.5)
   expect(navigation.moveCamera).toHaveBeenLastCalledWith(view.current)
-  expect(setCapturing.mock.calls.map(([value]) => value)).toEqual([true, false])
+  expect(setCapturing.mock.calls.map(([value]) => value)).toEqual(['full', false])
+})
+it('captures an extra map framed on the drone scan', async () => {
+  const { ref, navigation, setCapturing } = setup(false, true)
+  let result
+  await act(async () => { result = await ref.current!(new AbortController().signal) })
+  expect(result).toEqual([
+    { kind: 'map', dataUrl: 'data:image/png;base64,test' },
+    { kind: 'drone-scan', dataUrl: 'data:image/png;base64,test' },
+  ])
+  expect(navigation.fitBounds).toHaveBeenCalledTimes(2)
+  expect(setCapturing.mock.calls.map(([value]) => value)).toEqual(['full', 'drone-scan', false])
 })
 it('restores rendering and navigation when screenshot capture fails', async () => {
   const { ref, navigation, setCapturing, view } = setup()

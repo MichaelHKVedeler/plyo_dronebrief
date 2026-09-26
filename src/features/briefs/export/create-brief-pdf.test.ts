@@ -58,6 +58,19 @@ describe('PDF export', () => {
     source.brief.angles.push({ ...source.brief.angles[0], id: 'extra' })
     expect((await PDFDocument.load(await createBriefPdf(source, assets))).getPageCount()).toBe(8)
   })
+  it('adds an isolated drone scan page only when a scan exists', async () => {
+    const source = input()
+    expect((await PDFDocument.load(await createBriefPdf(source, assets))).getPageCount()).toBe(7)
+    source.brief.droneScan = {
+      id: 'scan',
+      highRes: { id: 'high', position: source.brief.coordinates, radiusMeters: 30 },
+      lowRes: { id: 'low', position: source.brief.coordinates, radiusMeters: 80 },
+    }
+    expect((await PDFDocument.load(await createBriefPdf(source, assets))).getPageCount()).toBe(8)
+    source.diagram = false
+    source.maps = [{ kind: 'drone-scan', dataUrl: 'data:image/png;base64,' + Buffer.from(assets.logo).toString('base64') }]
+    expect((await PDFDocument.load(await createBriefPdf(source, assets))).getPageCount()).toBe(7)
+  })
   it('creates safe filenames without losing Norwegian letters', () => {
     expect(pdfFilename('Bjørvika: øst/vest?', 'nb')).toBe('Bjørvika- øst-vest-_Fotobrief_Plyo.pdf')
     expect(pdfFilename('... ', 'en')).toBe('Project_Photobrief_Plyo.pdf')

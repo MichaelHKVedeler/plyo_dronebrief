@@ -18,6 +18,8 @@ it('toggles map layer visibility without changing a read-only brief', async () =
   const overlay = view.getByTestId('overlay')
   await user.click(within(overlay).getByRole('switch', { name: 'Circle rig' }))
   expect(current.visibility.circleRig).toBe(false)
+  await user.click(within(overlay).getByRole('switch', { name: 'Drone scan' }))
+  expect(current.visibility.droneScan).toBe(false)
   await user.click(within(overlay).getByRole('switch', { name: 'Additional angles' }))
   expect(current.visibility.angles).toBe(false)
   await user.click(within(overlay).getByRole('switch', { name: 'Image overlays' }))

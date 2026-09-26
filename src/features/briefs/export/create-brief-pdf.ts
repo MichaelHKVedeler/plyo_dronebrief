@@ -5,7 +5,7 @@ import { countBriefImages } from '../model/image-count'
 import { pdfCopy, pdfDate } from './pdf-copy'
 import { fitPdfText, wrapPdfText } from './pdf-layout'
 import type { PdfAssets, PdfExportInput } from './pdf-types'
-import { drawPdfPointDiagram } from '@/features/map/pdf-point-diagram'
+import { drawPdfDroneScan, drawPdfPointDiagram } from '@/features/map/pdf-point-diagram'
 import { pdfCapturePoints, pdfProjectSize } from './pdf-project'
 
 const width = 720, height = 405
@@ -146,7 +146,7 @@ export async function createBriefPdf(input: PdfExportInput, assets: PdfAssets): 
   text(info, `${c.total}: ${counts.total}`, 76, 52, 16, bold, teal)
 
   for (const map of maps) {
-    const page = addPage(map.kind === 'floor-plan' ? c.mapPlan : c.map)
+    const page = addPage(map.kind === 'floor-plan' ? c.mapPlan : map.kind === 'drone-scan' ? c.droneScan : c.map)
     const image = await doc.embedPng(map.dataUrl)
     const fit = image.scaleToFit(672, 290)
     page.drawImage(image, { x: (width - fit.width) / 2, y: 45 + (290 - fit.height) / 2, width: fit.width, height: fit.height })
@@ -158,6 +158,11 @@ export async function createBriefPdf(input: PdfExportInput, assets: PdfAssets): 
     drawPdfPointDiagram(page, brief, regular)
     text(page, c.diagramNote, 32, 44, 9, regular, muted)
     text(page, `D: ${c.drone}   P: 360°   S: DSLR   R: ${c.rig}`, 32, 30, 8, regular, muted)
+    if (brief.droneScan?.highRes || brief.droneScan?.lowRes) {
+      const scanPage = addPage(c.droneScan)
+      drawPdfDroneScan(scanPage, brief, regular)
+      text(scanPage, c.diagramNote, 32, 44, 9, regular, muted)
+    }
   }
   for (const ref of references) {
     const page = addPage(c.reference)

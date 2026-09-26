@@ -36,10 +36,13 @@ export function BriefingMapLayers({ brief, language, isolatedKind, onIsolate, fl
   const rows = captureInstructions(brief, language)
   const copy = briefingCopy[language]
   const hasFloorplan = brief.imageOverlays.length > 0
-  if (!rows.length && !hasFloorplan) return null
+  const hasScan = !!(brief.droneScan?.highRes || brief.droneScan?.lowRes)
+  if (!rows.length && !hasFloorplan && !hasScan) return null
   return <div className="pointer-events-auto grid w-fit justify-items-center gap-2.5 rounded-lg border bg-card p-2 shadow-sm">
     {rows.map((row) => <CaptureKindIsolateButton key={row.key} kind={row.key} label={row.label} pressed={isolatedKind === row.key}
       onClick={() => onIsolate(toggleIsolatedCapture(isolatedKind, row.key))} />)}
+    {hasScan && <CaptureKindIsolateButton kind="droneScan" label={copy.droneScan} pressed={isolatedKind === 'droneScan'}
+      onClick={() => onIsolate(toggleIsolatedCapture(isolatedKind, 'droneScan'))} />}
     {hasFloorplan && onFloorplanVisible && <>
       {rows.length > 0 && <Separator />}
       <FloorplanToggleButton visible={floorplanVisible} showLabel={copy.showFloorplan} hideLabel={copy.hideFloorplan}

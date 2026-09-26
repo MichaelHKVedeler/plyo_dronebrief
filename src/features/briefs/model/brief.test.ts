@@ -95,6 +95,20 @@ it('adds another 07:00–17:00 range on the latest slot date', () => {
   expect(nextShootSlot([])).toEqual({ date: todayIsoDate(), time: '07:00', endTime: '17:00' })
 })
 
+it('defaults a missing drone scan to null and round-trips a saved scan', () => {
+  expect(brief.droneScan).toBeNull()
+  const raw = JSON.parse(JSON.stringify(brief)) as Record<string, unknown>
+  delete raw.droneScan
+  expect(briefSchema.parse(raw).droneScan).toBeNull()
+  const scan = {
+    id: 'scan',
+    highRes: { id: 'high', position: brief.coordinates, radiusMeters: 30 },
+    lowRes: { id: 'low', position: brief.coordinates, radiusMeters: 80 },
+  }
+  const saved = briefSchema.parse({ ...brief, droneScan: scan })
+  expect(briefSchema.parse(JSON.parse(JSON.stringify(saved))).droneScan).toEqual(scan)
+})
+
 it('keeps a missing 360 height list on the shared settings and round-trips an override', () => {
   const point = { id: 'p', label: 'Panorama', type: '360' as const, position: brief.coordinates }
   expect(briefSchema.parse({ ...brief, angles: [point] }).angles[0]).toEqual(point)

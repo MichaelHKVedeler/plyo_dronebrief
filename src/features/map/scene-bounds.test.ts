@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { createBrief } from '@/features/briefs/model/brief'
 import { sceneBounds, scenePoints } from './scene-bounds'
 import { rigOutline } from './geometry'
+import { circleOutline } from './drone-scan'
 
 describe('scene framing', () => {
   const brief = createBrief({ name: 'Frame test', clientName: 'Client', date: '2026-09-11', times: ['09:00'] })
@@ -16,6 +17,12 @@ describe('scene framing', () => {
     const points = scenePoints(scene)
     expect(points).toEqual(expect.arrayContaining(rigOutline(rig)))
     expect(sceneBounds(points)).toEqual({ north: 60, south: 58, east: 11, west: 9 })
+  })
+  it('includes both drone scan circles', () => {
+    const high = { id: 'h', position: { lat: 59.5, lng: 10.5 }, radiusMeters: 40 }
+    const low = { id: 'l', position: { lat: 59.5, lng: 10.5 }, radiusMeters: 80 }
+    const points = scenePoints({ ...brief, droneScan: { id: 's', highRes: high, lowRes: low } })
+    expect(points).toEqual(expect.arrayContaining([...circleOutline(high), ...circleOutline(low)]))
   })
   it('frames nearby points across the antimeridian as a small scene', () => {
     expect(sceneBounds([{ lat: 10, lng: 179.9 }, { lat: 11, lng: -179.9 }])).toEqual({ north: 11, south: 10, east: expect.closeTo(-179.9), west: expect.closeTo(179.9) })

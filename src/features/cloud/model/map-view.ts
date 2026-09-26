@@ -28,6 +28,9 @@ function destination(origin: Position, meters: number, heading: number): Positio
 function scenePoints(brief: DroneBrief): Position[] {
   const points = brief.angles.map((angle) => angle.position)
   if (brief.circleRig) for (const heading of [0, 90, 180, 270]) points.push(destination(brief.circleRig.position, brief.circleRig.radiusMeters, heading))
+  for (const circle of [brief.droneScan?.lowRes, brief.droneScan?.highRes]) {
+    if (circle) for (const heading of [0, 90, 180, 270]) points.push(destination(circle.position, circle.radiusMeters, heading))
+  }
   for (const polygon of brief.polygons) points.push(...polygon.vertices)
   for (const overlay of brief.imageOverlays) {
     const reach = Math.hypot(overlay.widthMeters, overlay.heightMeters) / 2
@@ -69,7 +72,7 @@ function zoomFor(frame: { north: number; south: number; east: number; west: numb
 
 /** Center and zoom matching the editor's opening frame, including the Oslo and unset-origin defaults. */
 export function editorMapView(brief: DroneBrief): EditorMapView {
-  const empty = !brief.angles.length && !brief.circleRig && !brief.polygons.length && !brief.imageOverlays.length
+  const empty = !brief.angles.length && !brief.circleRig && !brief.droneScan?.highRes && !brief.droneScan?.lowRes && !brief.polygons.length && !brief.imageOverlays.length
   if (empty && brief.coordinates.lat === 59.9139 && brief.coordinates.lng === 10.7522) return { lat: 59.9139, lng: 10.7522, zoom: 10 }
   if (empty && brief.coordinates.lat === 0 && brief.coordinates.lng === 0) return { lat: 0, lng: 0, zoom: 2 }
   const frame = sceneFrame(scenePoints(brief))

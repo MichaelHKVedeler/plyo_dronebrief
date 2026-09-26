@@ -73,6 +73,17 @@ it('selects on a line click without saving, and suppresses the subsequent map cl
   expect(click).not.toHaveBeenCalled()
 })
 
+it('uses a wider outline hit when a grab radius is provided', () => {
+  const { surface, target, edge, props } = setup()
+  props.hitRadius = 24
+  props.onHoverChange = vi.fn()
+  fireEvent.pointerMove(target, { buttons: 0, clientX: edge.x + 20, clientY: edge.y })
+  expect(surface).toHaveAttribute('data-rig-move-cursor', 'grab')
+  props.hitRadius = 10
+  fireEvent.pointerMove(target, { buttons: 0, clientX: edge.x + 20, clientY: edge.y })
+  expect(surface).not.toHaveAttribute('data-rig-move-cursor')
+})
+
 it('thickens the outline when the pointer is a little beside the line', () => {
   const { surface, target, edge, props } = setup()
   props.onHoverChange = vi.fn()
@@ -161,4 +172,17 @@ it('reveals controls over the rig numbered badges and inward arrows beyond the o
   props.interactive = false
   fireEvent.pointerMove(target, { buttons: 0, clientX: 200, clientY: 160 })
   expect(props.onHoverChange).toHaveBeenLastCalledWith(false)
+})
+
+it('preserves the hand cursor when sibling outlines are not hovered or unmount', () => {
+  const { surface, target, edge, props } = setup()
+  const sibling = { ...props, rig: { ...rig, id: 'other', position: { lat: 1, lng: 1 } } }
+  const detachSibling = attachRigLineDrag(surface, projection, () => sibling)
+  try {
+    fireEvent.pointerMove(target, { buttons: 0, clientX: edge.x, clientY: edge.y })
+    expect(surface).toHaveAttribute('data-rig-move-cursor', 'grab')
+  } finally { detachSibling() }
+  expect(surface).toHaveAttribute('data-rig-move-cursor', 'grab')
+  fireEvent.pointerMove(target, { buttons: 0, clientX: 200, clientY: 200 })
+  expect(surface).not.toHaveAttribute('data-rig-move-cursor')
 })

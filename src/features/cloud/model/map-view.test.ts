@@ -14,6 +14,15 @@ describe('editor map thumbnails', () => {
     expect(wide.zoom).toBeLessThan(tight.zoom)
     expect(wide.lat).toBeGreaterThan(59); expect(wide.lat).toBeLessThan(60)
   })
+  it('frames a drone scan instead of the empty Oslo default', () => {
+    const framed = editorMapView({
+      ...brief,
+      droneScan: { id: 's', highRes: null, lowRes: { id: 'l', position: { lat: 60, lng: 11 }, radiusMeters: 400 } },
+    })
+    expect(framed).not.toEqual({ lat: 59.9139, lng: 10.7522, zoom: 10 })
+    expect(framed.lat).toBeGreaterThan(59.95)
+    expect(framed.lat).toBeLessThan(60.05)
+  })
   it('requests a satellite static map of that frame', () => {
     const url = new URL(staticMapUrl({ lat: 59.9, lng: 10.7, zoom: 16 }, 'test-key'))
     expect(url.origin + url.pathname).toBe('https://maps.googleapis.com/maps/api/staticmap')

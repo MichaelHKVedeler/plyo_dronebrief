@@ -10,6 +10,7 @@ The runtime contract is `src/features/briefs/model/brief.ts`. This document expl
 | project | name, clientName, optional description and instructions (max 2000 each), calendar date YYYY-MM-DD, times HH:mm[], optional shoots[{date, time, endTime?}] (max 3) |
 | coordinates | Project/map reference point {lat, lng}; new briefs default to Oslo (59.9139, 10.7522) |
 | circleRig | null or {id, position, radiusMeters, ovalRatio, rotationDegrees, arrowCount} |
+| droneScan | null or {id, highRes, lowRes}; each circle is null or {id, position, radiusMeters} |
 | angles | Discriminated camera-angle array |
 | typeSettings | Drone/360 heightsMeters arrays (new briefs: drone 40, 60; 360 2, 5, 8); DSLR angleCount and spacingDegrees plus preserved legacy heightsMeters |
 | polygons | Newbuild polygons with id, label, and vertices[] |
@@ -31,6 +32,12 @@ Every shoot slot is a range. `shoots[].endTime` (HH:mm) is the end on the slot's
 Map geometry uses spherical distances and bearings with longitude wrapping. The rig outline has 64 vertices. The combined edge dot sits half a numbered-point interval after point 1, between badges. Dragging changes the semi-major axis and rotation together, compensating for the handle’s angular offset and oval ratio so it stays under the pointer. The center and oval ratio remain fixed. The oval handle sits halfway along the minor axis and changes the ratio without changing the major radius. These are planning graphics, not survey geometry.
 
 `arrowCount` is an integer from 1–50, defaulting to 10 for new rigs and imported rigs missing the field. Numbered arrows follow clockwise parametric intervals around the circle/oval edge, starting at the rotated major-axis endpoint, and aim toward the center. Arrow symbols are offset 36 screen pixels toward the center; numbered badges are centered on the outline. Arrows have white fills and crisp 2-pixel colored strokes without shadows. They follow rig movement, rotation, and reshaping in both maps. This is an additive schema v1 extension; DB1/DB2 transport versions are unchanged. Older app builds ignore the field and lose it on re-export.
+
+## Drone scan
+
+`droneScan` is an optional planning graphic, separate from the arrow circle rig. It does not add arrows or image counts. `highRes` and `lowRes` are each null or a true circle `{id, position, radiusMeters}`. `radiusMeters` is the radius; the editor and map label show the diameter. Either circle can exist alone. When both exist, the high-res circle stays fully inside the low-res circle, with at least 2 m between the outlines (more while dragging, so the strokes stay easy to grab). The low-res fill is punched out by the high-res circle. The map draws both like the 360 focus sector: an outline and translucent fill, plus an east-west diameter line labeled in meters. High res is blue and low res is red. Dragging, keyboard steps, and the diameter fields snap each diameter to the nearest 5 m that still keeps the circles nested.
+
+**Version decision:** this is an additive schema v1 field; DB1/DB2 transport versions are unchanged. Older snapshots omit `droneScan` and parse as null. Older app builds ignore the field and lose it on re-export.
 
 ## Angles
 

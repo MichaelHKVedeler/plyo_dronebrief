@@ -26,6 +26,8 @@ import type { BriefAction, BriefSession } from '@/features/briefs/state/brief-se
 import { defaultShootTime, ensureShootRange, projectWithShoots, shootSlots, type CameraAngle, type Position, type ShootSlot } from '@/features/briefs/model/brief'
 import { CameraMarkers } from './camera-markers'
 import { RigObject } from './rig-object'
+import { DroneScanObject } from './drone-scan-object'
+import { hasDroneScan } from './drone-scan'
 import { MapControls } from './map-controls'
 import { MapSearch } from './map-search'
 import { CameraPlacementGesture } from './camera-placement-gesture'
@@ -107,6 +109,9 @@ function ConnectedMap({ imageLayer, selectedCameraIds, onSelectCamera, session, 
         if (event.detail.latLng) onMapClick(event.detail.latLng)
       }}>
       {active && <MapObjectScale value={objectScale}>
+      {capture.droneScan && hasDroneScan(brief.droneScan) && <DroneScanObject scan={brief.droneScan} zoom={zoom} editable={editing} interactive={objectsInteractive}
+        onSelect={onSelect}
+        onCommit={(next) => dispatch({ type: 'update', update: (b) => b.droneScan?.id === next.id ? { ...b, droneScan: next } : b })} />}
       {capture.circleRig && brief.circleRig && <RigObject rig={brief.circleRig} pixelsToMeters={metersPerPixel(brief.circleRig.position.lat, zoom)} dark={dark} editable={editing} interactive={objectsInteractive}
         selected={selectedId === brief.circleRig.id}
         onSelect={() => onSelect(brief.circleRig!.id)}
@@ -186,7 +191,8 @@ function MapWorkspace(props: Props) {
   const view = useRef<MapView>({ center: brief.coordinates, zoom: 10 })
   const [zoom, setZoom] = useState(view.current.zoom)
   const viewport = useRef<HTMLDivElement>(null)
-  const [capturing, setCapturing] = useState(false)
+  const [capturePass, setCapturePass] = useState<'full' | 'drone-scan' | false>(false)
+  const capturing = capturePass !== false
   const showGoogle = !shadeActive || capturing
   usePdfMapCapture(props.pdfMapRef, {
     root: viewport, navigation: googleMap ? {
@@ -196,10 +202,14 @@ function MapWorkspace(props: Props) {
         await Promise.all([waitForMapIdle(googleMap, signal), waitForMapIdle(googleMap, signal, 'tilesloaded', 5000)])
       },
     } : null,
-    view, brief, sourceUrl: props.images.sourceUrl, setCapturing,
+    view, brief, sourceUrl: props.images.sourceUrl, setCapturing: setCapturePass,
   })
-  const renderedSession = capturing ? { ...session, mode: 'view' as const, visibility: { circleRig: true, angles: true, polygons: true, imageOverlays: true } } : session
-  const mapProps = capturing ? { ...props, session: renderedSession, selectedId: null, selectedCameraIds: [], tool: idleTool, isolatedKind: null } : props
+  const renderedSession = capturePass === 'drone-scan'
+    ? { ...session, mode: 'view' as const, visibility: { circleRig: false, angles: false, polygons: false, imageOverlays: false, droneScan: true } }
+    : capturePass === 'full'
+      ? { ...session, mode: 'view' as const, visibility: { circleRig: true, angles: true, polygons: true, imageOverlays: true, droneScan: true } }
+      : session
+  const mapProps = capturePass ? { ...props, session: renderedSession, selectedId: null, selectedCameraIds: [], tool: idleTool, isolatedKind: capturePass === 'drone-scan' ? 'droneScan' as const : null } : props
   const renderedObjectSize = capturing ? 100 / 2 ** (zoom - 17) : objectSizePercent
   useImperativeHandle(props.rigPlacementRef, () => () => ({
     position: { ...view.current.center },

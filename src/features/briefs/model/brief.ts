@@ -48,6 +48,11 @@ const imageSourceSchema = z.union([
 ])
 export const defaultRigArrowCount = 10
 export const maxRigArrows = 50
+const scanCircleSchema = z.object({
+  id, position: positionSchema,
+  radiusMeters: z.number().finite().positive().max(10000),
+})
+export type ScanCircle = z.infer<typeof scanCircleSchema>
 export const maxDslrAngles = 12
 export const minDslrSpacing = 15
 export function maxDslrSpacing(angleCount: number) { return Math.floor(360 / angleCount) }
@@ -91,6 +96,12 @@ export const briefSchema = z.object({
   references: z.array(z.object({
     id, caption: z.string().trim().min(1).max(200), source: imageSourceSchema,
   })).max(4).default([]),
+  // Additive v1: optional high/low drone scan circles. Older snapshots omit them.
+  droneScan: z.object({
+    id,
+    highRes: scanCircleSchema.nullable(),
+    lowRes: scanCircleSchema.nullable(),
+  }).nullable().default(null),
 })
 
 export type DroneBrief = z.infer<typeof briefSchema>
@@ -102,8 +113,8 @@ export type ShootSlot = z.infer<typeof shootSchema>
 export type Position = z.infer<typeof positionSchema>
 export type CameraAngle = z.infer<typeof angleSchema>
 export type BriefMode = 'edit' | 'view'
-export type LayerVisibility = { circleRig: boolean; angles: boolean; polygons: boolean; imageOverlays: boolean }
-export const defaultVisibility: LayerVisibility = { circleRig: true, angles: true, polygons: true, imageOverlays: true }
+export type LayerVisibility = { circleRig: boolean; angles: boolean; polygons: boolean; imageOverlays: boolean; droneScan: boolean }
+export const defaultVisibility: LayerVisibility = { circleRig: true, angles: true, polygons: true, imageOverlays: true, droneScan: true }
 export const cameraTypes = ['drone-image', '360', 'dslr'] as const
 export const cameraLabels = { 'drone-image': 'Drone image', '360': '360', dslr: 'DSLR' }
 
