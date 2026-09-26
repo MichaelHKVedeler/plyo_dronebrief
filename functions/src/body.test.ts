@@ -11,3 +11,18 @@ it('round-trips valid bodies beyond the Firestore single-document limit, includi
   expect(chunks.every((chunk) => Buffer.byteLength(chunk) < 1_000_000)).toBe(true)
   expect(decodeBody(chunks)).toEqual({ brief, assets: {} })
 })
+
+it('preserves both drone scan circles across cloud body save and reload', () => {
+  const brief = createBrief({ name: 'Drone scan persistence', clientName: 'Test' })
+  brief.droneScan = {
+    id: 'scan',
+    highRes: { id: 'high', position: { lat: 59.9139, lng: 10.7522 }, radiusMeters: 250 },
+    lowRes: { id: 'low', position: { lat: 59.914, lng: 10.7523 }, radiusMeters: 400 },
+  }
+  const restored = decodeBody(encodeBody({ brief, assets: {} }))
+  expect(restored.brief.droneScan).toEqual(brief.droneScan)
+  restored.brief.droneScan!.highRes!.radiusMeters = 275
+  expect(decodeBody(encodeBody(restored)).brief.droneScan!.highRes!.radiusMeters).toBe(275)
+  restored.brief.droneScan = null
+  expect(decodeBody(encodeBody(restored)).brief.droneScan).toBeNull()
+})
