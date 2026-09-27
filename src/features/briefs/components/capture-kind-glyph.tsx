@@ -1,4 +1,4 @@
-import { Circle, Scan } from 'lucide-react'
+import { Circle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import type { CameraAngle } from '../model/brief'
 import { cameraAppearance } from './camera-appearance'
@@ -12,8 +12,8 @@ export function CaptureKindGlyph({ kind }: { kind: CaptureKind }) {
     </span>
   }
   if (kind === 'droneScan') {
-    return <span aria-hidden className="inline-flex size-8 shrink-0 items-center justify-center rounded-full border-2 border-purple-700 bg-purple-50 text-purple-800 shadow-sm dark:border-purple-400 dark:bg-purple-950 dark:text-purple-200">
-      <Scan className="size-4" />
+    return <span aria-hidden className="inline-flex size-8 shrink-0 items-center justify-center rounded-full border-2 border-red-600 bg-red-500/15 dark:border-red-400">
+      <span className="size-3 rounded-full bg-blue-600 dark:bg-blue-400" />
     </span>
   }
   const appearance = cameraAppearance[kind]
@@ -23,13 +23,14 @@ export function CaptureKindGlyph({ kind }: { kind: CaptureKind }) {
   </span>
 }
 
-export function CaptureKindIsolateButton({ kind, label, pressed, onClick }: {
+export function CaptureKindIsolateButton({ kind, label, pressed, dimmed = false, onClick }: {
   kind: CaptureKind
   label: string
   pressed: boolean
+  dimmed?: boolean
   onClick: () => void
 }) {
-  return <Button type="button" variant="ghost" size="icon-sm" className={`rounded-full p-0 hover:bg-transparent ${pressed ? 'ring-2 ring-ring' : ''}`}
+  return <Button type="button" variant="ghost" size="icon-sm" className={`rounded-full p-0 hover:bg-transparent ${dimmed ? 'opacity-50' : ''}`}
     aria-pressed={pressed} aria-label={`Show only ${label}`} onClick={onClick}>
     <CaptureKindGlyph kind={kind} />
   </Button>

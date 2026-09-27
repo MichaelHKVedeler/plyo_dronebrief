@@ -16,7 +16,7 @@ function FloorplanToggleButton({ visible, showLabel, hideLabel, onToggle }: {
 }) {
   const Icon = visible ? LayoutGrid : ImageOff
   return <Button type="button" variant="ghost" size="icon-sm"
-    className={`rounded-full p-0 hover:bg-transparent ${visible ? 'ring-2 ring-ring' : 'opacity-50'}`}
+    className={`rounded-full p-0 hover:bg-transparent ${visible ? '' : 'opacity-50'}`}
     aria-pressed={visible} aria-label={visible ? hideLabel : showLabel} title={visible ? hideLabel : showLabel} onClick={onToggle}>
     <span aria-hidden className={'inline-flex size-8 shrink-0 items-center justify-center rounded-full border-2 shadow-sm '
       + (visible ? 'border-foreground bg-background text-foreground' : 'border-dashed border-muted-foreground/70 bg-muted text-muted-foreground')}>
@@ -40,8 +40,10 @@ export function BriefingMapLayers({ brief, language, isolatedKind, onIsolate, fl
   if (!rows.length && !hasFloorplan && !hasScan) return null
   return <div className="pointer-events-auto grid w-fit justify-items-center gap-2.5 rounded-lg border bg-card p-2 shadow-sm">
     {rows.map((row) => <CaptureKindIsolateButton key={row.key} kind={row.key} label={row.label} pressed={isolatedKind === row.key}
+      dimmed={isolatedKind !== null && isolatedKind !== row.key}
       onClick={() => onIsolate(toggleIsolatedCapture(isolatedKind, row.key))} />)}
     {hasScan && <CaptureKindIsolateButton kind="droneScan" label={copy.droneScan} pressed={isolatedKind === 'droneScan'}
+      dimmed={isolatedKind !== null && isolatedKind !== 'droneScan'}
       onClick={() => onIsolate(toggleIsolatedCapture(isolatedKind, 'droneScan'))} />}
     {hasFloorplan && onFloorplanVisible && <>
       {rows.length > 0 && <Separator />}
