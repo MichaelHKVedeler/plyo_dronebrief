@@ -12,7 +12,7 @@ export function shadeScene(brief: DroneBrief, visibility: LayerVisibility, googl
     features.push({ type: 'Feature', properties: { color: mapBrandColor(dark) }, geometry: { type: 'Polygon', coordinates: [[...ring, ring[0]]] } })
   }
   if (visibility.angles) for (const angle of brief.angles) {
-    if (angle.type === '360') continue
+    if (angle.type === '360' || angle.type === 'extra-coverage') continue
     const target = destination(angle.position, metersPerPixel(angle.position.lat, googleZoom) * 64 * mapObjectScale(googleZoom), angle.directionDegrees)
     features.push({ type: 'Feature', properties: { color: cameraAppearance[angle.type].color }, geometry: { type: 'LineString', coordinates: [[angle.position.lng, angle.position.lat], [target.lng, target.lat]] } })
   }

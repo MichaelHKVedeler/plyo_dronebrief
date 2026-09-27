@@ -22,6 +22,7 @@ export const CameraMarkers = memo(function CameraMarkers({
   angles, pendingAngle, editable, interactive, selectedCameraIds, zoom, dslrSettings, onSelectCamera, onCommit, onDuplicate, selectable = false,
 }: Props) {
   const nextNumbers = {
+    'extra-coverage': nextCameraNumber(angles, 'extra-coverage'),
     'drone-image': nextCameraNumber(angles, 'drone-image'),
     '360': nextCameraNumber(angles, '360'),
     dslr: nextCameraNumber(angles, 'dslr'),

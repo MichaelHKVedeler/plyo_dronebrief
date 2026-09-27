@@ -62,7 +62,7 @@ type Props = {
 }
 const ShadeMapPanel = lazy(() => import('./shade-map').then((module) => ({ default: module.ShadeMapPanel })))
 type GoogleProps = Props & { imageLayer: ImageLayerState; active: boolean; selectable?: boolean; dimOpacity: number; objectSizePercent: number; zoom: number; view: RefObject<MapView>; onViewChange: (view: MapView) => void; satellite: boolean; onMapClick: (point: Position) => void; onCameraPlace: (tool: MapTool, point: Position) => void; onCameraDuplicate: (source: CameraAngle, position: Position) => void }
-function ConnectedMap({ imageLayer, selectedCameraIds, onSelectCamera, session, dispatch, tool, onToolChange, selectedId, onSelect, active, selectable = false, dimOpacity, objectSizePercent, zoom, view, onViewChange, satellite, onMapClick, onCameraPlace, onCameraDuplicate, isolatedKind = null, pointCallout }: GoogleProps) {
+function ConnectedMap({ imageLayer, selectedCameraIds, onSelectCamera, session, dispatch, tool, onToolChange, selectedId, onSelect, active, selectable = false, dimOpacity, objectSizePercent, zoom, view, onViewChange, satellite, onMapClick, onCameraPlace, onCameraDuplicate, isolatedKind = null, pointCallout, presentation }: GoogleProps) {
   const status = useApiLoadingStatus()
   const dark = useDarkMode()
   const objectScale = mapObjectScale(zoom, objectSizePercent)
@@ -73,9 +73,9 @@ function ConnectedMap({ imageLayer, selectedCameraIds, onSelectCamera, session, 
   const editing = mode === 'edit'
   const interactive = tool.kind === 'idle'
   const objectsInteractive = interactive && !middlePanning
-  const capture = isolatedCaptureVisibility(visibility, isolatedKind)
-  const captureAngles = isolatedCaptureAngles(brief.angles, isolatedKind)
-  const pendingAngle: CameraAngle | null = tool.kind === 'camera' && tool.position && tool.cameraType !== '360'
+  const capture = isolatedCaptureVisibility(visibility, isolatedKind, presentation === 'briefing')
+  const captureAngles = isolatedCaptureAngles(brief.angles, isolatedKind, presentation === 'briefing', visibility)
+  const pendingAngle: CameraAngle | null = tool.kind === 'camera' && tool.position && tool.cameraType !== '360' && tool.cameraType !== 'extra-coverage'
     ? { id: 'placement-preview', label: 'Choose direction', type: tool.cameraType, position: tool.position, directionDegrees: tool.directionDegrees }
     : null
   const commitCamera = useCallback((updated: CameraAngle) => {
@@ -132,7 +132,7 @@ function ConnectedMap({ imageLayer, selectedCameraIds, onSelectCamera, session, 
 }
 function PointHeightsAnchor({ angle, scale, children }: { angle: CameraAngle | undefined; scale: number; children: ReactNode }) {
   if (!angle) return null
-  const gap = 18 * scale + 8
+  const gap = 18 * scale * (angle.type === 'extra-coverage' ? 2 : 1) + 8
   return <AdvancedMarker position={angle.position} anchorLeft="0" anchorTop="-100%" zIndex={40}>
     <div className="pointer-events-none" style={{ paddingLeft: gap, paddingBottom: gap }}>{children}</div>
   </AdvancedMarker>
@@ -205,11 +205,11 @@ function MapWorkspace(props: Props) {
     view, brief, sourceUrl: props.images.sourceUrl, setCapturing: setCapturePass,
   })
   const renderedSession = capturePass === 'drone-scan'
-    ? { ...session, mode: 'view' as const, visibility: { circleRig: false, angles: false, polygons: false, imageOverlays: false, droneScan: true } }
+    ? { ...session, mode: 'view' as const, visibility: { circleRig: false, angles: true, polygons: false, imageOverlays: false, droneScan: true } }
     : capturePass === 'full'
       ? { ...session, mode: 'view' as const, visibility: { circleRig: true, angles: true, polygons: true, imageOverlays: true, droneScan: true } }
       : session
-  const mapProps = capturePass ? { ...props, session: renderedSession, selectedId: null, selectedCameraIds: [], tool: idleTool, isolatedKind: capturePass === 'drone-scan' ? 'droneScan' as const : null } : props
+  const mapProps = capturePass ? { ...props, presentation: 'briefing' as const, session: renderedSession, selectedId: null, selectedCameraIds: [], tool: idleTool, isolatedKind: capturePass === 'drone-scan' ? 'droneScan' as const : null } : props
   const renderedObjectSize = capturing ? 100 / 2 ** (zoom - 17) : objectSizePercent
   useImperativeHandle(props.rigPlacementRef, () => () => ({
     position: { ...view.current.center },

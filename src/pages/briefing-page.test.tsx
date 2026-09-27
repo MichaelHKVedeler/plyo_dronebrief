@@ -88,3 +88,29 @@ it('hides the floorplan from the public map without writing the brief', async ()
   expect(current.brief).toBe(brief)
   expect(screen.getByRole('button', { name: 'Show floorplan' })).toHaveAttribute('aria-pressed', 'false')
 })
+
+it('offers the scan switch for extra coverage alone and switches exclusively without saving', async () => {
+  const brief = createBrief({ name: 'Extra coverage', clientName: 'Test' })
+  brief.angles = [
+    { id: 'extra', label: 'Extra coverage 1', type: 'extra-coverage', position: brief.coordinates },
+    { id: 'd1', label: 'Drone image 1', type: 'drone-image', position: brief.coordinates, directionDegrees: 90 },
+  ]
+  const dispatch = vi.fn()
+  const user = userEvent.setup()
+  render(<BriefingPage session={openSession(brief, 'view')} dispatch={dispatch} error={null} presentation={defaultBriefingPresentation} />)
+  const scan = screen.getByRole('button', { name: 'Show only Drone scan' })
+  const drone = screen.getByRole('button', { name: 'Show only Aerial photo' })
+  expect(scan).toHaveAttribute('aria-pressed', 'false')
+  expect(screen.queryByRole('button', { name: 'Show only Extra coverage' })).not.toBeInTheDocument()
+  await user.click(scan)
+  expect(scan).toHaveAttribute('aria-pressed', 'true')
+  expect(drone).toHaveAttribute('aria-pressed', 'false')
+  await user.click(drone)
+  expect(scan).toHaveAttribute('aria-pressed', 'false')
+  expect(drone).toHaveAttribute('aria-pressed', 'true')
+  await user.click(scan)
+  await user.click(scan)
+  expect(scan).toHaveAttribute('aria-pressed', 'false')
+  expect(drone).toHaveAttribute('aria-pressed', 'false')
+  expect(dispatch).not.toHaveBeenCalled()
+})

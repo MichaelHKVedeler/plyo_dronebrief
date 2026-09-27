@@ -39,6 +39,12 @@ Map geometry uses spherical distances and bearings with longitude wrapping. The 
 
 **Version decision:** this is an additive schema v1 field; DB1/DB2 transport versions are unchanged. Older snapshots omit `droneScan` and parse as null. Older app builds ignore the field and lose it on re-export.
 
+## Extra coverage
+
+`angles` accepts `type: "extra-coverage"` with a required `position` and no direction. These point-only markers use a bright-green drone glyph without arrows or aiming controls, render at twice the size of other camera points, have independent numbering, and use the shared drone-image heights; their image count is listed separately. They belong to the Drone scan display group and its dedicated PDF map/diagram. In public links, normal captures are visible initially; selecting Drone scan shows circles and extra coverage exclusively. Selection and visibility remain ephemeral and never modify the stored brief.
+
+**Version decision:** additive discriminated-union variant in schema v1; DB1/DB2 transport prefixes are unchanged. Existing briefs retain their meanings with no migration. Older app/backend builds reject briefs containing this unknown variant rather than silently reinterpreting green points as normal photography points. Deploy the updated shared schema to `api` and `publicView` before releasing the frontend.
+
 ## Angles
 
 ```json

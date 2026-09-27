@@ -44,10 +44,10 @@ it.each(['dslr', 'drone-image'] as const)('places and aims repeated %s cameras o
   cleanups.pop()!()
   expect(map.dragPan.enable).toHaveBeenCalledOnce()
 })
-it('places a 360 point with a single click and no direction', () => {
-  const { send, angles } = setup('360')
+it.each(['360', 'extra-coverage'] as const)('places a %s point with a single click and no direction', (type) => {
+  const { send, angles } = setup(type)
   send('pointerdown'); send('pointerup')
-  expect(angles).toEqual([{ id: '0', label: '360 1', type: '360', position: { lat: 60, lng: 10 } }])
+  expect(angles).toEqual([{ id: '0', label: `${type === '360' ? '360' : 'Extra coverage'} 1`, type, position: { lat: 60, lng: 10 } }])
 })
 it.each(['right', 'escape', 'pointercancel', 'blur'])('discards unfinished placement on %s', (method) => {
   const { send, angles, getTool } = setup()

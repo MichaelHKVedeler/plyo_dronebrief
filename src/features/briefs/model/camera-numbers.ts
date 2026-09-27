@@ -1,7 +1,7 @@
 import { cameraLabels, type CameraAngle, type Position } from './brief'
 
 export function numberedCameras(angles: CameraAngle[]) {
-  const counts = { 'drone-image': 0, '360': 0, dslr: 0 }
+  const counts = { 'drone-image': 0, '360': 0, dslr: 0, 'extra-coverage': 0 }
   return angles.map((angle) => ({ angle, number: ++counts[angle.type] }))
 }
 

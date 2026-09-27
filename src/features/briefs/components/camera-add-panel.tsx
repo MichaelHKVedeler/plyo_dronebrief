@@ -7,11 +7,11 @@ import { NumberField } from './number-field'
 
 export function CameraAddPanel({ brief, onAdd, onUpdate }: { brief: DroneBrief; onAdd: (type: CameraAngle['type']) => void; onUpdate: (update: (brief: DroneBrief) => DroneBrief) => void }) {
   return <div className="grid gap-5">
-    {cameraTypes.map((type) => {
+    {cameraTypes.filter((type) => type !== 'extra-coverage').map((type) => {
       const Icon = cameraAppearance[type].Icon
       return <div className="grid gap-2" key={type}>
       <Button variant="outline" className={'justify-start ' + cameraAppearance[type].className} disabled={brief.angles.length >= 1000} onClick={() => onAdd(type)}>
-        <Icon />{type === 'drone-image' ? 'Add drone image' : 'Add ' + cameraLabels[type] + ' point'}
+        <Icon />{type === 'drone-image' ? 'Add Extra Drone point' : 'Add ' + cameraLabels[type] + ' point'}
       </Button>
       <div className="ml-4 grid gap-2 border-l-2 border-current/15 py-1 pl-3">
       {type === 'dslr' ? <div className="grid grid-cols-2 items-start gap-3">

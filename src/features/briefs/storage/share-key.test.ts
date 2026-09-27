@@ -29,6 +29,7 @@ describe('portable brief keys', () => {
     const complete = { ...brief,
       circleRig: { id: 'rig', position: { lat: 59.9, lng: 10.7 }, arrowCount: 10, radiusMeters: 80, ovalRatio: 0.5, rotationDegrees: 45 },
       angles: [
+        { id: 'extra', label: 'Extra coverage 1', type: 'extra-coverage' as const, position: brief.coordinates },
         { id: 'a', label: 'Drone', type: 'drone-image' as const, position: brief.coordinates, directionDegrees: 90 },
         { id: 'b', label: 'Panorama', type: '360' as const, position: brief.coordinates },
         { id: 'c', label: 'Street', type: 'dslr' as const, position: brief.coordinates, directionDegrees: 180 },

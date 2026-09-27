@@ -15,7 +15,7 @@ it('keeps the 360 multiplier locked at ten images per point and height', () => {
 })
 
 it('counts zero images for an empty brief', () => {
-  expect(countBriefImages(briefWith())).toEqual({ times: 1, circleRig: 0, droneImage: 0, panorama: 0, dslr: 0, total: 0 })
+  expect(countBriefImages(briefWith())).toEqual({ extraCoverage: 0, times: 1, circleRig: 0, droneImage: 0, panorama: 0, dslr: 0, total: 0 })
 })
 
 it('multiplies circle-rig arrows by drone heights and skips a missing rig', () => {
@@ -47,7 +47,7 @@ it('counts drone, 360, and DSLR images from the locked capture rules', () => {
     },
   })
   expect(countBriefImages(brief)).toEqual({
-    times: 1, circleRig: 16, droneImage: 4, panorama: 30, dslr: 6, total: 56,
+    extraCoverage: 0, times: 1, circleRig: 16, droneImage: 4, panorama: 30, dslr: 6, total: 56,
   })
 })
 
@@ -80,6 +80,11 @@ it('multiplies every capture count by the number of shoot times', () => {
     ],
   })
   expect(countBriefImages(brief)).toEqual({
-    times: 3, circleRig: 48, droneImage: 6, panorama: 90, dslr: 3, total: 147,
+    extraCoverage: 0, times: 3, circleRig: 48, droneImage: 6, panorama: 90, dslr: 3, total: 147,
   })
+})
+
+it('counts extra coverage separately using drone heights without counting it as DSLR', () => {
+  const brief = briefWith({ angles: [{ id: 'extra', label: 'Extra coverage 1', type: 'extra-coverage', position }] })
+  expect(countBriefImages(brief)).toMatchObject({ extraCoverage: 2, droneImage: 0, dslr: 0, total: 2 })
 })

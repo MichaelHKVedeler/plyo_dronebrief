@@ -13,7 +13,14 @@ export function ImageCountSummary({ brief }: { brief: DroneBrief }) {
   const dronePoints = brief.angles.filter((angle) => angle.type === 'drone-image').length
   const panoramaPoints = brief.angles.filter((angle) => angle.type === '360').length
   const dslrPoints = brief.angles.filter((angle) => angle.type === 'dslr').length
+  const extraPoints = brief.angles.filter((angle) => angle.type === 'extra-coverage').length
   const rows = [
+    ...(extraPoints ? [{
+      key: 'extra-coverage' as const, label: cameraLabels['extra-coverage'],
+      rule: `${imageCaptureConfig.droneImagePerPointAndHeight} per point, height, and time`,
+      detail: `${extraPoints} points · ${droneHeights} heights · ${counts.times} times`,
+      images: counts.extraCoverage,
+    }] : []),
     {
       key: 'circleRig' as const, label: 'Circle rig',
       rule: `${imageCaptureConfig.circleRigPerArrowAndHeight} per arrow, height, and time`,

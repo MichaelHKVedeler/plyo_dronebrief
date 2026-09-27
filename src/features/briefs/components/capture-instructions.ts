@@ -4,11 +4,11 @@ import type { PdfLanguage } from '../export/pdf-copy'
 import { briefingCopy } from './briefing-copy'
 
 export type CaptureInstructionRow = {
-  key: 'circleRig' | 'drone-image' | '360' | 'dslr'
+  key: 'circleRig' | 'drone-image' | '360' | 'dslr' | 'extra-coverage'
   label: string
   rule: string
-  range: string
-  heights: string
+  range?: string
+  heights?: string
   images: number
 }
 
@@ -74,5 +74,7 @@ export function captureInstructions(brief: DroneBrief, language: PdfLanguage): C
       images: counts.dslr,
     })
   }
+  const extraPoints = brief.angles.filter((angle) => angle.type === 'extra-coverage').length
+  if (extraPoints) rows.push({ key: 'extra-coverage', label: copy.extraCoverage, rule: copy.droneRule, images: counts.extraCoverage })
   return rows
 }

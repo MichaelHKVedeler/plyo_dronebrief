@@ -24,6 +24,8 @@ it('toggles linked movement without saving and centers through the update bounda
     }} /></DroneScanEditing>
   }
   render(<Editor />)
+  expect(screen.getByRole('button', { name: 'Remove high detail' })).toHaveClass('bg-red-50', 'text-red-800', 'dark:bg-red-950')
+  expect(screen.getByRole('button', { name: 'Remove low detail' })).toHaveClass('bg-red-50', 'text-red-800', 'dark:bg-red-950')
   fireEvent.click(screen.getByRole('button', { name: 'Lock drone scan circles together' }))
   expect(screen.getByRole('button', { name: 'Lock drone scan circles together' })).toHaveAttribute('aria-pressed', 'true')
   expect(update).not.toHaveBeenCalled()
@@ -38,6 +40,8 @@ it('disables pair actions until both circles exist and hides them in the viewer'
   const brief = makeBrief()
   const onUpdate = vi.fn()
   const { rerender } = render(<DroneScanControls brief={brief} editing onAdd={() => {}} onUpdate={onUpdate} />)
+  expect(screen.getByRole('button', { name: 'High Detail' })).toHaveClass('border-blue-700', 'bg-blue-50', 'dark:bg-blue-950')
+  expect(screen.getByRole('button', { name: 'Low Detail' })).toHaveClass('border-red-700', 'bg-red-50', 'dark:bg-red-950')
   expect(screen.getByRole('button', { name: 'Lock drone scan circles together' })).toBeDisabled()
   expect(screen.getByRole('button', { name: 'Center drone scan circles' })).toBeDisabled()
   rerender(<DroneScanControls brief={brief} editing={false} onAdd={() => {}} onUpdate={onUpdate} />)

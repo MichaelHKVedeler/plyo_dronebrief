@@ -16,7 +16,7 @@ export function PointHeightsCallout({ brief, angleId, language, onClose }: {
   const copy = briefingCopy[language]
   const { angle, number } = point
   const name = `${cameraLabels[angle.type]} ${number}`
-  const meters = angle.type === 'drone-image'
+  const meters = (angle.type === 'drone-image' || angle.type === 'extra-coverage')
     ? brief.typeSettings['drone-image'].heightsMeters
     : angle.type === '360'
       ? effectivePanoramaHeights(brief.typeSettings['360'].heightsMeters, angle)
