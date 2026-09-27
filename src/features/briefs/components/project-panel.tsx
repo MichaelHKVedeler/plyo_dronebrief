@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Circle, Crosshair, Drone } from 'lucide-react'
+import { Circle, Crosshair, Drone, X } from 'lucide-react'
 import { Accordion } from '@/components/ui/accordion'
 import { SettingsSection } from './settings-section'
 import { Button } from '@/components/ui/button'
@@ -51,7 +51,9 @@ export function ProjectPanel({ onCenterCamera, onAddRig, onAddScan, selectedCame
     <SettingsSection value="rig" title="Circle rig" count={brief.circleRig ? 1 : 0}>
     {brief.circleRig && <RigRadiusFields rig={brief.circleRig} onUpdate={onUpdate} />}
     {brief.circleRig
-      ? <Button variant="ghost" className="bg-red-50 text-red-800 hover:bg-red-100 hover:text-red-800 dark:bg-red-950 dark:text-red-200 dark:hover:bg-red-900 dark:hover:text-red-200" onClick={() => onUpdate((b) => ({ ...b, circleRig: null }))}>Remove rig</Button>
+      ? <Button variant="outline" aria-label="Remove Circle Rig" className="justify-start border-emerald-700 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 hover:text-emerald-800 dark:border-emerald-400 dark:bg-emerald-950 dark:text-emerald-200 dark:hover:bg-emerald-900 dark:hover:text-emerald-200" onClick={() => onUpdate((b) => ({ ...b, circleRig: null }))}>
+        <X className="text-red-600 dark:text-red-400" />Circle Rig
+      </Button>
       : <Button variant="outline" className="justify-start border-emerald-700 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 hover:text-emerald-800 dark:border-emerald-400 dark:bg-emerald-950 dark:text-emerald-200 dark:hover:bg-emerald-900 dark:hover:text-emerald-200" onClick={onAddRig}><Circle />Add Circle Rig</Button>}
     </SettingsSection>
     <SettingsSection value="add-cameras" title="Add camera points">

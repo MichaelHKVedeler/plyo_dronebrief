@@ -1,6 +1,6 @@
 import { useContext } from 'react'
 import { DroneScanEditing } from '../state/drone-scan-editing'
-import { Circle, Lock, LockOpen, Crosshair } from 'lucide-react'
+import { Circle, Lock, LockOpen, Crosshair, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import type { DroneBrief } from '../model/brief'
 import { NumberField } from './number-field'
@@ -52,7 +52,9 @@ function ScanControl({ role, label, brief, onAdd, onUpdate }: {
   const limits = scanDiameterBounds(circle, role, other)
   const value = Math.min(limits.max, Math.max(limits.min, Math.round(circle.radiusMeters * 2)))
   return <div className="grid min-w-0 gap-3">
-    <Button variant="ghost" size="sm" className="bg-red-50 text-xs text-red-800 hover:bg-red-100 hover:text-red-800 dark:bg-red-950 dark:text-red-200 dark:hover:bg-red-900 dark:hover:text-red-200" onClick={() => onUpdate((current) => withoutScanCircle(current, role))}>Remove {label.toLowerCase()}</Button>
+    <Button variant="outline" aria-label={`Remove ${label}`} className={'justify-start ' + colorClass} onClick={() => onUpdate((current) => withoutScanCircle(current, role))}>
+      <X className="text-red-600 dark:text-red-400" />{label}
+    </Button>
     <NumberField label={`${label} diameter (m)`} value={value} min={limits.min} max={limits.max} step={scanDiameterStep} live
       onChange={(diameter) => onUpdate((current) => {
         const currentScan = current.droneScan
