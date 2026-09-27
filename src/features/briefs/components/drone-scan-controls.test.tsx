@@ -24,8 +24,14 @@ it('toggles linked movement without saving and centers through the update bounda
     }} /></DroneScanEditing>
   }
   render(<Editor />)
-  expect(screen.getByRole('button', { name: 'Remove high detail' })).toHaveClass('bg-red-50', 'text-red-800', 'dark:bg-red-950')
-  expect(screen.getByRole('button', { name: 'Remove low detail' })).toHaveClass('bg-red-50', 'text-red-800', 'dark:bg-red-950')
+  const removeHigh = screen.getByRole('button', { name: 'Remove High Detail' })
+  const removeLow = screen.getByRole('button', { name: 'Remove Low Detail' })
+  expect(removeHigh).toHaveTextContent('High Detail')
+  expect(removeHigh).not.toHaveTextContent('Remove')
+  expect(removeHigh).toHaveClass('justify-start', 'border-blue-700', 'bg-blue-50', 'dark:bg-blue-950')
+  expect(removeLow).toHaveClass('justify-start', 'border-red-700', 'bg-red-50', 'dark:bg-red-950')
+  expect(removeHigh.querySelector('svg')).toHaveClass('text-red-600', 'dark:text-red-400')
+  expect(removeLow.querySelector('svg')).toHaveClass('text-red-600', 'dark:text-red-400')
   fireEvent.click(screen.getByRole('button', { name: 'Lock drone scan circles together' }))
   expect(screen.getByRole('button', { name: 'Lock drone scan circles together' })).toHaveAttribute('aria-pressed', 'true')
   expect(update).not.toHaveBeenCalled()
