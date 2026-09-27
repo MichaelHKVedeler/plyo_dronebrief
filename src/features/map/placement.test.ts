@@ -7,13 +7,13 @@ import { destination } from './geometry'
 
 const position = { lat: 51.5, lng: -0.1 }
 describe('camera placement', () => {
-  it('places 360 in one click with no direction property', () => {
-    const result = placeCamera(startCameraPlacement('360'), position, 'a', 1)
-    expect(result.tool).toEqual(startCameraPlacement('360'))
-    expect(result.angle).toEqual({ id: 'a', label: '360 1', type: '360', position })
+  it.each(['360', 'extra-coverage'] as const)('places %s in one click with no direction property', (type) => {
+    const result = placeCamera(startCameraPlacement(type), position, 'a', 1)
+    expect(result.tool).toEqual(startCameraPlacement(type))
+    expect(result.angle).toEqual({ id: 'a', label: `${type === '360' ? '360' : 'Extra coverage'} 1`, type, position })
     expect(angleSchema.safeParse(result.angle).success).toBe(true)
   })
-  it.each(['dslr', 'drone-image', 'extra-coverage'] as const)('requires position then look-at for %s', (type) => {
+  it.each(['dslr', 'drone-image'] as const)('requires position then look-at for %s', (type) => {
     const first = placeCamera(startCameraPlacement(type), position, 'discarded', 1)
     expect(first.angle).toBeUndefined()
     const target = destination(position, 50, 135)
@@ -30,9 +30,9 @@ describe('camera placement', () => {
     expect(placeCamera(first.tool, position, 'a', 1).angle).toMatchObject({ directionDegrees: 0 })
     expect(placeCamera(idleTool, position, 'a', 1).angle).toBeUndefined()
   })
-  it.each(['drone-image', 'extra-coverage'] as const)('saves moved and aimed %s data in exports but refuses it in a viewer', (type) => {
+  it('saves moved and aimed drone-image data in exports but refuses it in a viewer', () => {
     const brief = createBrief({ name: 'Test', clientName: 'Test', date: '2026-09-11', times: ['09:00'] })
-    const moved = { id: 'a', label: 'Camera 1', type, position, directionDegrees: 270 }
+    const moved = { id: 'a', label: 'Camera 1', type: 'drone-image' as const, position, directionDegrees: 270 }
     const action = { type: 'update' as const, update: (b: typeof brief) => ({ ...b, angles: [moved] }) }
     const editor = reduceSession(openSession(brief, 'edit'), action)
     expect(importBriefKey(exportBriefKey(editor.brief)).angles).toEqual([moved])

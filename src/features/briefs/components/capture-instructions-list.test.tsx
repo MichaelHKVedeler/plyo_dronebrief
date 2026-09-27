@@ -44,7 +44,7 @@ it('does not show points or heights in the extra coverage description', () => {
   const brief = captureBrief()
   brief.angles = [{
     id: 'extra-1', label: 'Extra coverage 1', type: 'extra-coverage',
-    position: brief.coordinates, directionDegrees: 0,
+    position: brief.coordinates,
   }]
 
   render(<CaptureInstructionsList brief={brief} language="en" isolatedKind="droneScan" />)

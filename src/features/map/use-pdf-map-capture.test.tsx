@@ -12,7 +12,7 @@ function setup(images = false, scan = false, extras = false) {
   const brief = createBrief({ name: 'Map export', clientName: 'Test' })
   if (images) brief.imageOverlays = [{ id: 'img', name: 'Plan', source: 'data:image/png;base64,test', position: brief.coordinates, widthMeters: 20, heightMeters: 20, rotationDegrees: 0, opacity: 1 }]
   if (scan) brief.droneScan = { id: 'scan', highRes: { id: 'high', position: brief.coordinates, radiusMeters: 20 }, lowRes: { id: 'low', position: brief.coordinates, radiusMeters: 50 } }
-  if (extras) brief.angles = [{ id: 'extra', label: 'Extra coverage 1', type: 'extra-coverage', position: brief.coordinates, directionDegrees: 90 }]
+  if (extras) brief.angles = [{ id: 'extra', label: 'Extra coverage 1', type: 'extra-coverage', position: brief.coordinates }]
   const root = document.createElement('div'), surface = document.createElement('div')
   surface.dataset.pdfMapSurface = ''
   Object.defineProperties(surface, { clientWidth: { value: 640 }, clientHeight: { value: 400 } })

@@ -85,6 +85,6 @@ it('multiplies every capture count by the number of shoot times', () => {
 })
 
 it('counts extra coverage separately using drone heights without counting it as DSLR', () => {
-  const brief = briefWith({ angles: [{ id: 'extra', label: 'Extra coverage 1', type: 'extra-coverage', position, directionDegrees: 90 }] })
+  const brief = briefWith({ angles: [{ id: 'extra', label: 'Extra coverage 1', type: 'extra-coverage', position }] })
   expect(countBriefImages(brief)).toMatchObject({ extraCoverage: 2, droneImage: 0, dslr: 0, total: 2 })
 })

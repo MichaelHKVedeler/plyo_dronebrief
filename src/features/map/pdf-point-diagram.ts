@@ -46,7 +46,7 @@ export function drawPdfPointDiagram(page: PDFPage, brief: DroneBrief, font: PDFF
       })
       const points = [p, ...arc, p]
       page.drawSvgPath(points.map((q, i) => `${i ? 'L' : 'M'} ${q.x} ${-q.y}`).join(' ') + ' Z', { color, opacity: .15, borderColor: color, borderWidth: .7 })
-    } else if (angle.type !== '360') {
+    } else if (angle.type === 'drone-image' || angle.type === 'dslr') {
       cameraDirectionLayout(angle.type === 'dslr' ? brief.typeSettings.dslr : undefined).offsets.forEach((offset) => arrow(p, angle.directionDegrees + offset, color))
     }
     dot(angle.position, (angle.type === '360' ? 'P' : angle.type === 'dslr' ? 'S' : 'D') + number, color)

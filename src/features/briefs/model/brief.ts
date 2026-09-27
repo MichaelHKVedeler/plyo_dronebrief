@@ -35,7 +35,7 @@ export type PanoramaFocus = z.infer<typeof panoramaFocusSchema>
 export const angleSchema = z.discriminatedUnion('type', [
   z.object({ ...angleBase, type: z.literal('drone-image'), directionDegrees: heading }),
   // Additive v1 variant: older readers reject it instead of displaying it as a normal drone point.
-  z.object({ ...angleBase, type: z.literal('extra-coverage'), directionDegrees: heading }),
+  z.object({ ...angleBase, type: z.literal('extra-coverage') }),
   // Additive v1: optional heightsMeters overrides the shared 360 height list for this point.
   z.object({
     ...angleBase, type: z.literal('360'), focus: panoramaFocusSchema.optional(),

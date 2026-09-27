@@ -19,7 +19,7 @@ it('preserves both drone scan circles across cloud body save and reload', () => 
     highRes: { id: 'high', position: { lat: 59.9139, lng: 10.7522 }, radiusMeters: 250 },
     lowRes: { id: 'low', position: { lat: 59.914, lng: 10.7523 }, radiusMeters: 400 },
   }
-  brief.angles = [{ id: 'extra', label: 'Extra coverage 1', type: 'extra-coverage', position: brief.coordinates, directionDegrees: 135 }]
+  brief.angles = [{ id: 'extra', label: 'Extra coverage 1', type: 'extra-coverage', position: brief.coordinates }]
   const restored = decodeBody(encodeBody({ brief, assets: {} }))
   expect(restored.brief.angles).toEqual(brief.angles)
   expect(restored.brief.droneScan).toEqual(brief.droneScan)

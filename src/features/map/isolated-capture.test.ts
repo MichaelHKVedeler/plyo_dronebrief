@@ -30,7 +30,7 @@ it('filters camera points to the isolated type', () => {
 })
 
 it('keeps shared-link scan and normal captures mutually exclusive through toggles', () => {
-  const all: CameraAngle[] = [...angles, { id: 'extra', label: 'Extra coverage 1', type: 'extra-coverage', position: { lat: 59, lng: 10 }, directionDegrees: 45 }]
+  const all: CameraAngle[] = [...angles, { id: 'extra', label: 'Extra coverage 1', type: 'extra-coverage', position: { lat: 59, lng: 10 } }]
   for (const kind of [null, 'droneScan', null, 'dslr', 'droneScan', 'circleRig'] as const) {
     const layers = isolatedCaptureVisibility(defaultVisibility, kind, true)
     const points = isolatedCaptureAngles(all, kind, true)
@@ -44,7 +44,7 @@ it('keeps shared-link scan and normal captures mutually exclusive through toggle
 })
 
 it('uses the drone scan layer for extra coverage independently of normal camera visibility in the editor', () => {
-  const all: CameraAngle[] = [...angles, { id: 'extra', label: 'Extra coverage 1', type: 'extra-coverage', position: { lat: 59, lng: 10 }, directionDegrees: 45 }]
+  const all: CameraAngle[] = [...angles, { id: 'extra', label: 'Extra coverage 1', type: 'extra-coverage', position: { lat: 59, lng: 10 } }]
   expect(isolatedCaptureAngles(all, null)).toEqual(all)
   const scanOnly = { ...defaultVisibility, angles: false }
   expect(isolatedCaptureVisibility(scanOnly, null).angles).toBe(true)

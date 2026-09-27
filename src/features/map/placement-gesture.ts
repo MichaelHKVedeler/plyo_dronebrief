@@ -1,4 +1,4 @@
-import { aimPlacement, idleTool, type MapTool } from './placement'
+import { aimPlacement, idleTool, isPointOnlyCamera, type MapTool } from './placement'
 import type { Position } from '@/features/briefs/model/brief'
 
 export type PlacementGestureProps = { tool: MapTool; onToolChange: (tool: MapTool) => void; onPlace: (tool: MapTool, point: Position) => void }
@@ -17,7 +17,7 @@ export function attachPlacementGesture(surface: HTMLElement, point: (event: Poin
     if (!position || tool.kind !== 'camera') return
     stop(event)
     held = { ...tool, position, directionDegrees: 0 }
-    if (tool.cameraType !== '360') getLatest().onToolChange(held)
+    if (!isPointOnlyCamera(tool.cameraType)) getLatest().onToolChange(held)
   }
   function move(event: PointerEvent) {
     if (!held) return

@@ -85,6 +85,7 @@ export const CameraMarker = memo(function CameraMarker({ angle, editable, select
       directionDegrees: aim.directionDegrees,
       fovDegrees: Math.max(min360Fov, Math.min(max360Fov, Math.round(aim.distancePixels))),
     } }
+    if (angle.type === 'extra-coverage') return angle
     return { ...angle, directionDegrees: aim.directionDegrees }
   }
   const startAim = useCameraAimGesture({

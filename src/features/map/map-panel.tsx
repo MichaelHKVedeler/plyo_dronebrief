@@ -75,7 +75,7 @@ function ConnectedMap({ imageLayer, selectedCameraIds, onSelectCamera, session, 
   const objectsInteractive = interactive && !middlePanning
   const capture = isolatedCaptureVisibility(visibility, isolatedKind, presentation === 'briefing')
   const captureAngles = isolatedCaptureAngles(brief.angles, isolatedKind, presentation === 'briefing', visibility)
-  const pendingAngle: CameraAngle | null = tool.kind === 'camera' && tool.position && tool.cameraType !== '360'
+  const pendingAngle: CameraAngle | null = tool.kind === 'camera' && tool.position && tool.cameraType !== '360' && tool.cameraType !== 'extra-coverage'
     ? { id: 'placement-preview', label: 'Choose direction', type: tool.cameraType, position: tool.position, directionDegrees: tool.directionDegrees }
     : null
   const commitCamera = useCallback((updated: CameraAngle) => {

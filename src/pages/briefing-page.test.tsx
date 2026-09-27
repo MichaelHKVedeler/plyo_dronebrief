@@ -92,7 +92,7 @@ it('hides the floorplan from the public map without writing the brief', async ()
 it('offers the scan switch for extra coverage alone and switches exclusively without saving', async () => {
   const brief = createBrief({ name: 'Extra coverage', clientName: 'Test' })
   brief.angles = [
-    { id: 'extra', label: 'Extra coverage 1', type: 'extra-coverage', position: brief.coordinates, directionDegrees: 45 },
+    { id: 'extra', label: 'Extra coverage 1', type: 'extra-coverage', position: brief.coordinates },
     { id: 'd1', label: 'Drone image 1', type: 'drone-image', position: brief.coordinates, directionDegrees: 90 },
   ]
   const dispatch = vi.fn()

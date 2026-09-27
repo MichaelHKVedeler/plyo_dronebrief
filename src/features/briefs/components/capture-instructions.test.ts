@@ -48,7 +48,7 @@ it('omits heights from the extra coverage description', () => {
   const brief = createBrief({ name: 'Extra coverage', clientName: 'Client' })
   brief.angles = [{
     id: 'extra-1', label: 'Extra coverage 1', type: 'extra-coverage',
-    position: brief.coordinates, directionDegrees: 0,
+    position: brief.coordinates,
   }]
 
   expect(captureInstructions(brief, 'en')).toEqual([{

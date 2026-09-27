@@ -75,7 +75,7 @@ export function CamerasPanel({ onCenterCamera, selectedCameraIds, onSelectCamera
       <NumberField label="Camera latitude" value={selected.position.lat} min={-90} max={90} onChange={(lat) => updateSelected((angle) => ({ ...angle, position: { ...angle.position, lat } }))} />
       <NumberField label="Camera longitude" value={selected.position.lng} min={-180} max={180} onChange={(lng) => updateSelected((angle) => ({ ...angle, position: { ...angle.position, lng } }))} />
       {selected.type !== '360' && selected.type !== 'extra-coverage' && <NumberField label="Camera direction (degrees)" value={selected.directionDegrees} min={0} max={359.999999999}
-        onChange={(directionDegrees) => updateSelected((angle) => angle.type === '360' ? angle : { ...angle, directionDegrees })} />}
+        onChange={(directionDegrees) => updateSelected((angle) => angle.type === '360' || angle.type === 'extra-coverage' ? angle : { ...angle, directionDegrees })} />}
       {selected.type === '360' && <>
         <p className="text-sm text-muted-foreground">Right-drag this point on the map. Drag farther to widen its focus, and around it to aim.</p>
         {selected.focus ? <>
