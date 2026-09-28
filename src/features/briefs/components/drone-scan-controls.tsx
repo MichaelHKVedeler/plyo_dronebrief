@@ -1,10 +1,11 @@
 import { useContext } from 'react'
 import { DroneScanEditing } from '../state/drone-scan-editing'
-import { Circle, Lock, LockOpen, Crosshair, X } from 'lucide-react'
+import { Circle, Lock, LockOpen, Crosshair, TriangleAlert, X } from 'lucide-react'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import type { DroneBrief } from '../model/brief'
 import { NumberField } from './number-field'
-import { applyScanDiameter, centerScanCircles, formatScanDiameter, scanDiameterBounds, scanDiameterStep, withoutScanCircle, type ScanRole } from '@/features/map/drone-scan'
+import { applyScanDiameter, centerScanCircles, formatScanDiameter, scanDiameterBounds, scanDiameterStep, scanDiameterWarningLimits, scanDiameterWarnings, snapScanDiameterWithin, withoutScanCircle, type ScanRole } from '@/features/map/drone-scan'
 
 export function DroneScanControls({ brief, editing, onAdd, onUpdate }: {
   brief: DroneBrief
@@ -14,6 +15,7 @@ export function DroneScanControls({ brief, editing, onAdd, onUpdate }: {
 }) {
   const { locked, setLocked } = useContext(DroneScanEditing)
   const scan = brief.droneScan
+  const warnings = scanDiameterWarnings(scan)
   if (!editing) {
     if (!scan?.highRes && !scan?.lowRes) return <p>No drone scan in this brief.</p>
     return <div className="grid gap-2 text-sm">
@@ -32,6 +34,16 @@ export function DroneScanControls({ brief, editing, onAdd, onUpdate }: {
       </Button>
       <Button size="xs" variant="outline" disabled={!scan?.highRes || !scan?.lowRes} aria-label="Center drone scan circles" title="Align High Detail with the Low Detail center" onClick={() => onUpdate((current) => current.droneScan ? { ...current, droneScan: centerScanCircles(current.droneScan) } : current)}><Crosshair />Center</Button>
     </div>
+    {warnings.length > 0 && <Alert>
+      <TriangleAlert />
+      <AlertTitle>Large drone scan</AlertTitle>
+      <AlertDescription>
+        {warnings.map((role) => <p key={role}>{role === 'high'
+          ? `High Detail is over ${scanDiameterWarningLimits.high} m diameter.`
+          : `Low Detail is over ${scanDiameterWarningLimits.low} m diameter.`}</p>)}
+        <p>Confirm that the larger scan area is intended before sharing the brief.</p>
+      </AlertDescription>
+    </Alert>}
   </>
 }
 
@@ -61,7 +73,7 @@ function ScanControl({ role, label, brief, onAdd, onUpdate }: {
         const currentCircle = role === 'high' ? currentScan?.highRes : currentScan?.lowRes
         if (!currentScan || !currentCircle || currentCircle.id !== circle.id) return current
         const partner = role === 'high' ? currentScan.lowRes : currentScan.highRes
-        const next = applyScanDiameter(currentCircle, diameter, role, partner)
+        const next = applyScanDiameter(currentCircle, snapScanDiameterWithin(diameter, scanDiameterBounds(currentCircle, role, partner)), role, partner)
         return { ...current, droneScan: { ...currentScan, highRes: role === 'high' ? next : currentScan.highRes, lowRes: role === 'low' ? next : currentScan.lowRes } }
       })} />
   </div>

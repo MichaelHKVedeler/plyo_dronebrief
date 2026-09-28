@@ -22,6 +22,7 @@ import { downloadFloorplan, uploadFloorplan } from '../storage/uploads'
 import { SaveCoordinator, type SaveStatus } from '../state/save-coordinator'
 import { ActorAvatar } from './actor-avatar'
 import { ShareDialog } from './share-dialog'
+import { briefingLinkContents } from '@/features/briefs/components/briefing-content'
 import { Problem } from './problem'
 
 export function exportCloudSnapshot(brief: CloudProject['brief'], onKey: (key: string) => void, onError: (message: string) => void) {
@@ -170,7 +171,7 @@ export function CloudBrief({ initial, publicToken, presentation = defaultBriefin
     {pdfOpen && !accessLost && <PdfExportDialog brief={session.brief} editable={session.mode === 'edit'} captureRef={pdfMapRef} link={exportLink} imageTransport={transport} overlaySizeRef={overlaySizeRef} onClose={() => setPdfOpen(false)}
       onSaveNotes={(notes) => dispatch({ type: 'update', update: (brief) => ({ ...brief, project: { ...brief.project, ...notes } }) })} />}
     <ExportDialog shareKey={key} hasLocalImages={hasLocalFiles(session.brief)} onClose={() => setKey(null)} />
-    {share && <ShareDialog projectId={project.summary.id} canManage={canManage} onClose={() => setShare(false)} />}
+    {share && <ShareDialog projectId={project.summary.id} projectName={session.brief.project.name} canManage={canManage} contents={briefingLinkContents(session.brief)} onClose={() => setShare(false)} />}
     <Dialog open={reloadConfirm} onOpenChange={setReloadConfirm}><DialogContent><DialogHeader><DialogTitle>Discard unsaved changes and reload?</DialogTitle><DialogDescription>Export your local snapshot or save a new project first if you need to keep these changes.</DialogDescription></DialogHeader><Button variant="destructive" onClick={() => { onDirty(false); onOpen(initial.summary.id) }}>Discard and reload latest</Button></DialogContent></Dialog>
   </>
 }

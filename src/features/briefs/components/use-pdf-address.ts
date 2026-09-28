@@ -2,6 +2,23 @@ import { useEffect, useRef, useState } from 'react'
 import type { Position } from '../model/brief'
 import { lookupPdfAddress } from '@/features/map/pdf-address'
 
+/** Public briefings without a stored address show the automatic suggestion, or none if lookup fails. */
+export function useBriefingAddress(position: Position, address: string | null) {
+  const [lookup, setLookup] = useState<{ key: string; value: string } | null>(null)
+  const { lat, lng } = position
+  const key = `${lat},${lng}`
+  const needed = address === null
+  useEffect(() => {
+    if (!needed) return
+    const controller = new AbortController()
+    void lookupPdfAddress({ lat, lng }, controller.signal)
+      .then((value) => { if (!controller.signal.aborted) setLookup({ key: `${lat},${lng}`, value }) })
+      .catch(() => {})
+    return () => controller.abort()
+  }, [lat, lng, needed])
+  return address ?? (lookup?.key === key ? lookup.value : '')
+}
+
 export function usePdfAddress(position: Position) {
   const [address, setAddress] = useState('')
   const [suggestion, setSuggestion] = useState('')

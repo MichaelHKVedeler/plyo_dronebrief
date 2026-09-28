@@ -51,3 +51,11 @@ it('uses the drone scan layer for extra coverage independently of normal camera 
   expect(isolatedCaptureAngles(all, null, false, scanOnly).map((angle) => angle.id)).toEqual(['extra'])
   expect(isolatedCaptureAngles(all, null, false, { ...defaultVisibility, droneScan: false })).toEqual(angles)
 })
+
+it('splits drone scan circles from extra coverage points for drone scan links', () => {
+  const all: CameraAngle[] = [...angles, { id: 'extra', label: 'Extra coverage 1', type: 'extra-coverage', position: { lat: 59, lng: 10 } }]
+  expect(isolatedCaptureVisibility(defaultVisibility, 'scanCircles', true)).toEqual({ circleRig: false, angles: false, droneScan: true })
+  expect(isolatedCaptureAngles(all, 'scanCircles', true)).toEqual([])
+  expect(isolatedCaptureVisibility(defaultVisibility, 'extra-coverage', true)).toEqual({ circleRig: false, angles: true, droneScan: false })
+  expect(isolatedCaptureAngles(all, 'extra-coverage', true).map((angle) => angle.id)).toEqual(['extra'])
+})

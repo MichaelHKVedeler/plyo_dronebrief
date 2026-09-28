@@ -25,19 +25,24 @@ function FloorplanToggleButton({ visible, showLabel, hideLabel, onToggle }: {
   </Button>
 }
 
-export function BriefingMapLayers({ brief, language, isolatedKind, onIsolate, floorplanVisible = true, onFloorplanVisible }: {
+export function BriefingMapLayers({ brief, language, isolatedKind, onIsolate, scanSplit = false, floorplanVisible = true, onFloorplanVisible }: {
   brief: DroneBrief
   language: PdfLanguage
   isolatedKind: IsolatedCapture
   onIsolate: (kind: IsolatedCapture) => void
+  /** Drone scan links isolate the circles and the extra coverage points separately. */
+  scanSplit?: boolean
   floorplanVisible?: boolean
   onFloorplanVisible?: (visible: boolean) => void
 }) {
   const rows = captureInstructions(brief, language).filter((row) => row.key !== 'extra-coverage')
   const copy = briefingCopy[language]
   const hasFloorplan = brief.imageOverlays.length > 0
-  const hasScan = !!(brief.droneScan?.highRes || brief.droneScan?.lowRes) || brief.angles.some((angle) => angle.type === 'extra-coverage')
-  if (!rows.length && !hasFloorplan && !hasScan) return null
+  const hasCircles = !!(brief.droneScan?.highRes || brief.droneScan?.lowRes)
+  const hasExtra = brief.angles.some((angle) => angle.type === 'extra-coverage')
+  const hasScan = !scanSplit && (hasCircles || hasExtra)
+  const splitKinds = scanSplit ? ([hasCircles && 'droneScan', hasExtra && 'extra-coverage'] as const).filter((kind) => kind !== false) : []
+  if (!rows.length && !hasFloorplan && !hasScan && !splitKinds.length) return null
   return <div className="pointer-events-auto grid w-fit justify-items-center gap-2.5 rounded-lg border bg-card p-2 shadow-sm">
     {rows.map((row) => <CaptureKindIsolateButton key={row.key} kind={row.key} label={row.label} pressed={isolatedKind === row.key}
       dimmed={isolatedKind !== null && isolatedKind !== row.key}
@@ -45,6 +50,9 @@ export function BriefingMapLayers({ brief, language, isolatedKind, onIsolate, fl
     {hasScan && <CaptureKindIsolateButton kind="droneScan" label={copy.droneScan} pressed={isolatedKind === 'droneScan'}
       dimmed={isolatedKind !== null && isolatedKind !== 'droneScan'}
       onClick={() => onIsolate(toggleIsolatedCapture(isolatedKind, 'droneScan'))} />}
+    {splitKinds.map((kind) => <CaptureKindIsolateButton key={kind} kind={kind} label={kind === 'droneScan' ? copy.droneScan : copy.extraCoverage} pressed={isolatedKind === kind}
+      dimmed={isolatedKind !== null && isolatedKind !== kind}
+      onClick={() => onIsolate(toggleIsolatedCapture(isolatedKind, kind))} />)}
     {hasFloorplan && onFloorplanVisible && <>
       {rows.length > 0 && <Separator />}
       <FloorplanToggleButton visible={floorplanVisible} showLabel={copy.showFloorplan} hideLabel={copy.hideFloorplan}

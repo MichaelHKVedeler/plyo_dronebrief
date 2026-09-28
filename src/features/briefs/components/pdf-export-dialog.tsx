@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type RefObject } from 'react'
-import { ArrowLeft, ArrowRight, Download, Link2 } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Check, Copy, Download, FileText } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -14,11 +14,15 @@ import type { PdfMapCapture } from '../export/pdf-types'
 import { pdfProjectPosition, pdfProjectSize } from '../export/pdf-project'
 import { formatShootTime, shootSlots } from '../model/brief'
 import { usePdfAddress } from './use-pdf-address'
-import { defaultOverlaySize, publicShareLink } from '../storage/public-brief-link'
+import { defaultOverlaySize, publicShareLink, type BriefingContent } from '../storage/public-brief-link'
+import { briefingLinkContents } from './briefing-content'
 import { useLocalImages } from '../state/use-local-images'
 import type { ImageTransport } from '../storage/image-transport'
 
 export type ExportLink = { status: 'ready'; createToken: () => Promise<string> } | { status: 'unavailable'; reason: 'local' | 'snapshot' | 'member' }
+
+type LinkContent = Exclude<BriefingContent, 'all'>
+const linkLabels: Record<LinkContent, string> = { photo: 'Photo brief', scan: 'Drone scan' }
 
 const linkUnavailable = {
   local: 'Save this brief as a cloud project to create a shareable link.',
@@ -38,6 +42,7 @@ type Props = {
 }
 
 export function PdfExportDialog({ brief, editable, captureRef, onSaveNotes, onClose, link, imageTransport, overlaySizeRef }: Props) {
+  const [pdfOpen, setPdfOpen] = useState(false)
   const [step, setStep] = useState(0)
   const [language, setLanguage] = useState<PdfLanguage>('en')
   const [includeProjectName, setIncludeProjectName] = useState(true)
@@ -61,14 +66,34 @@ export function PdfExportDialog({ brief, editable, captureRef, onSaveNotes, onCl
   const [status, setStatus] = useState('')
   const [error, setError] = useState('')
   const [pdfDone, setPdfDone] = useState(false)
-  const [linkUrl, setLinkUrl] = useState('')
+  const [shared, setShared] = useState<{ token: string; overlaySize: number } | null>(null)
+  const [linkAttempt, setLinkAttempt] = useState(0)
+  const [linkError, setLinkError] = useState('')
+  const [linkStatus, setLinkStatus] = useState(link?.status === 'ready' ? 'Creating links…' : '')
+  const [copied, setCopied] = useState<LinkContent | null>(null)
+  const linkContents = briefingLinkContents(brief)
+  // The dialog is modal, so the link source stays fixed while it is open.
+  const [linkSource] = useState(link)
   const abort = useRef<AbortController | null>(null)
   const references = useLocalImages(brief.references, imageTransport)
   useEffect(() => () => { abort.current?.abort() }, [])
+  // Both links share one idempotent public token, fetched as soon as Export opens.
+  useEffect(() => {
+    if (linkSource?.status !== 'ready') return
+    let active = true
+    void linkSource.createToken().then((token) => {
+      if (!active) return
+      setShared({ token, overlaySize: overlaySizeRef?.current ?? defaultOverlaySize }); setLinkStatus('')
+    }, (cause: unknown) => {
+      if (!active) return
+      setLinkError(cause instanceof Error ? cause.message : 'Public links could not be created.'); setLinkStatus('')
+    })
+    return () => { active = false }
+  }, [linkSource, linkAttempt, overlaySizeRef])
+  function retryLinks() { setLinkError(''); setLinkStatus('Creating links…'); setLinkAttempt((attempt) => attempt + 1) }
   const notesChanged = description !== brief.project.description || instructions !== brief.project.instructions
   const notes = { description, instructions }
   function saveExportedNotes() { if (editable && saveNotes && notesChanged) onSaveNotes(notes) }
-  function overlaySize() { return overlaySizeRef?.current ?? defaultOverlaySize }
   async function download() {
     if (busy) return
     const controller = new AbortController(); abort.current = controller
@@ -100,25 +125,42 @@ export function PdfExportDialog({ brief, editable, captureRef, onSaveNotes, onCl
       setStatus('')
     } finally { clearTimeout(timeout); setBusy(false); abort.current = null }
   }
-  async function createLink() {
-    if (busy || link?.status !== 'ready') return
-    setBusy(true); setError(''); setStatus('Creating link…')
-    try {
-      const token = await link.createToken()
-      const url = publicShareLink(token, { language, address: address.address.trim(), includeProjectName, includeClientName, overlaySize: overlaySize() })
-      setLinkUrl(url)
-      saveExportedNotes()
-      try { await navigator.clipboard.writeText(url); setStatus('Link copied.') }
-      catch { setStatus('Select the link and copy it manually.') }
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'A public link could not be created.')
-      setStatus('')
-    } finally { setBusy(false) }
+  function linkUrl(content: LinkContent) {
+    // The suggested address is left out so the briefing looks it up, keeping the link short.
+    const linkAddress = address.address.trim() === address.suggestion ? null : address.address.trim()
+    return shared ? publicShareLink(shared.token, { content, language, address: linkAddress, includeProjectName, includeClientName, overlaySize: shared.overlaySize }, brief.project.name) : ''
   }
-  const canCreateLink = link?.status === 'ready'
+  async function copyLink(content: LinkContent) {
+    try { await navigator.clipboard.writeText(linkUrl(content)); setCopied(content); setLinkStatus(`${linkLabels[content]} link copied.`) }
+    catch { setCopied(null); setLinkStatus('Copy is unavailable. Select the link and copy it manually.') }
+  }
   return <Dialog open onOpenChange={(open) => { if (!open) { abort.current?.abort(); onClose() } }}>
     <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-xl">
-      <DialogHeader><DialogTitle>Export</DialogTitle><DialogDescription>Follow the Plyo photo brief layout. Step {step + 1} of 3.</DialogDescription></DialogHeader>
+      {!pdfOpen ? <>
+        <DialogHeader><DialogTitle>Export</DialogTitle><DialogDescription>Share the photo brief and the drone scan as separate read-only Google Maps links. Recipients do not need to sign in.</DialogDescription></DialogHeader>
+        <div role="group" aria-label="Link language" className="grid grid-cols-2 gap-3">
+          <Button variant={language === 'en' ? 'default' : 'outline'} aria-pressed={language === 'en'} onClick={() => setLanguage('en')}>English</Button>
+          <Button variant={language === 'nb' ? 'default' : 'outline'} aria-pressed={language === 'nb'} onClick={() => setLanguage('nb')}>Norsk bokmål</Button>
+        </div>
+        {link?.status === 'unavailable' && <p className="text-sm text-muted-foreground">{linkUnavailable[link.reason]}</p>}
+        {link?.status === 'ready' && <div className="grid gap-4">
+          {linkContents.map((content) => <div key={content} className="grid gap-2">
+            <Label htmlFor={`briefing-link-${content}`}>{linkLabels[content]} link</Label>
+            <div className="flex gap-2">
+              <Input id={`briefing-link-${content}`} readOnly value={linkUrl(content)} placeholder={linkError ? 'Unavailable' : 'Creating link…'} onFocus={(event) => event.target.select()} />
+              <Button variant="outline" disabled={!shared} aria-label={`Copy ${linkLabels[content].toLowerCase()} link`} onClick={() => void copyLink(content)}>{copied === content ? <Check /> : <Copy />}Copy</Button>
+            </div>
+          </div>)}
+        </div>}
+        {linkError && <Alert variant="destructive"><AlertDescription>{linkError}</AlertDescription></Alert>}
+        {linkError && <Button variant="outline" onClick={retryLinks}>Retry links</Button>}
+        {linkStatus && <p role="status" className="text-sm">{linkStatus}</p>}
+        <div className="grid gap-2 border-t pt-4">
+          <Button variant="outline" onClick={() => { setError(''); setStatus(''); setStep(0); setPdfOpen(true) }}><FileText />Export PDF</Button>
+          <p className="text-sm text-muted-foreground">The PDF is only for applications. Use the links to share the brief.</p>
+        </div>
+      </> : <>
+      <DialogHeader><DialogTitle>Export PDF</DialogTitle><DialogDescription>Only for applications. Follows the Plyo photo brief layout. Step {step + 1} of 3.</DialogDescription></DialogHeader>
       <div className="flex gap-3 text-xs text-muted-foreground" aria-label="Export steps">
         {['Cover', 'Information', 'Review'].map((label, i) => <span key={label} aria-current={step === i ? 'step' : undefined} className={step === i ? 'font-semibold text-foreground' : ''}>{i + 1}. {label}</span>)}
       </div>
@@ -128,12 +170,12 @@ export function PdfExportDialog({ brief, editable, captureRef, onSaveNotes, onCl
           <Button variant={language === 'en' ? 'default' : 'outline'} aria-pressed={language === 'en'} onClick={() => setLanguage('en')}>English</Button>
           <Button variant={language === 'nb' ? 'default' : 'outline'} aria-pressed={language === 'nb'} onClick={() => setLanguage('nb')}>Norsk bokmål</Button>
         </div>
-        <p className="text-sm text-muted-foreground">Headings and standard instructions use this language. Your project name and written notes are included as entered.</p>
+        <p className="text-sm text-muted-foreground">Headings and standard instructions use this language, also in the links. Your project name and written notes are included as entered.</p>
         <div className="grid gap-2 border-t pt-4">
           <Label htmlFor="pdf-address">Street address: Area</Label>
           <Input id="pdf-address" value={address.address} maxLength={200} onChange={(event) => address.change(event.target.value)} placeholder="Street address: Area" />
           <p role="status" className="text-sm text-muted-foreground">{address.message}</p>
-          <p className="text-xs text-muted-foreground">{brief.circleRig ? 'Based on the circle rig location.' : brief.angles.length ? 'No circle rig: using the first camera point.' : 'No circle rig or camera points: using the project location.'} This name is used on the PDF cover and the shared brief.</p>
+          <p className="text-xs text-muted-foreground">{brief.circleRig ? 'Based on the circle rig location.' : brief.angles.length ? 'No circle rig: using the first camera point.' : 'No circle rig or camera points: using the project location.'} This name is used on the PDF cover and the shared links.</p>
           {address.suggestion && address.address !== address.suggestion && <Button variant="outline" className="h-auto whitespace-normal" onClick={address.useSuggestion}>Use suggested address: {address.suggestion}</Button>}
           {!address.loading && !address.suggestion && <Button variant="outline" onClick={address.retry}>Retry address lookup</Button>}
           <Label className="mt-2 flex items-center gap-3"><Switch checked={includeProjectName} onCheckedChange={setIncludeProjectName} />Include project name on cover</Label>
@@ -146,10 +188,10 @@ export function PdfExportDialog({ brief, editable, captureRef, onSaveNotes, onCl
         <div className="grid gap-2"><Label htmlFor="pdf-property">Property information{!brief.project.description.trim() ? ' (optional)' : ''}</Label><Textarea id="pdf-property" value={description} maxLength={2000} rows={4} onChange={(e) => setDescription(e.target.value)} placeholder="Describe the property, site, or project…" /></div>
         <div className="grid gap-2"><Label htmlFor="pdf-instructions">Instructions{!brief.project.instructions.trim() ? ' (optional)' : ''}</Label><Textarea id="pdf-instructions" value={instructions} maxLength={2000} rows={4} onChange={(e) => setInstructions(e.target.value)} placeholder="Add access details or instructions for the photographer…" /></div>
         {editable && <Label className="flex items-center gap-3"><Switch checked={saveNotes} onCheckedChange={setSaveNotes} />Save these notes to the brief when exporting</Label>}
-        {!editable && <p className="text-sm text-muted-foreground">These notes apply to this PDF or link only. The shared brief stays read-only.</p>}
+        {!editable && <p className="text-sm text-muted-foreground">These notes apply to this PDF only. The shared brief stays read-only.</p>}
       </div>}
       {step === 2 && <div className="grid gap-4">
-        <div className="rounded-lg border p-3 text-sm"><p className="font-semibold break-words">{brief.project.name}</p><p>{language === 'nb' ? 'Norsk bokmål' : 'English'} · {countBriefImages(brief).total} photos</p><p className="mt-2 font-semibold">{copy.projectSizes[pdfProjectSize(brief)]}</p><p className="text-xs text-muted-foreground">Automatically matched to the template's point counts and height levels. Rig arrows count as aerial positions.</p><p className="mt-2 text-muted-foreground">Download a PDF or create a read-only Google Maps briefing. Reference images from Contents are included automatically.</p></div>
+        <div className="rounded-lg border p-3 text-sm"><p className="font-semibold break-words">{brief.project.name}</p><p>{language === 'nb' ? 'Norsk bokmål' : 'English'} · {countBriefImages(brief).total} photos</p><p className="mt-2 font-semibold">{copy.projectSizes[pdfProjectSize(brief)]}</p><p className="text-xs text-muted-foreground">Automatically matched to the template's point counts and height levels. Rig arrows count as aerial positions.</p><p className="mt-2 text-muted-foreground">Reference images from Contents are included automatically.</p></div>
         <div className="grid gap-3 rounded-lg border p-3 text-sm" aria-label="Shoot times">
           <h3 className="font-semibold">Shoot times</h3>
           {shootDays.map((day) => <div key={day.date}>
@@ -162,20 +204,16 @@ export function PdfExportDialog({ brief, editable, captureRef, onSaveNotes, onCl
           <Button disabled={busy} variant={diagram ? 'default' : 'outline'} aria-pressed={diagram} onClick={() => setDiagram(true)}>Point diagram</Button>
         </div><p className="text-sm text-muted-foreground">{diagram ? 'A labeled position diagram without a basemap or floor plan. Coordinates are listed in the PDF.' : 'Google Maps frames all points for export, then restores your view. Includes a second map without the floor plan when one is present.'}</p></div>
         {brief.references.length > 0 && <p className="text-sm text-muted-foreground">{brief.references.length} reference image{brief.references.length === 1 ? '' : 's'} from Contents will be included.</p>}
-        {link?.status === 'unavailable' && <p className="text-sm text-muted-foreground">{linkUnavailable[link.reason]}</p>}
-        {linkUrl && <div className="grid gap-2"><Label htmlFor="briefing-link">Public briefing link</Label><Input id="briefing-link" readOnly value={linkUrl} onFocus={(event) => event.target.select()} /></div>}
       </div>}
       {error && <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>}
       {status && <p role="status" className="text-sm">{status}</p>}
       <div className="flex flex-wrap justify-between gap-2 pt-2">
-        <Button variant="outline" disabled={busy} onClick={() => step ? setStep((s) => s - 1) : onClose()}><ArrowLeft />{step ? 'Back' : 'Cancel'}</Button>
+        <Button variant="outline" disabled={busy} onClick={() => step ? setStep((s) => s - 1) : setPdfOpen(false)}><ArrowLeft />Back</Button>
         {step < 2 ? <Button onClick={() => { setError(''); setStep((s) => s + 1) }}>Continue<ArrowRight /></Button>
           : busy ? <Button variant="outline" onClick={() => abort.current?.abort()}>Cancel export</Button>
-            : <div className="flex flex-wrap gap-2">
-              {canCreateLink && <Button onClick={() => void createLink()}><Link2 />{linkUrl ? 'Copy link' : 'Create link'}</Button>}
-              <Button onClick={() => void download()}><Download />{pdfDone ? 'Download again' : 'Download PDF'}</Button>
-            </div>}
+            : <Button onClick={() => void download()}><Download />{pdfDone ? 'Download again' : 'Download PDF'}</Button>}
       </div>
+      </>}
     </DialogContent>
   </Dialog>
 }
