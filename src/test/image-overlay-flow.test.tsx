@@ -152,3 +152,22 @@ it('replaces a reference through its thumbnail control while preserving its capt
   expect(briefRepository.latest()!.references).toHaveLength(0)
   expect(screen.getByRole('button', { name: 'Upload reference' })).toBeVisible()
 })
+
+it('locks saved floorplans on every reopen even when previously left unlocked', async () => {
+  const { user, app } = await resume()
+  await user.upload(screen.getByLabelText('Local image file'), file)
+  await waitFor(() => expect(briefRepository.latest()?.imageOverlays).toHaveLength(1))
+  expect(screen.getByRole('button', { name: 'Lock floorplan plan.png' })).toHaveAttribute('aria-pressed', 'false')
+  app.unmount()
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const reopened = render(<App />)
+    await user.click(await screen.findByRole('button', { name: 'Resume editing' }))
+    await user.click(screen.getByRole('tab', { name: 'Contents' }))
+    expect(screen.getByRole('button', { name: 'Unlock floorplan plan.png' })).toHaveAttribute('aria-pressed', 'true')
+    const saved = JSON.stringify(briefRepository.latest())
+    await user.click(screen.getByRole('button', { name: 'Unlock floorplan plan.png' }))
+    expect(screen.getByRole('button', { name: 'Lock floorplan plan.png' })).toHaveAttribute('aria-pressed', 'false')
+    expect(JSON.stringify(briefRepository.latest())).toBe(saved)
+    reopened.unmount()
+  }
+})
