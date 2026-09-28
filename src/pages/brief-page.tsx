@@ -17,7 +17,7 @@ import type { BriefAction, BriefSession } from '@/features/briefs/state/brief-se
 import type { ImageTransport } from '@/features/briefs/storage/image-transport'
 
 export function BriefPage({ session, dispatch, error, pdfMapRef, imageTransport, overlaySizeRef, statusLeading, statusTrailing }: { session: BriefSession; dispatch: (action: BriefAction) => void; error: string | null; pdfMapRef?: RefObject<PdfMapCapture | null>; imageTransport?: ImageTransport; overlaySizeRef?: RefObject<number>; statusLeading?: ReactNode; statusTrailing?: ReactNode }) {
-  const [lockedImageIds, setLockedImageIds] = useState<ReadonlySet<string>>(new Set())
+  const [lockedImageIds, setLockedImageIds] = useState<ReadonlySet<string>>(() => new Set(session.brief.imageOverlays.map((image) => image.id)))
   const [scanLocked, setScanLocked] = useState(true)
   const images = useLocalImages(session.brief.imageOverlays, imageTransport)
   const referenceImages = useLocalImages(session.brief.references, imageTransport)
