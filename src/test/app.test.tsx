@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, expect, it, vi } from 'vitest'
+import { afterEach, beforeAll, beforeEach, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import App from '@/App'
@@ -9,13 +9,17 @@ import { exportBriefKey } from '@/features/briefs/storage/share-key'
 // Exercise local drafts even when the developer has configured a live Firebase project.
 vi.mock('@/features/cloud/auth/config', () => ({ cloudConfigured: false }))
 
+// Transform the large editor before timing UI interactions; App still exercises
+// its asynchronous local-route boundary when it renders.
+beforeAll(async () => { await import('@/pages/local-app') })
+
 beforeEach(() => { localStorage.clear(); vi.restoreAllMocks(); vi.stubEnv('VITE_GOOGLE_MAPS_API_KEY', '') })
 afterEach(() => { cleanup(); vi.unstubAllEnvs(); vi.restoreAllMocks() })
 
 it('creates without a schedule step, saves stacked shadow times, exports, and resumes after remount', async () => {
   const user = userEvent.setup()
   const app = render(<App />)
-  await user.click(screen.getByRole('button', { name: 'Create a brief' }))
+  await user.click(await screen.findByRole('button', { name: 'Create a brief' }))
   await user.type(screen.getByLabelText('Project name'), 'Riverside')
   await user.type(screen.getByLabelText('Client name'), 'Client A')
   expect(screen.queryByLabelText('Shoot date')).not.toBeInTheDocument()
@@ -69,7 +73,7 @@ it('creates without a schedule step, saves stacked shadow times, exports, and re
   expect((screen.getByLabelText('Export key') as HTMLTextAreaElement).value).toMatch(/^DB2\./)
   app.unmount()
   render(<App />)
-  await user.click(screen.getByRole('button', { name: 'Resume editing' }))
+  await user.click(await screen.findByRole('button', { name: 'Resume editing' }))
   expect(screen.getByLabelText('Radius (m)')).toHaveValue(85)
 }, 15000)
 
@@ -81,7 +85,7 @@ it('loads a viewer and toggles layers without writing or replacing the local dra
   const writes = vi.spyOn(Storage.prototype, 'setItem')
   const user = userEvent.setup()
   render(<App />)
-  await user.click(screen.getByRole('button', { name: 'Load a brief' }))
+  await user.click(await screen.findByRole('button', { name: 'Load a brief' }))
   await user.click(screen.getByLabelText('Export key'))
   await user.paste(exportBriefKey(shared))
   await user.click(screen.getByRole('button', { name: 'Open read-only brief' }))
@@ -125,7 +129,7 @@ it('defaults camera heights and appends 360 floors in 3 m steps', async () => {
   briefRepository.save(brief)
   const user = userEvent.setup()
   render(<App />)
-  await user.click(screen.getByRole('button', { name: 'Resume editing' }))
+  await user.click(await screen.findByRole('button', { name: 'Resume editing' }))
   expect(screen.getByLabelText('Drone image heights (m)')).toHaveValue('40, 60')
   const heights = screen.getByLabelText('360 heights (m)')
   expect(heights).toHaveValue('2, 5, 8')
@@ -146,7 +150,7 @@ it('saves a 360 height override on the added point without changing the shared l
   briefRepository.save(brief)
   const user = userEvent.setup()
   render(<App />)
-  await user.click(screen.getByRole('button', { name: 'Resume editing' }))
+  await user.click(await screen.findByRole('button', { name: 'Resume editing' }))
   const heights = screen.getByLabelText('Heights for 360 1 (m)')
   expect(heights).toHaveValue('')
   expect(heights).toHaveAttribute('placeholder', '2, 5, 8')
@@ -163,7 +167,7 @@ it('saves live DSLR settings for existing and future points, clamps spacing, and
   briefRepository.save(brief)
   const user = userEvent.setup()
   render(<App />)
-  await user.click(screen.getByRole('button', { name: 'Resume editing' }))
+  await user.click(await screen.findByRole('button', { name: 'Resume editing' }))
   const count = screen.getByRole('spinbutton', { name: 'Number of angles' })
   const spacing = screen.getByRole('spinbutton', { name: 'Spacing (°)' })
   await user.clear(count); await user.type(count, '3')
@@ -186,7 +190,7 @@ it('saves each oval radius independently and rejects values outside the oval lim
   briefRepository.save(brief)
   const user = userEvent.setup()
   render(<App />)
-  await user.click(screen.getByRole('button', { name: 'Resume editing' }))
+  await user.click(await screen.findByRole('button', { name: 'Resume editing' }))
   const major = screen.getByRole('spinbutton', { name: 'Biggest radius (m)' })
   const minor = screen.getByRole('spinbutton', { name: 'Smallest radius (m)' })
   fireEvent.change(major, { target: { value: '125' } })
@@ -214,7 +218,7 @@ it('collapses categories without saving and only deletes a category after confir
   briefRepository.save(brief)
   const user = userEvent.setup()
   render(<App />)
-  await user.click(screen.getByRole('button', { name: 'Resume editing' }))
+  await user.click(await screen.findByRole('button', { name: 'Resume editing' }))
   const writes = vi.spyOn(Storage.prototype, 'setItem')
   await user.click(screen.getByRole('button', { name: 'Drone image points' }))
   expect(screen.queryByRole('button', { name: 'Drone image 1' })).not.toBeInTheDocument()
@@ -241,7 +245,7 @@ it('saves category reordering, preserves selection and resumes the new numbers',
   briefRepository.save(brief)
   const user = userEvent.setup()
   const app = render(<App />)
-  await user.click(screen.getByRole('button', { name: 'Resume editing' }))
+  await user.click(await screen.findByRole('button', { name: 'Resume editing' }))
   await user.click(screen.getByRole('button', { name: 'DSLR 3' }))
   expect(screen.queryByLabelText('Camera label')).not.toBeInTheDocument()
   const grip = screen.getByRole('button', { name: 'Reorder DSLR 3' })
@@ -255,7 +259,7 @@ it('saves category reordering, preserves selection and resumes the new numbers',
   expect(writes).not.toHaveBeenCalled()
   app.unmount()
   render(<App />)
-  await user.click(screen.getByRole('button', { name: 'Resume editing' }))
+  await user.click(await screen.findByRole('button', { name: 'Resume editing' }))
   await user.click(screen.getByRole('button', { name: 'DSLR 2' }))
   expect(screen.getByLabelText('Camera latitude')).toHaveValue(62)
 })
@@ -266,7 +270,7 @@ it('shows a save failure and keeps export available', async () => {
   vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new Error('Storage full') })
   const user = userEvent.setup()
   render(<App />)
-  await user.click(screen.getByRole('button', { name: 'Resume editing' }))
+  await user.click(await screen.findByRole('button', { name: 'Resume editing' }))
   expect(screen.getByText('Not saved')).toBeInTheDocument()
   expect(screen.getByRole('alert')).toHaveTextContent('export a key')
   await user.click(screen.getByRole('button', { name: 'Export key' }))
@@ -282,7 +286,7 @@ it('removes cameras using row X and Delete while protecting text editing', async
   briefRepository.save(brief)
   const user = userEvent.setup()
   render(<App />)
-  await user.click(screen.getByRole('button', { name: 'Resume editing' }))
+  await user.click(await screen.findByRole('button', { name: 'Resume editing' }))
   await user.click(screen.getByRole('button', { name: '360 1' }))
   await user.click(screen.getByRole('button', { name: 'Remove DSLR 1' }))
   expect(briefRepository.latest()?.angles.map((angle) => angle.id)).toEqual(['a'])
@@ -301,7 +305,7 @@ it.each(['X', 'Delete'])('removes modifier-selected cameras with %s and preserve
   briefRepository.save(brief)
   const user = userEvent.setup()
   render(<App />)
-  await user.click(screen.getByRole('button', { name: 'Resume editing' }))
+  await user.click(await screen.findByRole('button', { name: 'Resume editing' }))
   await user.click(screen.getByRole('button', { name: '360 1' }))
   await user.keyboard(method === 'X' ? '{Shift>}' : '{Control>}')
   await user.click(screen.getByRole('button', { name: '360 3' }))
@@ -320,7 +324,7 @@ it('saves valid rig arrow counts live and restores invalid or empty input on blu
   briefRepository.save(brief)
   const user = userEvent.setup()
   render(<App />)
-  await user.click(screen.getByRole('button', { name: 'Resume editing' }))
+  await user.click(await screen.findByRole('button', { name: 'Resume editing' }))
   const count = screen.getByRole('spinbutton', { name: 'Number of arrows' })
   expect(count).toHaveValue(10)
   fireEvent.change(count, { target: { value: '16' } })
@@ -333,7 +337,7 @@ it('saves valid rig arrow counts live and restores invalid or empty input on blu
   }
 })
 
-it('counts planned images from the locked capture rules and places the shoot date beside the times title', async () => {
+it('counts planned images from the locked capture rules in the time menu', async () => {
   const brief = createBrief({ name: 'Images', clientName: 'Client', date: '2026-09-12', times: ['12:00'] })
   brief.circleRig = { id: 'rig', position: brief.coordinates, arrowCount: 10, radiusMeters: 50, ovalRatio: 1, rotationDegrees: 0 }
   brief.angles = [
@@ -347,10 +351,11 @@ it('counts planned images from the locked capture rules and places the shoot dat
   briefRepository.save(brief)
   const user = userEvent.setup()
   render(<App />)
-  await user.click(screen.getByRole('button', { name: 'Resume editing' }))
+  await user.click(await screen.findByRole('button', { name: 'Resume editing' }))
   expect(screen.queryByText(/2026-09-12 ·/)).not.toBeInTheDocument()
-  expect(screen.getByText('Shoot times').parentElement).toHaveTextContent('2026-09-12')
-  expect(screen.getByText('Shoot times').parentElement).toHaveTextContent('12:00')
+  expect(screen.queryByText('Shoot times')).not.toBeInTheDocument()
+  expect(screen.getByLabelText('Shadow date')).toHaveValue('2026-09-12')
+  expect(screen.getByRole('button', { name: 'Shadow time start' })).toHaveTextContent('12:00')
   expect(screen.getByLabelText('Total images')).toHaveTextContent('60')
   expect(screen.queryByRole('button', { name: 'Project details' })).not.toBeInTheDocument()
   await user.click(screen.getByRole('tab', { name: 'Contents' }))

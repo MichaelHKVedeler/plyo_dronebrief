@@ -52,7 +52,7 @@ it('omits heights from the extra coverage description', () => {
   }]
 
   expect(captureInstructions(brief, 'en')).toEqual([{
-    key: 'extra-coverage', label: 'Extra coverage', rule: 'Maximum height of 120m',
-    images: 2,
+    key: 'extra-coverage', label: 'Extra coverage', rule: '',
+    images: 0,
   }])
 })

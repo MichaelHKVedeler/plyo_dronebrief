@@ -1,5 +1,5 @@
 import { afterEach, expect, it, vi } from 'vitest'
-import { cleanup, render } from '@testing-library/react'
+import { cleanup, fireEvent, render } from '@testing-library/react'
 import type { Map as LibreMap } from 'maplibre-gl'
 import { ImageLayer } from './image-layer'
 import { imageAnchorRadius } from './image-geometry'
@@ -94,4 +94,27 @@ it('updates ShadeMap imagery in each render frame without reinserting the image'
   scale = 1; draw()
   expect(image.getAttribute('transform')).toBe(initial)
   expect(insert).not.toHaveBeenCalled()
+})
+
+it('highlights an unlocked edge on hover and hides feedback when locked', () => {
+  vi.stubGlobal('PointerEvent', MouseEvent)
+  const surface = document.createElement('div')
+  surface.innerHTML = '<div data-map></div><div data-image-host></div>'
+  document.body.append(surface)
+  const map = {
+    getContainer: () => surface.firstElementChild,
+    project: ([lng, lat]: number[]) => ({ x: lng * 111320 + 200, y: -lat * 111320 + 200 }),
+    on: () => {}, off: vi.fn(),
+  }
+  const view = render(<ShadeProjection value={map as unknown as LibreMap}><ImageLayer {...state} editable interactive /></ShadeProjection>)
+  const outline = surface.querySelector<SVGElement>('[data-image-hover]')!
+  fireEvent.pointerMove(surface, { clientX: 150, clientY: 200 })
+  expect(outline.style.display).toBe('')
+  expect(surface).toHaveAttribute('data-image-cursor', 'crosshair')
+  fireEvent.pointerLeave(surface)
+  expect(outline.style.display).toBe('none')
+  view.rerender(<ShadeProjection value={map as unknown as LibreMap}><ImageLayer {...state} editable interactive lockedIds={new Set(['image'])} /></ShadeProjection>)
+  fireEvent.pointerMove(surface, { clientX: 150, clientY: 200 })
+  expect(outline.style.display).toBe('none')
+  expect(surface).not.toHaveAttribute('data-image-cursor')
 })

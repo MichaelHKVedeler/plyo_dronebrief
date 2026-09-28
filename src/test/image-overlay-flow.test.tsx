@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, expect, it, vi } from 'vitest'
+import { afterEach, beforeAll, beforeEach, expect, it, vi } from 'vitest'
 import { cleanup, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import App from '@/App'
@@ -8,6 +8,8 @@ import { exportBriefKey } from '@/features/briefs/storage/share-key'
 import { readImageHandle, readLocalImage, rememberImageHandle, imagePicker } from '@/features/briefs/storage/local-images'
 
 vi.mock('@/features/cloud/auth/config', () => ({ cloudConfigured: false }))
+
+beforeAll(async () => { await import('@/pages/local-app') })
 
 vi.mock('@/features/briefs/storage/local-images', () => ({
   imagePicker: vi.fn(() => undefined), readImageHandle: vi.fn(async () => undefined),
@@ -26,7 +28,7 @@ const file = new File(['test'], 'plan.png', { type: 'image/png' })
 async function resume() {
   briefRepository.save(createBrief(project))
   const user = userEvent.setup(); const app = render(<App />)
-  await user.click(screen.getByRole('button', { name: 'Resume editing' }))
+  await user.click(await screen.findByRole('button', { name: 'Resume editing' }))
   await user.click(screen.getByRole('tab', { name: 'Contents' }))
   return { user, app }
 }
@@ -39,13 +41,13 @@ it('adds a local image to a hidden layer, saves metadata, adjusts visibility, an
   const overlay = briefRepository.latest()!.imageOverlays[0]
   expect(overlay.source).toMatchObject({ kind: 'local-file', fileName: 'plan.png' })
   expect(JSON.stringify(briefRepository.latest())).not.toMatch(/blob:|base64|fakepath/)
-  const opacity = screen.getByRole('slider', { name: 'plan.png visibility' })
+  const opacity = screen.getByRole('slider', { name: 'plan.png opacity' })
   opacity.focus(); await user.keyboard('{Home}{ArrowRight}')
   expect(briefRepository.latest()!.imageOverlays[0].opacity).toBe(0.01)
   await user.click(screen.getByRole('button', { name: 'Export key' }))
   expect(screen.getByText(/Local images are not included/)).toBeVisible()
   app.unmount(); render(<App />)
-  await user.click(screen.getByRole('button', { name: 'Resume editing' }))
+  await user.click(await screen.findByRole('button', { name: 'Resume editing' }))
   await user.click(screen.getByRole('tab', { name: 'Contents' }))
   expect(await screen.findByRole('button', { name: 'Reconnect image' })).toBeVisible()
   expect(briefRepository.latest()!.imageOverlays[0].position).toEqual(overlay.position)
@@ -65,13 +67,13 @@ it('reconnects local images in a viewer without saving or permitting edits', asy
   shared.imageOverlays = [{ id: 'overlay', name: 'plan.png', source: { kind: 'local-file', fileId: crypto.randomUUID(), fileName: 'plan.png' }, position: shared.coordinates, widthMeters: 50, heightMeters: 30, rotationDegrees: 15, opacity: 0.5 }]
   const writes = vi.spyOn(Storage.prototype, 'setItem')
   const user = userEvent.setup(); render(<App />)
-  await user.click(screen.getByRole('button', { name: 'Load a brief' }))
+  await user.click(await screen.findByRole('button', { name: 'Load a brief' }))
   await user.click(screen.getByLabelText('Export key')); await user.paste(exportBriefKey(shared))
   await user.click(screen.getByRole('button', { name: 'Open read-only brief' }))
   await user.click(screen.getByRole('tab', { name: 'Contents' }))
   expect(screen.queryByRole('button', { name: 'Upload image' })).not.toBeInTheDocument()
   expect(screen.queryByRole('button', { name: 'Remove plan.png' })).not.toBeInTheDocument()
-  expect(screen.getByRole('slider', { name: 'plan.png visibility' })).toHaveAttribute('data-disabled')
+  expect(screen.getByRole('slider', { name: 'plan.png opacity' })).toHaveAttribute('data-disabled')
   await user.click(await screen.findByRole('button', { name: 'Reconnect image' }))
   await user.upload(screen.getByLabelText('Local image file'), file)
   await waitFor(() => expect(readLocalImage).toHaveBeenCalledOnce())
@@ -87,7 +89,7 @@ it('shows a save failure after upload while retaining the image in the open scen
   vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new Error('Quota') })
   await user.upload(screen.getByLabelText('Local image file'), file)
   expect(await screen.findByText('Not saved')).toBeVisible()
-  expect(screen.getByRole('slider', { name: 'plan.png visibility' })).toBeVisible()
+  expect(screen.getByRole('slider', { name: 'plan.png opacity' })).toBeVisible()
   expect(screen.getByText(/Changes could not be saved/)).toBeVisible()
 })
 it('adds a reference image below the floor plan and stores it in the draft', async () => {
@@ -100,4 +102,53 @@ it('adds a reference image below the floor plan and stores it in the draft', asy
   expect(JSON.stringify(briefRepository.latest())).not.toMatch(/blob:|base64|fakepath/)
   await user.click(screen.getByRole('button', { name: 'View reference' }))
   expect(screen.getByRole('img', { name: 'plan' })).toHaveAttribute('src', 'blob:local-only')
+})
+
+it('toggles floorplan locking with the keyboard without saving brief content', async () => {
+  const { user } = await resume()
+  await user.upload(screen.getByLabelText('Local image file'), file)
+  await waitFor(() => expect(briefRepository.latest()?.imageOverlays).toHaveLength(1))
+  const writes = vi.spyOn(Storage.prototype, 'setItem')
+  screen.getByRole('button', { name: 'Lock floorplan plan.png' }).focus()
+  await user.keyboard('{Enter}')
+  expect(screen.getByRole('button', { name: 'Unlock floorplan plan.png' })).toHaveAttribute('aria-pressed', 'true')
+  await user.keyboard(' ')
+  expect(screen.getByRole('button', { name: 'Lock floorplan plan.png' })).toHaveAttribute('aria-pressed', 'false')
+  expect(writes).not.toHaveBeenCalled()
+})
+
+it('previews, replaces and removes the floorplan from its thumbnail controls', async () => {
+  const { user } = await resume()
+  await user.upload(screen.getByLabelText('Local image file'), file)
+  await waitFor(() => expect(briefRepository.latest()?.imageOverlays).toHaveLength(1))
+  expect(screen.queryByRole('button', { name: 'Upload image' })).not.toBeInTheDocument()
+  const original = briefRepository.latest()!.imageOverlays[0]
+  await user.click(screen.getByRole('button', { name: 'View floorplan' }))
+  expect(screen.getByRole('dialog')).toBeVisible()
+  await user.keyboard('{Escape}')
+  await user.click(screen.getByRole('button', { name: 'Replace floorplan' }))
+  await user.upload(screen.getByLabelText('Local image file'), new File(['new'], 'replacement.png', { type: 'image/png' }))
+  await waitFor(() => expect(briefRepository.latest()!.imageOverlays[0].name).toBe('replacement.png'))
+  expect(briefRepository.latest()!.imageOverlays).toHaveLength(1)
+  expect(briefRepository.latest()!.imageOverlays[0]).toMatchObject({ id: original.id, position: original.position, widthMeters: original.widthMeters, heightMeters: original.heightMeters, rotationDegrees: original.rotationDegrees, opacity: original.opacity })
+  await user.click(screen.getByRole('button', { name: 'Remove replacement.png' }))
+  expect(briefRepository.latest()!.imageOverlays).toHaveLength(0)
+  expect(screen.getByRole('button', { name: 'Upload image' })).toBeVisible()
+})
+
+it('replaces a reference through its thumbnail control while preserving its caption', async () => {
+  const { user } = await resume()
+  await user.upload(screen.getByLabelText('Reference image file'), file)
+  await waitFor(() => expect(briefRepository.latest()?.references).toHaveLength(1))
+  const original = briefRepository.latest()!.references[0]
+  await user.click(screen.getByRole('button', { name: 'Replace reference' }))
+  await user.upload(screen.getByLabelText('Reference image file'), new File(['new'], 'new-reference.png', { type: 'image/png' }))
+  await waitFor(() => expect(briefRepository.latest()!.references[0].source).toMatchObject({ fileName: 'new-reference.png' }))
+  expect(briefRepository.latest()!.references[0]).toMatchObject({ id: original.id, caption: original.caption })
+  await user.click(screen.getByRole('button', { name: 'View reference' }))
+  expect(screen.getByRole('img', { name: original.caption })).toBeVisible()
+  await user.keyboard('{Escape}')
+  await user.click(screen.getByRole('button', { name: 'Remove plan' }))
+  expect(briefRepository.latest()!.references).toHaveLength(0)
+  expect(screen.getByRole('button', { name: 'Upload reference' })).toBeVisible()
 })

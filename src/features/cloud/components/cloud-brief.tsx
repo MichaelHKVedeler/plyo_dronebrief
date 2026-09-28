@@ -20,9 +20,6 @@ import { callCloud, cloudError } from '../auth/firebase'
 import { cloudProjects, loadPublic } from '../storage/project-repository'
 import { downloadFloorplan, uploadFloorplan } from '../storage/uploads'
 import { SaveCoordinator, type SaveStatus } from '../state/save-coordinator'
-import { ActorAvatar } from './actor-avatar'
-import { ShareDialog } from './share-dialog'
-import { briefingLinkContents } from '@/features/briefs/components/briefing-content'
 import { Problem } from './problem'
 
 export function exportCloudSnapshot(brief: CloudProject['brief'], onKey: (key: string) => void, onError: (message: string) => void) {
@@ -36,7 +33,7 @@ export function CloudBrief({ initial, publicToken, presentation = defaultBriefin
   const [status, setStatus] = useState<SaveStatus>('Saved'); const [error, setError] = useState<string | null>(null)
   const [uploadStatus, setUploadStatus] = useState(''); const [uploading, setUploading] = useState(false)
   const [accessLost, setAccessLost] = useState(false); const [generation, setGeneration] = useState(0)
-  const [share, setShare] = useState(false); const [key, setKey] = useState<string | null>(null); const [reloadConfirm, setReloadConfirm] = useState(false)
+  const [key, setKey] = useState<string | null>(null); const [reloadConfirm, setReloadConfirm] = useState(false)
   const [pdfOpen, setPdfOpen] = useState(false)
   const pdfMapRef = useRef<PdfMapCapture | null>(null)
   const overlaySizeRef = useRef(defaultOverlaySize)
@@ -158,20 +155,14 @@ export function CloudBrief({ initial, publicToken, presentation = defaultBriefin
       <Button variant="outline" disabled={accessLost || uploading} onClick={() => setPdfOpen(true)}><FileDown /> Export</Button>
     </AppHeader>
     {accessLost ? <div className="grid gap-3 p-6"><Problem message={error ?? 'Project access is no longer available.'} /><Button variant="outline" onClick={() => { void loadFresh().then(() => { if (alive.current) { setAccessLost(false); setError(null) } }).catch((error) => { if (alive.current) setError(cloudError(error)) }) }}>Retry project</Button></div> : <BriefPage key={generation} session={session} dispatch={dispatch} error={error} imageTransport={transport} pdfMapRef={pdfMapRef} overlaySizeRef={overlaySizeRef}
-      statusLeading={<>
+      statusLeading={(status === 'Save failed' || status === 'Conflict') && <>
         {status === 'Save failed' && !accessLost && <Button size="sm" onClick={() => void coordinator.flush()}>Retry save</Button>}
         {(status === 'Conflict' || status === 'Save failed') && !accessLost && <><Button size="sm" variant="outline" onClick={() => setReloadConfirm(true)}>Reload latest</Button><Button size="sm" disabled={copying || uploading} onClick={() => void copyProject()}>{copying ? 'Copying…' : 'Save as a new project'}</Button></>}
-      </>}
-      statusTrailing={<>
-        <span className="flex items-center gap-1 text-muted-foreground">Created <ActorAvatar label="Created by" actor={project.summary.createdBy} at={project.summary.createdAt} /></span>
-        <span className="flex items-center gap-1 text-muted-foreground">Edited <ActorAvatar label="Edited by" actor={project.summary.editedBy} at={project.summary.updatedAt} /></span>
-        <Button size="sm" disabled={accessLost || uploading} onClick={() => setShare(true)}>Share</Button>
       </>}
     />}
     {pdfOpen && !accessLost && <PdfExportDialog brief={session.brief} editable={session.mode === 'edit'} captureRef={pdfMapRef} link={exportLink} imageTransport={transport} overlaySizeRef={overlaySizeRef} onClose={() => setPdfOpen(false)}
       onSaveNotes={(notes) => dispatch({ type: 'update', update: (brief) => ({ ...brief, project: { ...brief.project, ...notes } }) })} />}
     <ExportDialog shareKey={key} hasLocalImages={hasLocalFiles(session.brief)} onClose={() => setKey(null)} />
-    {share && <ShareDialog projectId={project.summary.id} projectName={session.brief.project.name} canManage={canManage} contents={briefingLinkContents(session.brief)} onClose={() => setShare(false)} />}
     <Dialog open={reloadConfirm} onOpenChange={setReloadConfirm}><DialogContent><DialogHeader><DialogTitle>Discard unsaved changes and reload?</DialogTitle><DialogDescription>Export your local snapshot or save a new project first if you need to keep these changes.</DialogDescription></DialogHeader><Button variant="destructive" onClick={() => { onDirty(false); onOpen(initial.summary.id) }}>Discard and reload latest</Button></DialogContent></Dialog>
   </>
 }

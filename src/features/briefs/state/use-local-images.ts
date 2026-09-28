@@ -68,7 +68,7 @@ export function useLocalImages(overlays: ImageSourceItem[], transport?: ImageTra
           const image = await readLocalImage(await handle.getFile())
           if (!referenced.current.has(id) || resourceCache.current[id]) { URL.revokeObjectURL(image.url); return }
           publish(id, { url: image.url, handle })
-        } catch { if (!signal.aborted && alive.current && version === cloudVersion.current && referenced.current.has(id)) publish(id, { message: transport ? 'This floorplan could not be loaded. Retry when the connection is available.' : 'The local image is unavailable. Reconnect it to continue.' }) }
+        } catch { if (!signal.aborted && alive.current && version === cloudVersion.current && referenced.current.has(id)) publish(id, { message: transport ? 'This image could not be loaded. Retry when the connection is available.' : 'The local image is unavailable. Reconnect it to continue.' }) }
         finally { pending.current.delete(id); if (alive.current && (signal.aborted || version !== cloudVersion.current)) setResources((previous) => ({ ...previous })) }
       })()
     }

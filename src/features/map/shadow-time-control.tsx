@@ -1,5 +1,5 @@
 import { useId, useRef, useState, type ComponentProps } from 'react'
-import { Calendar, ChevronDown, ChevronUp, Clock3, Plus, X } from 'lucide-react'
+import { Calendar, Camera, ChevronDown, ChevronUp, Clock3, Plus, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
@@ -13,7 +13,8 @@ function formatSlotDate(date: string) {
   return new Date(year, month - 1, day).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
-export function ShadowTimeControl({ slots, activeIndex, activeEndpoint = 0, onActivate, onChange, onCommit, position }: {
+export function ShadowTimeControl({ slots, activeIndex, activeEndpoint = 0, onActivate, onChange, onCommit, position, totalImages }: {
+  totalImages?: number
   slots: ShootSlot[]
   activeIndex: number
   activeEndpoint?: ShootEndpoint
@@ -75,6 +76,7 @@ export function ShadowTimeControl({ slots, activeIndex, activeEndpoint = 0, onAc
         {!open && <ul className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-4 gap-y-1 text-sm">
           {ranged.map((slot, index) => <li key={index} className={index === activeIndex ? '' : 'opacity-50'}>{timeButtons(slot, index)}</li>)}
         </ul>}
+        {totalImages !== undefined && <span className="ml-auto inline-flex shrink-0 items-center gap-1.5 text-sm tabular-nums" aria-label="Total images" title="Total images"><Camera className="size-4" aria-hidden="true" />{totalImages}</span>}
       </div>
       <Button type="button" variant="ghost" size="icon-sm"
         aria-expanded={open} aria-controls={panelId} aria-label={open ? 'Collapse times' : 'Expand times'}
@@ -124,8 +126,8 @@ export function ResponsiveShadowTimeControl(props: ComponentProps<typeof ShadowT
     <div className="hidden @min-[500px]:block"><ShadowTimeControl {...props} /></div>
     <div className="@min-[500px]:hidden">
       <Dialog>
-        <DialogTrigger asChild><Button variant="ghost" className="h-auto w-full flex-wrap px-1" aria-label="Edit shoot times"><Clock3 />{selected}</Button></DialogTrigger>
-        <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-sm">
+        <DialogTrigger asChild><Button variant="ghost" className="h-auto w-full flex-wrap px-1" aria-label="Edit shoot times"><Clock3 />{selected}{props.totalImages !== undefined && <span className="ml-auto inline-flex items-center gap-1.5 tabular-nums" aria-label="Image count"><Camera className="size-4" aria-hidden="true" />{props.totalImages}</span>}</Button></DialogTrigger>
+        <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-lg">
           <DialogHeader><DialogTitle>Shoot times</DialogTitle><DialogDescription>Select a time to preview its shadows on the map.</DialogDescription></DialogHeader>
           <ShadowTimeControl {...props} />
         </DialogContent>

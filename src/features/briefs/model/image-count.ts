@@ -22,17 +22,16 @@ export function countBriefImages(brief: DroneBrief): BriefImageCounts {
   const times = shootSlots(brief.project).length
   const droneHeights = brief.typeSettings['drone-image'].heightsMeters.length
   const sharedPanoramaHeights = brief.typeSettings['360'].heightsMeters
-  let extraPoints = 0, dronePoints = 0, panoramaHeightSlots = 0, dslrPoints = 0
+  let dronePoints = 0, panoramaHeightSlots = 0, dslrPoints = 0
   for (const angle of brief.angles) {
     if (angle.type === 'drone-image') dronePoints += 1
-    else if (angle.type === 'extra-coverage') extraPoints += 1
     else if (angle.type === '360') panoramaHeightSlots += effectivePanoramaHeights(sharedPanoramaHeights, angle).length
-    else dslrPoints += 1
+    else if (angle.type === 'dslr') dslrPoints += 1
   }
   const circleRig = (brief.circleRig
     ? imageCaptureConfig.circleRigPerArrowAndHeight * brief.circleRig.arrowCount * droneHeights : 0) * times
   const droneImage = imageCaptureConfig.droneImagePerPointAndHeight * dronePoints * droneHeights * times
-  const extraCoverage = imageCaptureConfig.droneImagePerPointAndHeight * extraPoints * droneHeights * times
+  const extraCoverage = 0 // Scan markers have no capture heights or image count.
   const panorama = imageCaptureConfig.panoramaPerPointAndHeight * panoramaHeightSlots * times
   const dslr = imageCaptureConfig.dslrPerArrow * dslrPoints * brief.typeSettings.dslr.angleCount * times
   return { times, circleRig, droneImage, extraCoverage, panorama, dslr, total: circleRig + droneImage + extraCoverage + panorama + dslr }

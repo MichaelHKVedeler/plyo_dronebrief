@@ -84,7 +84,17 @@ it('multiplies every capture count by the number of shoot times', () => {
   })
 })
 
-it('counts extra coverage separately using drone heights without counting it as DSLR', () => {
+it('excludes extra coverage from capture counts', () => {
   const brief = briefWith({ angles: [{ id: 'extra', label: 'Extra coverage 1', type: 'extra-coverage', position }] })
-  expect(countBriefImages(brief)).toMatchObject({ extraCoverage: 2, droneImage: 0, dslr: 0, total: 2 })
+  expect(countBriefImages(brief)).toMatchObject({ extraCoverage: 0, droneImage: 0, dslr: 0, total: 0 })
+})
+
+it('excludes scan circles and extra coverage regardless of drone heights or shoot times', () => {
+  const brief = briefWith({
+    droneScan: { id: 'scan', highRes: { id: 'high', position, radiusMeters: 250 }, lowRes: { id: 'low', position, radiusMeters: 400 } },
+    angles: [{ id: 'extra', label: 'Extra coverage', type: 'extra-coverage', position }],
+  })
+  brief.project.times = ['09:00', '12:00', '17:00']
+  brief.typeSettings['drone-image'].heightsMeters = [20, 40, 60, 80]
+  expect(countBriefImages(brief).total).toBe(0)
 })

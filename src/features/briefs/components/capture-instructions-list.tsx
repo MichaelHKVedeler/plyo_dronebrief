@@ -18,7 +18,7 @@ export function CaptureInstructionsList({ brief, language, isolatedKind }: {
         <div className="flex min-w-0 items-start gap-2">
           <CaptureKindGlyph kind={row.key} />
           <div className="min-w-0">
-            <p className={`text-sm font-medium ${dimmed ? 'lg:opacity-50' : ''}`}>{row.label} <span className="font-normal text-muted-foreground">| {row.rule}</span></p>
+            <p className={`text-sm font-medium ${dimmed ? 'lg:opacity-50' : ''}`}>{row.label} {row.rule && <span className="font-normal text-muted-foreground">| {row.rule}</span>}</p>
           </div>
         </div>
         {(row.range || row.heights) && <div className={`shrink-0 text-right text-sm font-medium ${dimmed ? 'lg:opacity-50' : ''}`}>

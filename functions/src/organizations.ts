@@ -6,13 +6,15 @@ import { db, emailKey, memberRef, now, requireMember } from './context.js'
 
 type Identity = Actor & { email: string }
 export async function initializeAccount(user: Identity) {
-  const grants = await db.collection(`emailGrants/${emailKey(user.email)}/organizations`).where('status', '==', 'pending').get()
+  const [grants] = await Promise.all([
+    db.collection(`emailGrants/${emailKey(user.email)}/organizations`).where('status', '==', 'pending').get(),
+    db.doc(`users/${user.uid}`).set({ name: user.name, email: user.email, lastSeenAt: now() }, { merge: true }),
+  ])
   for (const candidate of grants.docs) await db.runTransaction(async (tx) => {
     const grant = await tx.get(candidate.ref)
     if (grant.get('status') !== 'pending' || grant.get('email') !== user.email) return
     const orgRef = db.doc(`organizations/${candidate.id}`)
-    const org = await tx.get(orgRef)
-    const member = await tx.get(memberRef(candidate.id, user.uid))
+    const [org, member] = await tx.getAll(orgRef, memberRef(candidate.id, user.uid))
     if (!org.exists || member.exists) return
     const stamp = now()
     tx.set(memberRef(candidate.id, user.uid), { orgId: candidate.id, uid: user.uid, name: user.name, role: grant.get('role'), grantId: emailKey(user.email), joinedAt: stamp })
@@ -23,7 +25,6 @@ export async function initializeAccount(user: Identity) {
     if (grant.get('role') === 'admin') tx.update(orgRef, { adminCount: Number(org.get('adminCount')) + 1 })
     tx.set(db.doc(`indexJobs/${randomUUID()}`), { orgId: candidate.id, uid: user.uid, after: null, kind: 'member', createdAt: stamp })
   })
-  await db.doc(`users/${user.uid}`).set({ name: user.name, email: user.email, lastSeenAt: now() }, { merge: true })
   const organizations = await db.collection(`users/${user.uid}/organizations`).get()
   return organizations.docs.map((doc) => doc.data())
 }

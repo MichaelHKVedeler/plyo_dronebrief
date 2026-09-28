@@ -63,14 +63,14 @@ export function RigObject({ rig, pixelsToMeters, dark = false, editable, interac
     {rigArrows(visible).map((arrow) => <AdvancedMarker key={arrow.number} position={arrow.position}
       anchorLeft="-50%" anchorTop="-50%" title={'Rig arrow ' + arrow.number} zIndex={10}
       clickable={false} style={{ pointerEvents: 'none' }}>
-      <div data-rig-decoration={rig.id} className="relative size-8" style={{ zoom: scale }} role="img" aria-label={'Rig arrow ' + arrow.number + ', pointing toward center'}>
+      <div data-rig-decoration={rig.id} className="relative size-8" style={{ scale }} role="img" aria-label={'Rig arrow ' + arrow.number + ', pointing toward center'}>
         <div data-rig-hover className="absolute inset-0"
         style={{ transform: `translate(${Math.sin(arrow.directionDegrees * Math.PI / 180) * arrowOffset}px, ${-Math.cos(arrow.directionDegrees * Math.PI / 180) * arrowOffset}px)` }}
         >
         <Navigation className="size-8 fill-white" size={32} strokeWidth={2} absoluteStrokeWidth
           style={{ color, transform: `rotate(${arrow.directionDegrees - 45}deg) scale(${arrowScale})` }} />
         </div>
-        <Badge data-rig-hover variant="outline" style={{ borderColor: color, borderWidth: baseStroke, color, zoom: numberScale }} className="bg-white absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 size-10 justify-center rounded-full p-0 text-lg font-semibold leading-none tabular-nums">{arrow.number}</Badge>
+        <Badge data-rig-hover variant="outline" style={{ borderColor: color, borderWidth: baseStroke, color, scale: numberScale }} className="bg-white absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 size-10 justify-center rounded-full p-0 text-lg font-semibold leading-none tabular-nums">{arrow.number}</Badge>
       </div>
     </AdvancedMarker>)}
     <RigLineDragController rig={visible} interactive={canEdit} strokeWidth={outlineStroke}

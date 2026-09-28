@@ -75,6 +75,6 @@ export function captureInstructions(brief: DroneBrief, language: PdfLanguage): C
     })
   }
   const extraPoints = brief.angles.filter((angle) => angle.type === 'extra-coverage').length
-  if (extraPoints) rows.push({ key: 'extra-coverage', label: copy.extraCoverage, rule: copy.droneRule, images: counts.extraCoverage })
+  if (extraPoints) rows.push({ key: 'extra-coverage', label: copy.extraCoverage, rule: '', images: counts.extraCoverage })
   return rows
 }

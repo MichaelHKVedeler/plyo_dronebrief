@@ -99,14 +99,14 @@ export const CameraMarker = memo(function CameraMarker({ angle, editable, select
     onCancel: resetPreview,
   })
   const symbol = <Icon className="size-5" />
-  // CSS zoom: 0 is invalid and would render full-size icons at the slider minimum.
+  // Hidden overlays must also remove their interactive map markers.
   if (scale === 0) return null
   return <>
     {ghost && <CameraMarker angle={angle} editable selected={false} interactive={false} number={number} pixelsToMeters={pixelsToMeters}
       dslrSettings={dslrSettings} onSelect={() => {}} onCommit={() => {}} />}
     <AdvancedMarker key={markerKey} position={visible.position} anchorLeft="-50%" anchorTop="-50%" title={name}
       zIndex={selected || ghost ? 30 : 20} draggable={editable && interactive} clickable={(editable || selectable) && interactive}
-      style={{ pointerEvents: interactive ? 'auto' : 'none' }}
+      style={{ pointerEvents: 'none' }}
       onMouseEnter={hover.enter} onMouseLeave={hover.leave}
       onDragCancel={resetPreview} onDragStart={(event) => {
         if (!editable || !interactive) return
@@ -117,7 +117,9 @@ export const CameraMarker = memo(function CameraMarker({ angle, editable, select
       }}
       onDrag={(event) => { if (editable && interactive && event.latLng) setDraft({ source: angle, value: { ...angle, position: event.latLng.toJSON() } }) }}
       onDragEnd={(event) => { if (editable && interactive && event.latLng) commit({ ...angle, position: event.latLng.toJSON() }) }}>
-      <div data-camera-marker={angle.id} className="relative" style={{ zoom: scale }} onMouseEnter={hover.enter} onMouseLeave={hover.leave}>
+      {/* Keep the map's anchor box fixed while scaling the visual around its center.
+          CSS zoom changes layout and makes the SDK re-anchor during map animation. */}
+      <div data-camera-marker={angle.id} className="relative flex size-9" style={{ scale, pointerEvents: interactive ? 'auto' : 'none' }} onMouseEnter={hover.enter} onMouseLeave={hover.leave}>
         {visible.type === '360' && visible.focus && <PanoramaFocusCone focus={visible.focus} color={appearance.color} />}
         {editable ? <Button disabled={!interactive} size="icon" variant="outline" aria-label={'Move ' + name}
           data-camera-aim-control={interactive && angle.type !== 'extra-coverage' ? '' : undefined}
