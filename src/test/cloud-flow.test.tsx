@@ -35,6 +35,29 @@ beforeEach(() => {
   vi.mocked(cloudLibrary.search).mockResolvedValue({ projects: [], cursor: null, indexing: false })
 })
 afterEach(() => { cleanup(); history.replaceState(null, '', '/'); vi.restoreAllMocks() })
+it('saves undo and redo through the revisioned cloud workflow, including save failures', async () => {
+  const data = project()
+  data.brief.circleRig = { id: 'rig', position: data.brief.coordinates, arrowCount: 10, radiusMeters: 50, ovalRatio: 1, rotationDegrees: 0 }
+  history.replaceState(null, '', '/#/projects/project')
+  vi.mocked(cloudProjects.load).mockResolvedValue(data)
+  vi.mocked(cloudProjects.save).mockImplementation(async (_id, revision) => ({ ...data.summary, revision: revision + 1 }))
+  render(<CloudApp />)
+  const radius = await screen.findByLabelText('Radius (m)')
+  fireEvent.change(radius, { target: { value: '90' } })
+  await waitFor(() => expect(screen.getByText('Saved', { exact: true })).toBeVisible())
+  expect(cloudProjects.save).toHaveBeenLastCalledWith('project', 1, expect.any(String), expect.objectContaining({ circleRig: expect.objectContaining({ radiusMeters: 90 }) }), {})
+  fireEvent.keyDown(window, { key: 'z', ctrlKey: true })
+  expect(radius).toHaveValue(50)
+  await waitFor(() => expect(screen.getByText('Saved', { exact: true })).toBeVisible())
+  expect(cloudProjects.save).toHaveBeenLastCalledWith('project', 2, expect.any(String), expect.objectContaining({ circleRig: expect.objectContaining({ radiusMeters: 50 }) }), {})
+  vi.mocked(cloudProjects.save).mockRejectedValueOnce(new Error('Connection lost'))
+  fireEvent.keyDown(window, { key: 'y', ctrlKey: true })
+  expect(radius).toHaveValue(90)
+  expect(await screen.findByText('Save failed', { exact: true })).toBeVisible()
+  expect(screen.getByText('Connection lost')).toBeVisible()
+  expect(cloudProjects.save).toHaveBeenLastCalledWith('project', 3, expect.any(String), expect.objectContaining({ circleRig: expect.objectContaining({ radiusMeters: 90 }) }), {})
+})
+
 it('retains an authenticated deep link while presenting Google sign-in', async () => {
   history.replaceState(null, '', '/#/projects/project'); account.user = null
   render(<CloudApp />)
