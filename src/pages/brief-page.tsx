@@ -15,8 +15,10 @@ import { idleTool, startCameraPlacement, type MapTool, type CameraType } from '@
 import { useLocalImages } from '@/features/briefs/state/use-local-images'
 import type { BriefAction, BriefSession } from '@/features/briefs/state/brief-session'
 import type { ImageTransport } from '@/features/briefs/storage/image-transport'
+import { useMapHistoryShortcuts } from '@/features/briefs/state/use-map-history-shortcuts'
 
 export function BriefPage({ session, dispatch, error, pdfMapRef, imageTransport, overlaySizeRef, statusLeading, statusTrailing }: { session: BriefSession; dispatch: (action: BriefAction) => void; error: string | null; pdfMapRef?: RefObject<PdfMapCapture | null>; imageTransport?: ImageTransport; overlaySizeRef?: RefObject<number>; statusLeading?: ReactNode; statusTrailing?: ReactNode }) {
+  useMapHistoryShortcuts(session, dispatch)
   const [lockedImageIds, setLockedImageIds] = useState<ReadonlySet<string>>(() => new Set(session.brief.imageOverlays.map((image) => image.id)))
   const [scanLocked, setScanLocked] = useState(true)
   const images = useLocalImages(session.brief.imageOverlays, imageTransport)
