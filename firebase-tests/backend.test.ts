@@ -148,7 +148,7 @@ describe('rules and optimized assets', () => {
     await assertFails(setDoc(doc(authenticated, 'projects', project.summary.id), { ...project.summary, revision: 999 }))
     await assertFails(setDoc(doc(foreign, 'organizations/org/members/outsider'), { role: 'admin' }))
   })
-  it('optimizes, persists and publicly serves floorplans without granting anonymous Storage access', async () => {
+  it.each(['floorplan', 'reference'] as const)('optimizes, persists and publicly serves a %s without granting anonymous Storage access', async (kind) => {
     const project = await create(); const assetId = crypto.randomUUID(); const fileId = crypto.randomUUID()
     const upload = await prepareUpload(owner, { projectId: project.summary.id, assetId, fileId, fileName: 'plan.png' })
     const image = await sharp({ create: { width: 100, height: 50, channels: 4, background: '#ffffff00' } }).png().toBuffer()
@@ -160,16 +160,19 @@ describe('rules and optimized assets', () => {
     expect(await finalizeUpload(owner, { projectId: project.summary.id, assetId })).toEqual(asset)
     expect((await bucket().file(upload.path).exists())[0]).toBe(false)
     const geometry = { id: 'image', name: 'Plan', source: { kind: 'local-file' as const, fileId, fileName: 'plan.png' }, position: project.brief.coordinates, widthMeters: 100, heightMeters: 50, rotationDegrees: 45, opacity: 0.5 }
-    await saveProject(owner, { projectId: project.summary.id, expectedRevision: 1, operationId: crypto.randomUUID(), brief: { ...project.brief, imageOverlays: [geometry] }, assets: { [fileId]: asset } })
+    const reference = { id: 'reference', caption: 'Reference', source: geometry.source }
+    const content = kind === 'floorplan' ? { imageOverlays: [geometry] } : { references: [reference] }
+    await saveProject(owner, { projectId: project.summary.id, expectedRevision: 1, operationId: crypto.randomUUID(), brief: { ...project.brief, ...content }, assets: { [fileId]: asset } })
     await assertSucceeds(getBytes(ref(storage, asset.path)))
     await assertFails(getBytes(ref(env.unauthenticatedContext().storage('gs://demo-dronebrief.appspot.com'), asset.path)))
     await assertFails(getBytes(ref(env.authenticatedContext(outsider.uid, { ...google, email: outsider.email }).storage('gs://demo-dronebrief.appspot.com'), asset.path)))
     await assertFails(uploadBytes(ref(storage, asset.path), image, { contentType: 'image/webp' }))
     const { token } = await shareProject(owner, { projectId: project.summary.id, action: 'enable' })
-    expect((await loadPublicProject(token!)).brief.imageOverlays[0]).toEqual(geometry)
+    expect((await loadProject(owner, { projectId: project.summary.id })).assets[fileId]).toEqual(asset)
+    expect((await loadPublicProject(token!)).brief).toMatchObject(content)
     expect((await sharp(await publicAsset(token!, assetId)).metadata()).format).toBe('webp')
     const other = await create()
-    await expect(saveProject(owner, { projectId: other.summary.id, expectedRevision: 1, operationId: crypto.randomUUID(), brief: { ...project.brief, imageOverlays: [geometry] }, assets: { [fileId]: asset } })).rejects.toThrow('Upload every local floorplan')
+    await expect(saveProject(owner, { projectId: other.summary.id, expectedRevision: 1, operationId: crypto.randomUUID(), brief: { ...project.brief, ...content }, assets: { [fileId]: asset } })).rejects.toThrow('Upload every local image')
     const copied = await copyAsset(owner, { projectId: other.summary.id, sourceProjectId: project.summary.id, assetId })
     expect(await copyAsset(owner, { projectId: other.summary.id, sourceProjectId: project.summary.id, assetId })).toEqual(copied)
     await shareProject(owner, { projectId: project.summary.id, action: 'revoke' })

@@ -6,6 +6,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
 import { pdfProjectSize } from '@/features/briefs/export/pdf-project'
+import { formatScanDiameter } from '@/features/map/drone-scan'
 import type { BriefSession } from '@/features/briefs/state/brief-session'
 import type { LocalImages } from '@/features/briefs/state/use-local-images'
 import type { IsolatedCapture } from '@/features/map/isolated-capture'
@@ -26,6 +27,8 @@ export function BriefingDetails({ session, presentation, copy, isolatedKind, ref
     presentation.includeProjectName ? session.brief.project.name : '',
     presentation.includeClientName ? session.brief.project.clientName : '',
   ].filter(Boolean)
+  const scanOnly = presentation.content === 'scan'
+  const scan = session.brief.droneScan
   return <Card className="h-full min-h-0 w-full overflow-hidden rounded-none border-0 bg-card/80 py-0 shadow-none backdrop-blur-md lg:border-l lg:bg-card lg:backdrop-blur-none">
     <CardContent className="flex min-h-0 flex-1 flex-col px-0">
       <ScrollArea type="always" className="min-h-0 flex-1 [&_[data-slot=scroll-area-viewport]]:overscroll-contain">
@@ -48,11 +51,15 @@ export function BriefingDetails({ session, presentation, copy, isolatedKind, ref
             {presentation.address ? <p className="min-w-0 text-sm text-muted-foreground" title={presentation.address}>{presentation.address}</p> : null}
           </div>}
           <div className="grid gap-4">
-            <ShootTimes brief={session.brief} layout="stack" language={presentation.language} labels={{ shootTimes: copy.shootTimes, totalImages: copy.totalImages }} />
-            <div className="grid gap-1">
+            {!scanOnly && <ShootTimes brief={session.brief} layout="stack" language={presentation.language} labels={{ shootTimes: copy.shootTimes, totalImages: copy.totalImages }} />}
+            {scanOnly ? (scan?.highRes || scan?.lowRes) && <div className="grid gap-1" aria-label={copy.droneScan}>
+              <p className="text-sm font-medium">{copy.droneScan}</p>
+              {scan.highRes && <p className="text-sm text-muted-foreground">{copy.highDetail}: {formatScanDiameter(scan.highRes.radiusMeters)} m {copy.diameter}</p>}
+              {scan.lowRes && <p className="text-sm text-muted-foreground">{copy.lowDetail}: {formatScanDiameter(scan.lowRes.radiusMeters)} m {copy.diameter}</p>}
+            </div> : <div className="grid gap-1">
               <p className="text-sm font-medium">{copy.projectSizes[pdfProjectSize(session.brief)]}</p>
               <p className="text-sm text-muted-foreground">{copy.projectSizeNote}</p>
-            </div>
+            </div>}
           </div>
           <section className="grid gap-4" aria-label={copy.property}>
             <div className="grid gap-1">

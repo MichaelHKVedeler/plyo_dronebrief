@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { localFileSources } from '../../src/features/briefs/model/brief.js'
 import { HttpsError } from 'firebase-functions/v2/https'
 import { cloudId, cloudName, summarySchema, type Actor, type CloudProject, type AssetManifest } from '../../src/features/cloud/model/cloud.js'
 import { editorMapView } from '../../src/features/cloud/model/map-view.js'
@@ -8,13 +9,13 @@ import { bodySchema, encodeBody, readBody, writeBody, type ProjectBody } from '.
 import type { Transaction } from 'firebase-admin/firestore'
 
 export async function validateAssets(tx: Transaction, projectId: string, orgId: string, body: ProjectBody) {
-  const used = new Set(body.brief.imageOverlays.flatMap((image) => typeof image.source === 'string' ? [] : [image.source.fileId]))
+  const used = new Set(localFileSources(body.brief).map((source) => source.fileId))
   const canonical: AssetManifest = {}
   for (const fileId of used) {
     const asset = body.assets[fileId]
-    if (!asset || asset.projectId !== projectId || asset.orgId !== orgId || asset.fileId !== fileId) throw new HttpsError('failed-precondition', 'Upload every local floorplan before saving this project.')
+    if (!asset || asset.projectId !== projectId || asset.orgId !== orgId || asset.fileId !== fileId) throw new HttpsError('failed-precondition', 'Upload every local image before saving this project.')
     const stored = await tx.get(projectRef(projectId).collection('assets').doc(asset.id))
-    if (!stored.exists || stored.get('state') !== 'ready' || stored.get('fileId') !== fileId) throw new HttpsError('failed-precondition', 'A floorplan is not ready. Upload it again.')
+    if (!stored.exists || stored.get('state') !== 'ready' || stored.get('fileId') !== fileId) throw new HttpsError('failed-precondition', 'An image is not ready. Upload it again.')
     const { state: _state, ...saved } = stored.data()!
     canonical[fileId] = saved as AssetManifest[string]
   }

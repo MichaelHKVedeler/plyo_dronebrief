@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import { AppHeader } from '@/components/layout/app-header'
 import { ThemeToggle } from '@/components/layout/theme-toggle'
 import { FileDown } from 'lucide-react'
@@ -9,24 +9,26 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { CreateBriefPage } from '@/pages/create-brief-page'
-import { BriefPage } from '@/pages/brief-page'
-import { PdfExportDialog } from '@/features/briefs/components/pdf-export-dialog'
 import { parsePublicShareRoute, defaultBriefingPresentation, defaultOverlaySize } from '@/features/briefs/storage/public-brief-link'
 import type { PdfMapCapture } from '@/features/briefs/export/pdf-types'
 import { ProjectLibraryPage } from '@/pages/project-library-page'
-import { OrganizationPage } from '@/pages/organization-page'
 import { useAccount } from '@/features/cloud/auth/use-account'
 import { cloudError, signInGoogle, signOutGoogle } from '@/features/cloud/auth/firebase'
 import { Choice } from '@/features/cloud/components/choice'
 import { Problem } from '@/features/cloud/components/problem'
-import { CloudBrief } from '@/features/cloud/components/cloud-brief'
-import { MigrateDialog } from '@/features/cloud/components/migrate-dialog'
 import { cloudProjects, loadPublic } from '@/features/cloud/storage/project-repository'
 import { briefRepository } from '@/features/briefs/storage/brief-repository'
 import { importBriefKey } from '@/features/briefs/storage/share-key'
 import { openSession, reduceSession } from '@/features/briefs/state/brief-session'
 import type { DroneBrief } from '@/features/briefs/model/brief'
 import type { CloudProject } from '@/features/cloud/model/cloud'
+
+const BriefPage = lazy(() => import('@/pages/brief-page').then((module) => ({ default: module.BriefPage })))
+const PdfExportDialog = lazy(() => import('@/features/briefs/components/pdf-export-dialog').then((module) => ({ default: module.PdfExportDialog })))
+const loadCloudBrief = () => import('@/features/cloud/components/cloud-brief').then((module) => ({ default: module.CloudBrief }))
+const CloudBrief = lazy(loadCloudBrief)
+const OrganizationPage = lazy(() => import('@/pages/organization-page').then((module) => ({ default: module.OrganizationPage })))
+const MigrateDialog = lazy(() => import('@/features/cloud/components/migrate-dialog').then((module) => ({ default: module.MigrateDialog })))
 
 const readRoute = () => location.hash.slice(1) || '/'
 export function CloudApp() {
@@ -73,7 +75,8 @@ export function CloudApp() {
   useEffect(() => {
     if (!publicToken && (!projectId || !uid)) return
     let active = true; const controller = new AbortController()
-    void (publicToken ? loadPublic(publicToken, controller.signal) : cloudProjects.load(projectId!)).then((project) => { if (active) setLoaded({ identity, project }) }).catch((error) => { if (active) setError(cloudError(error)) })
+    // Load the editor alongside its data, without downloading it for the library.
+    void Promise.all([loadCloudBrief(), publicToken ? loadPublic(publicToken, controller.signal) : cloudProjects.load(projectId!)]).then(([, project]) => { if (active) setLoaded({ identity, project }) }).catch((error) => { if (active) setError(cloudError(error)) })
     return () => { active = false; controller.abort() }
   }, [identity, projectId, publicToken, uid, loadTick])
   async function authenticate() { setBusy(true); setError(null); try { await signInGoogle() } catch (error) { setError(cloudError(error)) } finally { setBusy(false) } }
@@ -99,7 +102,7 @@ export function CloudApp() {
       </div>}
       {briefScreen && !publicToken && <Button variant="outline" onClick={home}>Home</Button>}
   </>
-  return <div className={briefScreen || libraryHome ? 'flex h-dvh min-h-0 flex-col overflow-hidden' : 'min-h-svh'}>
+  return <div className={briefScreen || libraryHome ? 'flex h-dvh min-h-0 flex-col overflow-hidden' : 'min-h-svh'}><Suspense fallback={<p role="status" className="p-6">Loading workspace…</p>}>
     {!cloudBriefVisible && !publicToken && !libraryHome && <AppHeader onHome={home} status={snapshot && <Badge variant="secondary">Read-only</Badge>} context={snapshot && <BriefHeaderTitle name={snapshot.brief.project.name} clientName={snapshot.brief.project.clientName} mode="view" />}>
       {headerActions}
       {snapshot && <Button variant="outline" onClick={() => setPdfOpen(true)}><FileDown /> Export</Button>}
@@ -125,5 +128,5 @@ export function CloudApp() {
     {migrate && account.user && <MigrateDialog brief={migrate} organizations={account.organizations} uid={account.user.uid} onDirty={onDirty} onClose={() => setMigrate(null)} onSaved={(id) => { setMigrate(null); openProject(id) }} />}
     {snapshot && pdfOpen && <PdfExportDialog brief={snapshot.brief} editable={false} captureRef={pdfMapRef} overlaySizeRef={overlaySizeRef} link={{ status: 'unavailable', reason: 'snapshot' }} onSaveNotes={() => {}} onClose={() => setPdfOpen(false)} />}
     <Dialog open={Boolean(leave)} onOpenChange={(open) => { if (!open) setLeave(null) }}><DialogContent><DialogHeader><DialogTitle>Leave with unsaved changes?</DialogTitle><DialogDescription>Keep this page open to save or export your work. Leaving discards unsaved changes and cancels uploads.</DialogDescription></DialogHeader><Button variant="outline" onClick={() => setLeave(null)}>Keep editing</Button><Button variant="destructive" onClick={() => { const action = leave; setLeave(null); dirty.current = false; action?.() }}>Discard and leave</Button></DialogContent></Dialog>
-  </div>
+  </Suspense></div>
 }

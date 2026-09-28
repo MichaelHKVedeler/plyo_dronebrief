@@ -80,7 +80,6 @@ export async function createBriefPdf(input: PdfExportInput, assets: PdfAssets): 
   const panoramaHeights = panoramaLists.every((list) => heights(list) === heights(panoramaLists[0] ?? [])) ? heights(panoramaLists[0] ?? []) : c.perPoint
   const pointsLabel = (count: number) => `${count} ${count === 1 ? c.point.toLowerCase() : c.points}`
   const captureRows = [
-    ...(byType.extra ? [{ name: c.extraCoverage, count: counts.extraCoverage, detail: `${pointsLabel(byType.extra)} · ${c.heights}: ${heights(brief.typeSettings['drone-image'].heightsMeters)}`, rule: c.droneRule }] : []),
     ...(brief.circleRig ? [{ name: c.rig, count: counts.circleRig, detail: `${brief.circleRig.arrowCount} ${c.arrows} · ${c.heights}: ${heights(brief.typeSettings['drone-image'].heightsMeters)}`, rule: c.rigRule }] : []),
     ...(byType.drone ? [{ name: c.drone, count: counts.droneImage, detail: `${pointsLabel(byType.drone)} · ${c.heights}: ${heights(brief.typeSettings['drone-image'].heightsMeters)}`, rule: c.droneRule }] : []),
     ...(byType.panorama.length ? [{ name: c.panorama, count: counts.panorama, detail: `${pointsLabel(byType.panorama.length)} · ${c.heights}: ${panoramaHeights}`, rule: `${c.individual}. ${c.panoramaRule}.` }] : []),

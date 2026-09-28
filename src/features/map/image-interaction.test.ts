@@ -14,17 +14,19 @@ function setup() {
   const state: ImageLayerState = { images: [image], editable: true, interactive: true, selectedId: image.id, anchors: {}, sourceUrl: () => 'blob:test', onSelect: vi.fn(), onAnchor: vi.fn(), onCommit: vi.fn() }
   const preview = vi.fn()
   detach = attachImageInteraction(surface, projection, () => state, preview)
-  const down = (x = 150, y = 200, button = 0) => fireEvent.pointerDown(surface, { button, clientX: x, clientY: y })
+  const down = (x = 225, y = 200, button = 0) => fireEvent.pointerDown(surface, { button, clientX: x, clientY: y })
   const move = (x = 170, y = 220) => fireEvent.pointerMove(window, { buttons: 1, clientX: x, clientY: y })
   const up = () => fireEvent.pointerUp(window, { button: 0 })
   return { surface, state, preview, down, move, up, projection }
 }
-it('previews edge movement and commits only once on release, suppressing map clicks', () => {
+it('previews interior movement and commits only once on release, suppressing map clicks', () => {
   const { surface, state, preview, down, move, up } = setup()
   const click = vi.fn(); surface.addEventListener('click', click)
   down(); move()
   const updated = preview.mock.lastCall![0] as ImageOverlay
   expect(updated.widthMeters).toBe(image.widthMeters)
+  expect(updated.heightMeters).toBe(image.heightMeters)
+  expect(updated.rotationDegrees).toBe(image.rotationDegrees)
   expect(updated.position).not.toEqual(image.position)
   expect(state.onCommit).not.toHaveBeenCalled()
   up(); fireEvent.click(surface)
@@ -55,7 +57,7 @@ it('right-clicks outside the image to set an anchor, then scales and rotates fro
   fireEvent.contextMenu(surface, { clientX: 100, clientY: 100 })
   expect(state.onAnchor).toHaveBeenCalledExactlyOnceWith(image.id, projection.unproject({ x: 100, y: 100 }))
   state.anchors[image.id] = projection.unproject({ x: 100, y: 100 })
-  down(220, 200); move(200, 250); up()
+  down(250, 200); move(200, 300); up()
   const updated = vi.mocked(state.onCommit).mock.lastCall![0]
   expect(updated.rotationDegrees).toBeGreaterThan(0)
   expect(updated.widthMeters).toBeGreaterThan(image.widthMeters)
@@ -92,4 +94,43 @@ it.each(['viewer', 'placement', 'hidden', 'missing', 'middle'])('leaves the map 
     fireEvent.contextMenu(surface, { clientX: 100, clientY: 100 })
     if (mode !== 'missing') expect(state.onAnchor).not.toHaveBeenCalled()
   }
+})
+
+it('locks movement, transforms and anchors while leaving map gestures available', () => {
+  const { surface, state, down, move, up } = setup()
+  state.lockedIds = new Set([image.id])
+  const mapDown = vi.fn(); surface.addEventListener('pointerdown', mapDown)
+  for (const x of [150, 200, 220]) { down(x, 200); move(); up() }
+  fireEvent.contextMenu(surface, { clientX: 100, clientY: 100 })
+  expect(mapDown).toHaveBeenCalledTimes(3)
+  expect(state.onCommit).not.toHaveBeenCalled()
+  expect(state.onAnchor).not.toHaveBeenCalled()
+  state.lockedIds = new Set()
+  down(); move(); up()
+  expect(state.onCommit).toHaveBeenCalledOnce()
+})
+it('discards an ongoing drag if the floorplan becomes locked', () => {
+  const { state, down, move, up } = setup()
+  down(); move()
+  state.lockedIds = new Set([image.id])
+  up()
+  expect(state.onCommit).not.toHaveBeenCalled()
+})
+
+it('rotates and scales from the outline around the default center', () => {
+  const { state, down, move, up } = setup()
+  down(250, 200); move(200, 300); up()
+  const updated = vi.mocked(state.onCommit).mock.lastCall![0]
+  expect(updated.widthMeters).toBeCloseTo(200)
+  expect(updated.heightMeters).toBeCloseTo(120)
+  expect(updated.rotationDegrees).toBeCloseTo(90)
+  expect(updated.position.lat).toBeCloseTo(image.position.lat)
+  expect(updated.position.lng).toBeCloseTo(image.position.lng)
+})
+it('shows a grab cursor inside and a transform cursor on the outline', () => {
+  const { surface } = setup()
+  fireEvent.pointerMove(surface, { clientX: 225, clientY: 200 })
+  expect(surface).toHaveAttribute('data-image-cursor', 'grab')
+  fireEvent.pointerMove(surface, { clientX: 250, clientY: 200 })
+  expect(surface).toHaveAttribute('data-image-cursor', 'crosshair')
 })

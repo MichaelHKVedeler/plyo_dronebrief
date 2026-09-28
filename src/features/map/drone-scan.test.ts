@@ -1,7 +1,8 @@
 import { expect, it } from 'vitest'
 import { destination, distanceMeters } from './geometry'
 import {
-  addDroneScanCircle, applyScanDiameter, centerScanCircles, moveScanCircles, minScanGapMeters, moveScanCircle, placeScanCircle, scaleScanCircle,
+  addDroneScanCircle, applyScanDiameter, centerScanCircles, circleOutline, diameterBand, formatScanDiameter, moveScanCircles, minScanGapMeters, moveScanCircle, placeScanCircle, scaleScanCircle,
+  scanDiameterBounds, scanDiameterWarnings, snapScanDiameterWithin,
 } from './drone-scan'
 import type { ScanCircle } from '@/features/briefs/model/brief'
 
@@ -33,15 +34,42 @@ it('clamps a typed diameter to the same 2 m floor', () => {
   expect(shrunk.radiusMeters).toBeGreaterThanOrEqual(high.radiusMeters + minScanGapMeters - 0.05)
 })
 
-it('snaps a dragged diameter to 5 m and keeps the snap inside the other circle', () => {
-  const alone = scaleScanCircle(high, destination(center, 23, 90), 'high', null, minScanGapMeters)
-  expect(alone.radiusMeters * 2).toBe(45)
+it('snaps a dragged diameter to 100 m and keeps the snap inside the other circle', () => {
+  const alone = scaleScanCircle(high, destination(center, 230, 90), 'high', null, minScanGapMeters)
+  expect(alone.radiusMeters * 2).toBe(500)
   const grown = scaleScanCircle(high, destination(center, 500, 90), 'high', low, minScanGapMeters)
-  expect(grown.radiusMeters * 2 % 5).toBe(0)
+  expect(grown.radiusMeters * 2).toBe(100)
   expect(grown.radiusMeters).toBeLessThanOrEqual(low.radiusMeters - minScanGapMeters + 0.05)
   const shrunk = scaleScanCircle(low, destination(center, 10, 90), 'low', high, minScanGapMeters)
-  expect(shrunk.radiusMeters * 2 % 5).toBe(0)
+  expect(shrunk.radiusMeters * 2 % 100).toBe(0)
   expect(shrunk.radiusMeters).toBeGreaterThanOrEqual(high.radiusMeters + minScanGapMeters - 0.05)
+})
+
+it('keeps typed diameters on the 100 m grid inside the partner limits', () => {
+  const outer: ScanCircle = { id: 'low', position: center, radiusMeters: 400 }
+  const inner: ScanCircle = { id: 'high', position: center, radiusMeters: 250 }
+  expect(scanDiameterBounds(inner, 'high', outer)).toEqual({ min: 100, max: 700 })
+  expect(scanDiameterBounds(outer, 'low', inner)).toEqual({ min: 600, max: 20000 })
+  expect(snapScanDiameterWithin(640, scanDiameterBounds(inner, 'high', outer))).toBe(600)
+  expect(snapScanDiameterWithin(790, scanDiameterBounds(inner, 'high', outer))).toBe(700)
+  expect(snapScanDiameterWithin(420, scanDiameterBounds(outer, 'low', inner))).toBe(600)
+})
+
+it('measures the drawn circle and diameter line at the labelled size', () => {
+  const circle: ScanCircle = { id: 'low', position: { lat: 69.65, lng: 18.96 }, radiusMeters: 400 }
+  for (const point of circleOutline(circle)) expect(distanceMeters(circle.position, point)).toBeCloseTo(400, 6)
+  const [west, east] = diameterBand(circle, 0)
+  expect(distanceMeters(west, circle.position) + distanceMeters(circle.position, east)).toBeCloseTo(800, 6)
+  expect(formatScanDiameter(circle.radiusMeters)).toBe('800')
+})
+
+it('warns above 500 m High Detail and 800 m Low Detail diameters', () => {
+  const scan = (highDiameter: number, lowDiameter: number) => ({ id: 'scan', highRes: { ...high, radiusMeters: highDiameter / 2 }, lowRes: { ...low, radiusMeters: lowDiameter / 2 } })
+  expect(scanDiameterWarnings(scan(500, 800))).toEqual([])
+  expect(scanDiameterWarnings(scan(600, 800))).toEqual(['high'])
+  expect(scanDiameterWarnings(scan(500, 900))).toEqual(['low'])
+  expect(scanDiameterWarnings(scan(600, 900))).toEqual(['high', 'low'])
+  expect(scanDiameterWarnings(null)).toEqual([])
 })
 
 it('places the second circle concentric and clearly separated', () => {

@@ -1,5 +1,3 @@
-import sharp from 'sharp'
-
 export const floorplanLimits = { inputBytes: 30 * 1024 * 1024, inputPixels: 100_000_000, outputPixels: 8_000_000, targetBytes: 2 * 1024 * 1024, maxBytes: 4 * 1024 * 1024, version: 1 } as const
 export function fitFloorplan(width: number, height: number, edge: number) {
   const scale = Math.min(1, edge / width, edge / height, Math.sqrt(floorplanLimits.outputPixels / (width * height)))
@@ -7,6 +5,8 @@ export function fitFloorplan(width: number, height: number, edge: number) {
 }
 export async function optimizeFloorplan(input: Buffer) {
   if (!input.length || input.length > floorplanLimits.inputBytes) throw new Error('Choose a JPG or PNG smaller than 30 MB.')
+  // Native image processing is unnecessary for account and library requests.
+  const { default: sharp } = await import('sharp')
   const metadata = await sharp(input, { limitInputPixels: floorplanLimits.inputPixels, failOn: 'warning' }).metadata()
   if (!['png', 'jpeg'].includes(metadata.format) || !metadata.width || !metadata.height || (metadata.pages ?? 1) > 1) throw new Error('Choose a valid, single-frame JPG or PNG.')
   const rotated = (metadata.orientation ?? 0) >= 5

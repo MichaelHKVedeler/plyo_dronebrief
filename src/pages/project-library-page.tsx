@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Separator } from '@/components/ui/separator'
 import { ActorAvatar } from '@/features/cloud/components/actor-avatar'
 import { ProjectMapProvider, ProjectMapThumbnail } from '@/features/cloud/components/project-map-thumbnail'
-import { Choice } from '@/features/cloud/components/choice'
+import { CollectionPicker } from '@/features/cloud/components/collection-picker'
 import { Problem } from '@/features/cloud/components/problem'
 import { cloudError } from '@/features/cloud/auth/firebase'
 import { cloudLibrary } from '@/features/cloud/storage/library-repository'
@@ -160,8 +160,16 @@ export function ProjectLibraryPage({ organization, uid, onOpen, onCreate, header
     </main>
     <Dialog open={Boolean(confirm)} onOpenChange={(open) => { if (!open) setConfirm(null) }}><DialogContent><DialogHeader><DialogTitle>Delete project?</DialogTitle><DialogDescription>Public links stop working immediately. An administrator can restore this project from Deleted projects within 30 days, or delete it permanently.</DialogDescription></DialogHeader><Problem message={error} /><Button variant="destructive" disabled={busy} onClick={() => { if (confirm) void mutate(() => cloudProjects.trash(confirm.id)) }}>Delete {confirm?.name}</Button></DialogContent></Dialog>
     <Dialog open={Boolean(purge)} onOpenChange={(open) => { if (!open) setPurge(null) }}><DialogContent><DialogHeader><DialogTitle>Delete project permanently?</DialogTitle><DialogDescription>This removes the project and its files. This cannot be undone.</DialogDescription></DialogHeader><Problem message={error} /><Button variant="destructive" disabled={busy} onClick={() => { if (purge) void mutate(() => cloudProjects.purge(purge.id)) }}>Delete {purge?.name} permanently</Button></DialogContent></Dialog>
-    <Dialog open={Boolean(moveProject)} onOpenChange={(open) => { if (!open) setMoveProject(null) }}><DialogContent><DialogHeader><DialogTitle>Move to collection</DialogTitle><DialogDescription>Collections and assignments are visible only to you.</DialogDescription></DialogHeader>
-      <Choice label={`Collection for ${moveProject?.name ?? 'project'}`} value={moveCollection} onChange={setMoveCollection} options={[{ value: '', label: 'Uncollected' }, ...collections.map((item) => ({ value: item.id, label: item.name }))]} />
+    <Dialog open={Boolean(moveProject)} onOpenChange={(open) => { if (!open && !busy) setMoveProject(null) }}><DialogContent><DialogHeader><DialogTitle>Move to collection</DialogTitle><DialogDescription>Collections and assignments are visible only to you.</DialogDescription></DialogHeader>
+      <Problem message={error} />
+      <CollectionPicker key={moveProject?.id} label={`Collection for ${moveProject?.name ?? 'project'}`} value={moveCollection} onChange={setMoveCollection} collections={collections} disabled={busy}
+        onCreate={async (name, id) => {
+          setBusy(true)
+          try {
+            await cloudLibrary.createCollection(organization.id, name, id)
+            setCollections((current) => [...current.filter((item) => item.id !== id), { id, orgId: organization.id, name }])
+          } finally { setBusy(false) }
+        }} />
       <Button disabled={busy || !moveProject} onClick={() => { if (moveProject) void mutate(() => cloudLibrary.assign(organization.id, moveProject.id, moveCollection || null)) }}>Save</Button>
     </DialogContent></Dialog>
     <Dialog open={collectionDialog} onOpenChange={setCollectionDialog}><DialogContent><DialogHeader><DialogTitle>{collectionId ? collectionName || 'Collection' : 'New collection'}</DialogTitle><DialogDescription>Collections and assignments are visible only to you.</DialogDescription></DialogHeader><Problem message={error} />
@@ -278,7 +286,10 @@ function ProjectCard({ project, layout, owner, busy, canDelete, onOpen, onMove, 
           </DropdownMenuContent>
         </DropdownMenu>}
       </div>
-      <div className="flex items-center justify-between"><ActorAvatar label="Edited by" actor={project.editedBy} at={project.updatedAt} /></div>
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+        <span className="flex items-center gap-1">Created <ActorAvatar label="Created by" actor={project.createdBy} at={project.createdAt} /></span>
+        <span className="flex items-center gap-1">Edited <ActorAvatar label="Edited by" actor={project.editedBy} at={project.updatedAt} /></span>
+      </div>
       <Separator />
       <div className="flex justify-between gap-3 text-xs text-muted-foreground">
         <span>{new Date(project.updatedAt).toLocaleDateString()}</span>

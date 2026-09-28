@@ -80,6 +80,14 @@ The backend validates identity, current membership, project state, schema, asset
 
 Personal collections affect organization only, never permissions. Library search matches normalized name prefixes across project, client, creator, latest editor and personal collection. It is not full-text/typo-tolerant search. Backend pagination returns 50 entries with deterministic ordering. Projections are eventually consistent; refresh after indexing. Membership and deletion are independently rechecked before returning results.
 
+### Startup performance
+
+The 2026-09-28 production-build comparison reduced the entry point plus cloud-library static dependencies from 1,516,565 to 1,140,032 JavaScript bytes (468,577 to 352,443 bytes using Node's default gzip), about 25%. This excludes CSS and third-party map downloads and measures payload size, not end-to-end login latency. The editor loads only when opening a brief, alongside its project-data request.
+
+Account initialization runs the profile write alongside the pending-grant lookup, then returns organizations after grant activation completes. Collection and creator lookups run together after the membership check. Sharp's native image processor is imported only when an image is optimized, rather than during every account/library cold start. Release these backend improvements by deploying `functions:dronebrief:api`; the frontend loading changes can be released independently and work with the existing API contract.
+
+The API still scales to zero and retains concurrency one for image-processing memory safety. A first request after inactivity can therefore still wait for a cold start. If deployed startup timings remain too high, evaluate a separate lightweight account/library function or a minimum warm instance, accounting for the latter's ongoing cost. Do not raise shared API concurrency without measuring concurrent image-processing memory use. See [Firebase performance guidance](https://firebase.google.com/docs/functions/tips) and [scaling controls](https://firebase.google.com/docs/functions/manage-functions).
+
 ## Floorplans and public links
 
 Inputs are single-frame JPG/PNG up to 30 MiB and 100 million pixels. Trusted processing applies orientation, strips metadata, converts to sRGB, preserves transparency and fits within 4096 pixels/eight megapixels. WebP first uses lossless encoding, then quality 90/85/80 to target 2 MiB. Results up to 4 MiB retain drawing detail; larger outputs retry at 3072/2048 pixels. No cropping, enlargement or local file modification occurs. Cloud originals are not archived.

@@ -1,3 +1,4 @@
+import { countBriefImages } from '@/features/briefs/model/image-count'
 import { ImageLayer } from './image-layer'
 import type { PdfMapCapture } from '@/features/briefs/export/pdf-types'
 import { usePdfMapCapture, waitForMapIdle } from './use-pdf-map-capture'
@@ -12,6 +13,7 @@ import { useDarkMode } from '@/lib/use-dark-mode'
 import type { MapNavigation } from './map-navigation'
 import { ViewerLayers } from './viewer-layers'
 import { GoogleMapView } from './google-map-view'
+import { GoogleOverlayFrame } from './google-overlay-frame'
 import { MapDimmerControl } from './map-dimmer-control'
 import { MapObjectSizeControl } from './map-object-size-control'
 import { BasemapDimmer } from './basemap-dimmer'
@@ -41,6 +43,7 @@ import { previewShootSlot, type ShootEndpoint } from './shoot-time-range'
 
 type Props = {
   pdfMapRef?: RefObject<PdfMapCapture | null>
+  lockedImageIds?: ReadonlySet<string>
   images: LocalImages
   rigPlacementRef?: RefObject<(() => { position: Position; radiusMeters: number }) | null>
   focusPosition?: Position | null
@@ -65,7 +68,6 @@ type GoogleProps = Props & { imageLayer: ImageLayerState; active: boolean; selec
 function ConnectedMap({ imageLayer, selectedCameraIds, onSelectCamera, session, dispatch, tool, onToolChange, selectedId, onSelect, active, selectable = false, dimOpacity, objectSizePercent, zoom, view, onViewChange, satellite, onMapClick, onCameraPlace, onCameraDuplicate, isolatedKind = null, pointCallout, presentation }: GoogleProps) {
   const status = useApiLoadingStatus()
   const dark = useDarkMode()
-  const objectScale = mapObjectScale(zoom, objectSizePercent)
   const googleRestore = useRef({ holding: false, baseline: null as number | null })
   useLayoutEffect(() => { if (!active) googleRestore.current = { holding: true, baseline: null } }, [active])
   const [middlePanning, setMiddlePanning] = useState(false)
@@ -108,20 +110,24 @@ function ConnectedMap({ imageLayer, selectedCameraIds, onSelectCamera, session, 
         if (source?.composedPath().some((target) => target instanceof Element && target.closest('gmp-advanced-marker'))) return
         if (event.detail.latLng) onMapClick(event.detail.latLng)
       }}>
-      {active && <MapObjectScale value={objectScale}>
-      {capture.droneScan && hasDroneScan(brief.droneScan) && <DroneScanObject scan={brief.droneScan} zoom={zoom} editable={editing} interactive={objectsInteractive}
+      {active && <GoogleOverlayFrame initialZoom={zoom}>{(renderedZoom) => {
+        const objectScale = mapObjectScale(renderedZoom, objectSizePercent)
+        return <><MapObjectScale value={objectScale}>
+      {capture.droneScan && hasDroneScan(brief.droneScan) && <DroneScanObject scan={brief.droneScan} zoom={renderedZoom} editable={editing} interactive={objectsInteractive}
         onSelect={onSelect}
         onCommit={(next) => dispatch({ type: 'update', update: (b) => b.droneScan?.id === next.id ? { ...b, droneScan: next } : b })} />}
-      {capture.circleRig && brief.circleRig && <RigObject rig={brief.circleRig} pixelsToMeters={metersPerPixel(brief.circleRig.position.lat, zoom)} dark={dark} editable={editing} interactive={objectsInteractive}
+      {capture.circleRig && brief.circleRig && <RigObject rig={brief.circleRig} pixelsToMeters={metersPerPixel(brief.circleRig.position.lat, renderedZoom)} dark={dark} editable={editing} interactive={objectsInteractive}
         selected={selectedId === brief.circleRig.id}
         onSelect={() => onSelect(brief.circleRig!.id)}
         onCommit={(rig) => dispatch({ type: 'update', update: (b) => ({ ...b, circleRig: b.circleRig?.id === rig.id ? rig : b.circleRig }) })} />}
       {capture.angles && <CameraMarkers angles={captureAngles} pendingAngle={pendingAngle} editable={editing} interactive={objectsInteractive}
-        selectedCameraIds={selectedCameraIds} zoom={zoom} dslrSettings={brief.typeSettings.dslr} selectable={selectable}
+        selectedCameraIds={selectedCameraIds} zoom={renderedZoom} dslrSettings={brief.typeSettings.dslr} selectable={selectable}
         onSelectCamera={onSelectCamera} onCommit={commitCamera} onDuplicate={duplicateCameraAt} />}
       {visibility.polygons && brief.polygons.map((polygon) => <Polygon key={polygon.id} paths={polygon.vertices} strokeColor="#b45309" strokeWeight={3 * objectScale} fillColor="#d97706" fillOpacity={0.2} clickable={false} />)}
-      </MapObjectScale>}
-      {active && capture.angles && pointCallout && <PointHeightsAnchor angle={captureAngles.find((angle) => angle.id === selectedId)} scale={objectScale}>{pointCallout}</PointHeightsAnchor>}
+      </MapObjectScale>
+      {capture.angles && pointCallout && <PointHeightsAnchor angle={captureAngles.find((angle) => angle.id === selectedId)} scale={objectScale}>{pointCallout}</PointHeightsAnchor>}
+      </>
+      }}</GoogleOverlayFrame>}
       {active && <MiddleMousePan onActiveChange={setMiddlePanning} />}
       {active && editing && <CameraPlacementGesture tool={tool} onToolChange={onToolChange} onPlace={onCameraPlace} />}
       {active && <ImageLayer {...imageLayer} interactive={imageLayer.interactive && !middlePanning} />}
@@ -217,6 +223,7 @@ function MapWorkspace(props: Props) {
   }), [])
   const imageLayer: ImageLayerState = {
     images: renderedSession.visibility.imageOverlays ? brief.imageOverlays.map((image) => ({ ...image, opacity: capturing ? image.opacity : props.images.opacityOverrides[image.id] ?? image.opacity })) : [], selectedId: capturing ? null : props.selectedId,
+    lockedIds: props.lockedImageIds,
     editable: editing && !capturing, interactive: interactive && !capturing, anchors, sourceUrl: props.images.sourceUrl,
     onSelect: props.onSelect, onAnchor: (id, point) => setAnchors((previous) => ({ ...previous, [id]: point })),
     onCommit: (image) => dispatch({ type: 'update', update: (b) => ({ ...b, imageOverlays: b.imageOverlays.map((item) => item.id === image.id ? image : item) }) }),
@@ -275,8 +282,8 @@ function MapWorkspace(props: Props) {
         {briefing ? props.layerControls : <ViewerLayers session={session} dispatch={dispatch} />}
       </div>
     </div>
-    {!briefing && <div className="pointer-events-auto absolute right-3 bottom-[5.5rem] z-20 grid max-h-[calc(100%-7rem)] w-[calc(100%-196px)] max-w-sm gap-1 overflow-y-auto rounded-lg border bg-card p-2 shadow-sm @min-[750px]:right-auto @min-[750px]:bottom-8 @min-[750px]:left-1/2 @min-[750px]:w-[calc(100%-384px)] @min-[750px]:-translate-x-1/2 @min-[750px]:p-3">
-      <ResponsiveShadowTimeControl slots={slots} activeIndex={Math.min(activeSlot, slots.length - 1)} activeEndpoint={activeEndpoint}
+    {!briefing && <div className="pointer-events-auto absolute right-3 bottom-[5.5rem] z-20 grid max-h-[calc(100%-7rem)] w-[calc(100%-196px)] max-w-lg gap-1 overflow-y-auto rounded-lg border bg-card p-2 shadow-sm @min-[750px]:right-auto @min-[750px]:bottom-8 @min-[750px]:left-1/2 @min-[750px]:w-[calc(100%-384px)] @min-[750px]:-translate-x-1/2 @min-[750px]:p-3">
+      <ResponsiveShadowTimeControl totalImages={countBriefImages(brief).total} slots={slots} activeIndex={Math.min(activeSlot, slots.length - 1)} activeEndpoint={activeEndpoint}
         onActivate={(index, endpoint = 0) => { setActiveSlot(index); setActiveEndpoint(endpoint) }} onChange={setSlots} onCommit={commitSlots} position={view.current.center} />
     </div>}
     <div className="pointer-events-none absolute inset-x-3 bottom-8 z-20 flex items-end gap-2">

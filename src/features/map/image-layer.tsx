@@ -15,6 +15,10 @@ function createImageCanvas(getState: () => ImageLayerState, projection: ImagePro
   const outline = document.createElementNS(ns, 'polygon')
   outline.setAttribute('fill', 'none'); outline.setAttribute('stroke', '#ffffff'); outline.setAttribute('stroke-width', '2')
   outline.setAttribute('stroke-dasharray', '6 4')
+  const hoverOutline = document.createElementNS(ns, 'polygon')
+  hoverOutline.dataset.imageHover = ''
+  hoverOutline.setAttribute('fill', 'none'); hoverOutline.setAttribute('stroke', '#38bdf8'); hoverOutline.setAttribute('stroke-width', '4')
+  hoverOutline.style.filter = 'drop-shadow(0 1px 2px rgb(0 0 0 / 0.7))'
   const anchor = document.createElementNS(ns, 'g')
   anchor.dataset.imageAnchor = ''
   anchor.style.filter = 'drop-shadow(0 1px 2px rgb(0 0 0 / 0.16)) drop-shadow(0 4px 6px rgb(0 0 0 / 0.12))'
@@ -34,8 +38,8 @@ function createImageCanvas(getState: () => ImageLayerState, projection: ImagePro
   dot.setAttribute('r', '1.6')
   dot.setAttribute('fill', 'var(--primary)')
   anchor.append(disc, mark, dot)
-  svg.append(outline, anchor)
-  const draw = (preview: ImageOverlay | null, previewAnchor: Position | null = null) => {
+  svg.append(outline, hoverOutline, anchor)
+  const draw = (preview: ImageOverlay | null, previewAnchor: Position | null = null, hoveredId: string | null = null) => {
     const state = getState()
     for (const [id, image] of images) if (!state.images.some((overlay) => overlay.id === id && state.sourceUrl(overlay))) { image.remove(); images.delete(id) }
     for (const saved of state.images) {
@@ -60,9 +64,15 @@ function createImageCanvas(getState: () => ImageLayerState, projection: ImagePro
       image.setAttribute('transform', `matrix(${b.x - a.x} ${b.y - a.y} ${d.x - a.x} ${d.y - a.y} ${a.x} ${a.y})`)
       image.setAttribute('opacity', String(overlay.opacity))
     }
+    hoverOutline.style.display = 'none'
+    const hovered = state.images.find((image) => image.id === hoveredId)
+    if (hovered && state.editable && state.interactive && !state.lockedIds?.has(hovered.id) && state.sourceUrl(hovered)) {
+      const corners = imageCorners(hovered).map(projection.project)
+      if (corners.every(Boolean)) { hoverOutline.setAttribute('points', corners.map((p) => `${p!.x},${p!.y}`).join(' ')); hoverOutline.style.display = '' }
+    }
     const selected = state.images.find((image) => image.id === state.selectedId)
     outline.style.display = anchor.style.display = 'none'
-    if (selected && state.editable && state.interactive && state.sourceUrl(selected)) {
+    if (selected && !state.lockedIds?.has(selected.id) && state.editable && state.interactive && state.sourceUrl(selected)) {
       const overlay = preview?.id === selected.id ? preview : selected
       const corners = imageCorners(overlay).map(projection.project)
       if (corners.every(Boolean)) { outline.setAttribute('points', corners.map((p) => `${p!.x},${p!.y}`).join(' ')); outline.style.display = '' }
@@ -85,6 +95,8 @@ export function ImageLayer(props: ImageLayerState) {
   const redraw = useRef<(() => void) | null>(null)
   useLayoutEffect(() => { latest.current = props; redraw.current?.() })
   useEffect(() => {
+    let hoveredId: string | null = null
+    const hover = (id: string | null) => { if (hoveredId !== id) { hoveredId = id; paint() } }
     let preview: ImageOverlay | null = null
     let previewAnchor: Position | null = null
     let paint = () => {}
@@ -99,11 +111,11 @@ export function ImageLayer(props: ImageLayerState) {
       Object.assign(canvas.svg.style, { inset: '0', width: '100%', height: '100%' })
       // The dedicated host is above the basemap/dimmer and below brief icons.
       surface.querySelector('[data-image-host]')!.append(canvas.svg)
-      paint = () => canvas.draw(preview, previewAnchor)
+      paint = () => canvas.draw(preview, previewAnchor, hoveredId)
       const draw = () => paint()
       redraw.current = draw
       shadeMap.on('render', draw)
-      const detach = attachImageInteraction(surface, projection, () => latest.current, show)
+      const detach = attachImageInteraction(surface, projection, () => latest.current, show, hover)
       draw()
       return () => { detach(); shadeMap.off('render', draw); canvas.svg.remove(); redraw.current = null }
     }
@@ -124,7 +136,7 @@ export function ImageLayer(props: ImageLayerState) {
     class Images extends google.maps.OverlayView {
       onAdd() { this.getPanes()?.overlayLayer.append(canvas.svg) }
       draw() {
-        canvas.draw(preview, previewAnchor)
+        canvas.draw(preview, previewAnchor, hoveredId)
       }
       onRemove() { canvas.svg.remove() }
     }
@@ -132,7 +144,7 @@ export function ImageLayer(props: ImageLayerState) {
     paint = () => overlay.draw()
     redraw.current = paint
     overlay.setMap(googleMap)
-    const detach = attachImageInteraction(surface, projection, () => latest.current, show)
+    const detach = attachImageInteraction(surface, projection, () => latest.current, show, hover)
     const resize = new ResizeObserver(() => overlay.draw())
     resize.observe(surface)
     return () => { detach(); resize.disconnect(); overlay.setMap(null); redraw.current = null }

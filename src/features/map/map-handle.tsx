@@ -29,7 +29,7 @@ export function MapHandle({ position, label, children, onCancel, onStart, onPrev
   const scale = useMapObjectScale()
   const marker = useRef<google.maps.marker.AdvancedMarkerElement | null>(null)
   const [focused, setFocused] = useState(false)
-  const handleClass = 'transition-none ' + (bare
+  const handleClass = 'flex transition-none ' + (bare
     ? 'touch-none border-0 bg-transparent text-primary shadow-none hover:bg-transparent dark:hover:bg-transparent disabled:opacity-100 '
     : 'touch-none rounded-full border-2 border-primary bg-card text-primary shadow-md dark:bg-card dark:border-primary dark:hover:bg-secondary ') + className
   function drag(point: Position, commit: boolean) {
@@ -49,21 +49,22 @@ export function MapHandle({ position, label, children, onCancel, onStart, onPrev
       {/* Direction symbols are geometry, not a second button. A circular button
           surface/focus ring must never be painted over the arrow. */}
       {bare ? <span aria-hidden="true" className={'flex size-8 items-center justify-center' + (focused ? ' [&_svg]:drop-shadow-[0_0_2px_var(--ring)]' : '')}
-        style={{ zoom: scale }}>{children}</span>
+        style={{ scale }}>{children}</span>
       : <Button aria-hidden="true" tabIndex={-1} disabled={!interactive} type="button" size="icon-sm" variant="outline"
-        style={{ zoom: scale }}
+        style={{ scale }}
         className={handleClass + (focused ? ' ring-2 ring-ring' : '')}>{children}</Button>}
     </AdvancedMarker>}
     <AdvancedMarker ref={marker} position={position} anchorLeft="-50%" anchorTop="-50%" zIndex={zIndex + 1}
-    title={label} draggable={interactive} clickable={interactive} style={{ pointerEvents: interactive ? 'auto' : 'none', opacity: constrain ? 0 : 1 }}
+    title={label} draggable={interactive} clickable={interactive} style={{ pointerEvents: 'none', opacity: constrain ? 0 : 1 }}
     onMouseEnter={onEnter} onMouseLeave={onLeave}
     onDragCancel={onCancel}
     onDragStart={() => { if (interactive) onStart() }}
     onDrag={(event) => { if (event.latLng) drag(event.latLng.toJSON(), false) }}
     onDragEnd={(event) => { if (event.latLng) drag(event.latLng.toJSON(), true) }}>
-    <div data-map-handle data-camera-aim-handle={cameraId} className={'flex items-center justify-center ' + className} style={{ minWidth: minHitSize, minHeight: minHitSize }}>
+    <div data-map-handle data-camera-aim-handle={cameraId} className={'flex size-8 items-center justify-center ' + className}
+      style={{ minWidth: minHitSize, minHeight: minHitSize, pointerEvents: interactive && minHitSize ? 'auto' : 'none' }}>
     <Button disabled={!interactive} type="button" size="icon-sm" variant={bare ? 'ghost' : 'outline'}
-      style={{ zoom: scale }}
+      style={{ scale, pointerEvents: interactive ? 'auto' : 'none' }}
       className={handleClass}
       aria-label={label} title={label + ' · drag to adjust'}
       onFocus={(event) => { setFocused(event.currentTarget.matches(':focus-visible')); onEnter() }} onBlur={() => { setFocused(false); onLeave() }}

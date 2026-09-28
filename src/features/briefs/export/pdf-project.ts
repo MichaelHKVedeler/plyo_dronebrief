@@ -10,7 +10,7 @@ export function pdfProjectPosition(brief: DroneBrief) {
 
 /** Smallest template tier that contains the actual capture plan, not image totals. */
 export function pdfProjectSize(brief: DroneBrief): PdfProjectSize {
-  const aerial = (brief.circleRig?.arrowCount ?? 0) + brief.angles.filter((a) => (a.type === 'drone-image' || a.type === 'extra-coverage')).length
+  const aerial = (brief.circleRig?.arrowCount ?? 0) + brief.angles.filter((a) => a.type === 'drone-image').length
   const panorama = brief.angles.filter((a) => a.type === '360').length
   const dslr = brief.angles.filter((a) => a.type === 'dslr').length
   const aerialHeights = aerial ? brief.typeSettings['drone-image'].heightsMeters.length : 0

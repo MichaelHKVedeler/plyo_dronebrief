@@ -3,12 +3,13 @@ import { hitImage, imageAnchorHitRadius, imageCorners, moveImage, transformImage
 
 export type ImageProjection = { project: (point: Position) => ImagePoint | null; unproject: (point: ImagePoint) => Position | null }
 export type ImageLayerState = {
+  lockedIds?: ReadonlySet<string>
   images: ImageOverlay[]; selectedId: string | null; editable: boolean; interactive: boolean
   anchors: Record<string, Position>; sourceUrl: (image: ImageOverlay) => string | undefined
   onSelect: (id: string) => void; onAnchor: (id: string, position: Position) => void
   onCommit: (image: ImageOverlay) => void
 }
-export function attachImageInteraction(surface: HTMLElement, projection: ImageProjection, getState: () => ImageLayerState, preview: (image: ImageOverlay | null, anchor?: Position | null) => void) {
+export function attachImageInteraction(surface: HTMLElement, projection: ImageProjection, getState: () => ImageLayerState, preview: (image: ImageOverlay | null, anchor?: Position | null) => void, hover: (id: string | null) => void = () => {}) {
   let drag: { id: number; image: ImageOverlay; start: Position; pixel: ImagePoint; anchor: Position; anchorAt: Position; mode: 'edge' | 'inside' | 'anchor'; changed: boolean; latest: ImageOverlay } | null = null
   let suppress = false
   const stop = (event: Event) => { event.preventDefault(); event.stopImmediatePropagation() }
@@ -18,7 +19,7 @@ export function attachImageInteraction(surface: HTMLElement, projection: ImagePr
   const enabled = () => getState().editable && getState().interactive && !surface.closest('[inert]')
   const hit = (point: ImagePoint) => {
     for (const image of [...getState().images].reverse()) {
-      if (!getState().sourceUrl(image)) continue
+      if (getState().lockedIds?.has(image.id) || !getState().sourceUrl(image)) continue
       if (image.opacity === 0 && image.id !== getState().selectedId) continue
       const corners = imageCorners(image).map(projection.project)
       if (corners.some((p) => !p)) continue
@@ -30,12 +31,12 @@ export function attachImageInteraction(surface: HTMLElement, projection: ImagePr
   const hitAnchor = (point: ImagePoint) => {
     const state = getState()
     const image = state.images.find((item) => item.id === state.selectedId)
-    if (!image || !state.sourceUrl(image)) return null
+    if (!image || state.lockedIds?.has(image.id) || !state.sourceUrl(image)) return null
     const projected = projection.project(state.anchors[image.id] ?? image.position)
     if (!projected || Math.hypot(point.x - projected.x, point.y - projected.y) > imageAnchorHitRadius) return null
     return image
   }
-  const feedback = (cursor: string) => { if (cursor) surface.setAttribute('data-image-cursor', cursor); else surface.removeAttribute('data-image-cursor') }
+  const feedback = (cursor: string, id: string | null = null) => { hover(id); if (cursor) surface.setAttribute('data-image-cursor', cursor); else surface.removeAttribute('data-image-cursor') }
   const reset = () => {
     const current = drag
     drag = null; preview(null); feedback('')
@@ -53,19 +54,19 @@ export function attachImageInteraction(surface: HTMLElement, projection: ImagePr
     suppress = true
     getState().onSelect(image.id)
     surface.setPointerCapture?.(event.pointerId)
-    feedback(mode === 'inside' ? 'crosshair' : 'grabbing')
+    feedback(mode === 'edge' ? 'crosshair' : 'grabbing')
   }
   const move = (event: PointerEvent) => {
     if (!drag) {
       if (enabled() && onSurface(event) && !overControl(event)) {
         const point = pixel(event)
         if (hitAnchor(point)) feedback('grab')
-        else { const result = hit(point); feedback(result?.mode === 'edge' ? 'grab' : result ? 'crosshair' : '') }
+        else { const result = hit(point); feedback(result?.mode === 'edge' ? 'crosshair' : result ? 'grab' : '', result?.mode === 'edge' ? result.image.id : null) }
       } else feedback('')
       return
     }
     if (event.pointerId !== drag.id) return
-    if (!enabled() || !getState().images.some((image) => image.id === drag!.image.id) || !(event.buttons & 1)) { reset(); return }
+    if (!enabled() || getState().lockedIds?.has(drag.image.id) || !getState().images.some((image) => image.id === drag!.image.id) || !(event.buttons & 1)) { reset(); return }
     stop(event)
     const p = pixel(event), end = projection.unproject(p)
     if (!end || (!drag.changed && Math.hypot(p.x - drag.pixel.x, p.y - drag.pixel.y) < 3)) return
@@ -75,7 +76,7 @@ export function attachImageInteraction(surface: HTMLElement, projection: ImagePr
       preview(null, drag.anchorAt)
       return
     }
-    drag.latest = drag.mode === 'edge' ? moveImage(drag.image, drag.start, end) : transformImage(drag.image, drag.anchor, drag.start, end)
+    drag.latest = drag.mode === 'inside' ? moveImage(drag.image, drag.start, end) : transformImage(drag.image, drag.anchor, drag.start, end)
     preview(drag.latest)
   }
   const up = (event: PointerEvent) => {
@@ -83,7 +84,7 @@ export function attachImageInteraction(surface: HTMLElement, projection: ImagePr
     stop(event)
     const current = drag
     reset()
-    if (!current.changed || !enabled() || !getState().images.some((image) => image.id === current.image.id)) return
+    if (!current.changed || !enabled() || getState().lockedIds?.has(current.image.id) || !getState().images.some((image) => image.id === current.image.id)) return
     if (current.mode === 'anchor') getState().onAnchor(current.image.id, current.anchorAt)
     else getState().onCommit(current.latest)
   }
@@ -96,7 +97,7 @@ export function attachImageInteraction(surface: HTMLElement, projection: ImagePr
     const state = getState(), at = hit(pixel(event))
     const image = state.images.find((item) => item.id === state.selectedId) ?? at?.image ?? state.images.at(-1)
     const point = projection.unproject(pixel(event))
-    if (!image || !point) return
+    if (!image || state.lockedIds?.has(image.id) || !point) return
     stop(event); reset(); state.onSelect(image.id); state.onAnchor(image.id, point)
   }
   const mouse = (event: MouseEvent) => { if (drag || (suppress && onSurface(event) && ['click', 'dblclick'].includes(event.type))) stop(event) }

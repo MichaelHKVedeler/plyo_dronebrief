@@ -40,7 +40,7 @@ it.each([true, false])('scales rig decorations with radius and zoom, independent
   const view = render(scene(100, 1, 0.25))
   const sizes = () => [
     Number(view.container.querySelector('polygon')!.getAttribute('stroke-width')),
-    Number(screen.getByRole('img', { name: 'Rig arrow 1, pointing toward center' }).style.zoom),
+    Number(screen.getByRole('img', { name: 'Rig arrow 1, pointing toward center' }).style.scale),
   ]
   const initial = sizes()
   view.rerender(scene(100, 1, 3))
@@ -57,7 +57,7 @@ it('thickens the rig outline and enlarges numbers on a narrow viewport', async (
   const rig: CircleRig = { id: 'rig', position: { lat: 60, lng: 10 }, arrowCount: 10, radiusMeters: 400, ovalRatio: 1, rotationDegrees: 0 }
   render(<Surface><RigObject rig={rig} pixelsToMeters={1} editable={false} interactive selected onSelect={vi.fn()} onCommit={vi.fn()} /></Surface>)
   await waitFor(() => expect(Number(document.querySelector('polygon')!.getAttribute('stroke-width'))).toBe(5 * compactRigStrokeScale))
-  expect(screen.getByText('1').style.zoom).toBe(String(compactRigNumberScale))
+  expect(screen.getByText('1').style.scale).toBe(String(compactRigNumberScale))
 })
 
 it.each(['Scale and rotate circle rig', 'Adjust rig ovalness'])('keeps the outline highlighted when moving onto %s', (label) => {
@@ -243,9 +243,9 @@ it.each([false, true])('keeps both rig handles proportional to the numbers acros
   for (const [radius, metersPerPixel] of [[400, 1], [800, 1], [800, 2], [120, 3.5]]) {
     view.rerender(scene(radius, metersPerPixel))
     fireEvent.pointerMove(view.container.querySelector('canvas')!, { clientX: 10, clientY: 60 })
-    const badgeScale = Number(screen.getByText('1').style.zoom) * Number(screen.getByRole('img', { name: 'Rig arrow 1, pointing toward center' }).style.zoom)
+    const badgeScale = Number(screen.getByText('1').style.scale) * Number(screen.getByRole('img', { name: 'Rig arrow 1, pointing toward center' }).style.scale)
     for (const label of ['Scale and rotate circle rig', 'Adjust rig ovalness']) {
-      expect(Number(screen.getByRole('button', { name: label }).style.zoom)).toBeCloseTo(badgeScale)
+      expect(Number(screen.getByRole('button', { name: label }).style.scale)).toBeCloseTo(badgeScale)
     }
   }
   expect(commit).not.toHaveBeenCalled()

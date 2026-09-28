@@ -115,8 +115,10 @@ export async function collections(user: Actor, input: unknown) {
     await requireMember(tx, data.orgId, user.uid)
     const own = db.collection(`users/${user.uid}/collections`)
     if (data.action === 'list') {
-      const docs = await tx.get(own.where('orgId', '==', data.orgId))
-      const members = await tx.get(db.collection(`organizations/${data.orgId}/creators`))
+      const [docs, members] = await Promise.all([
+        tx.get(own.where('orgId', '==', data.orgId)),
+        tx.get(db.collection(`organizations/${data.orgId}/creators`)),
+      ])
       return { collections: docs.docs.map((doc) => ({ id: doc.id, ...doc.data() })), creators: members.docs.map((doc) => ({ uid: doc.id, name: doc.get('name') })) }
     }
     if (data.action === 'create') {

@@ -12,11 +12,12 @@ export function PointHeightsCallout({ brief, angleId, language, onClose }: {
   onClose: () => void
 }) {
   const point = numberedCameras(brief.angles).find((item) => item.angle.id === angleId)
-  if (!point) return null
+  // Extra coverage is a scan-area marker; public briefings do not give it capture heights.
+  if (!point || point.angle.type === 'extra-coverage') return null
   const copy = briefingCopy[language]
   const { angle, number } = point
   const name = `${cameraLabels[angle.type]} ${number}`
-  const meters = (angle.type === 'drone-image' || angle.type === 'extra-coverage')
+  const meters = angle.type === 'drone-image'
     ? brief.typeSettings['drone-image'].heightsMeters
     : angle.type === '360'
       ? effectivePanoramaHeights(brief.typeSettings['360'].heightsMeters, angle)

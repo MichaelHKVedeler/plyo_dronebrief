@@ -5,10 +5,12 @@ export const minScanRadius = 0.1
 export const maxScanRadius = 10000
 export const minScanGapMeters = 2
 export const scanGrabPixels = 16
-export const scanDiameterStep = 5
+export const scanDiameterStep = 100
 export const scanOutlineHitRadius = 24
 export const scanHandleHitSize = 48
 export const defaultScanDiameters = { high: 500, low: 800 } as const
+/** Diameters above these limits need extra planning; the editor warns but still allows them. */
+export const scanDiameterWarningLimits = { high: 500, low: 800 } as const
 export const droneScanFillOpacity = 0.18
 export const droneScanColors = { high: '#2563eb', low: '#dc2626' } as const
 export type ScanRole = 'high' | 'low'
@@ -48,6 +50,13 @@ function snapRadiusWithin(radiusMeters: number, minRadius: number, maxRadius: nu
   if (snapped < minRadius) snapped = snapScanDiameter(minRadius * 2, 'up') / 2
   if (snapped < minRadius - 1e-6 || snapped > maxRadius + 1e-6) return clamp(radiusMeters, minRadius, maxRadius)
   return clamp(snapped, minScanRadius, maxScanRadius)
+}
+
+export function scanDiameterWarnings(scan: DroneBrief['droneScan']): ScanRole[] {
+  const roles: ScanRole[] = []
+  if (scan?.highRes && scan.highRes.radiusMeters * 2 > scanDiameterWarningLimits.high + 1e-6) roles.push('high')
+  if (scan?.lowRes && scan.lowRes.radiusMeters * 2 > scanDiameterWarningLimits.low + 1e-6) roles.push('low')
+  return roles
 }
 
 export function scanGapMeters(latitude: number, zoom: number) {
@@ -114,7 +123,15 @@ export function applyScanDiameter(circle: ScanCircle, diameterMeters: number, ro
   return { ...circle, radiusMeters: clamp(Math.max(radius, distance + other.radiusMeters + gap), minScanRadius, maxScanRadius) }
 }
 
+/** Input bounds on the diameter step grid; falls back to exact limits when no step fits. */
 export function scanDiameterBounds(circle: ScanCircle, role: ScanRole, other: ScanCircle | null, gap = minScanGapMeters) {
+  const exact = exactScanDiameterBounds(circle, role, other, gap)
+  const min = Math.max(scanDiameterStep, Math.ceil(exact.min / scanDiameterStep - 1e-9) * scanDiameterStep)
+  const max = Math.floor(exact.max / scanDiameterStep + 1e-9) * scanDiameterStep
+  return min <= max ? { min, max } : exact
+}
+
+function exactScanDiameterBounds(circle: ScanCircle, role: ScanRole, other: ScanCircle | null, gap: number) {
   if (!other) return { min: 1, max: maxScanRadius * 2 }
   const distance = distanceMeters(circle.position, other.position)
   if (role === 'high') {
@@ -123,6 +140,11 @@ export function scanDiameterBounds(circle: ScanCircle, role: ScanRole, other: Sc
   }
   const min = Math.ceil((distance + other.radiusMeters + gap) * 2)
   return { min: Math.max(1, Math.min(maxScanRadius * 2, min)), max: maxScanRadius * 2 }
+}
+
+/** Snap a typed diameter to the step grid while staying inside the input bounds. */
+export function snapScanDiameterWithin(diameterMeters: number, bounds: { min: number; max: number }) {
+  return clamp(snapScanDiameter(diameterMeters), bounds.min, bounds.max)
 }
 
 /** Fixed initial diameters; the second circle shares the first circle's center. */
