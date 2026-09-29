@@ -44,6 +44,9 @@ function rigEdgePoint(rig: CircleRig, fraction: number): Position {
   return destination(rig.position, Math.hypot(east, north), rig.rotationDegrees + degrees(Math.atan2(east, north)))
 }
 
+// Clearance follows the same radius-based scale as rig badges and controls.
+const rigHandleGap = 0.16
+
 // Invisible grab band around the visible outline. ShadeMap's hit stroke is twice this.
 export const rigOutlineHitRadius = 10
 
@@ -76,30 +79,29 @@ export function rotateRig(rig: CircleRig, point: Position): CircleRig {
   return distanceMeters(rig.position, point) < 0.01 ? rig : { ...rig, rotationDegrees: bearingDegrees(rig.position, point) }
 }
 
-// Half a numbered-point interval keeps the scale/rotation handle between badges.
+// Top and right in the rig's rotated frame, independent of arrow count.
 export function rigRadiusHandle(rig: CircleRig): Position {
-  return rigEdgePoint(rig, 0.5 / rig.arrowCount)
+  return destination(rig.position, rig.radiusMeters * (1 + rigHandleGap), rig.rotationDegrees)
+}
+
+export function rigOvalHandle(rig: CircleRig): Position {
+  return destination(rig.position, rig.radiusMeters * (rig.ovalRatio + rigHandleGap), rig.rotationDegrees + 90)
 }
 
 export function scaleAndRotateRig(rig: CircleRig, point: Position): CircleRig {
-  const angle = Math.PI / rig.arrowCount
-  const east = Math.sin(angle) * rig.ovalRatio
-  const north = Math.cos(angle)
   const distance = distanceMeters(rig.position, point)
   return {
     ...rig,
-    radiusMeters: clamp(distance / Math.hypot(east, north), 0.1, 10000),
-    rotationDegrees: distance < 0.01 ? rig.rotationDegrees
-      : normalizeHeading(bearingDegrees(rig.position, point) - degrees(Math.atan2(east, north))),
+    radiusMeters: clamp(distance / (1 + rigHandleGap), 0.1, 10000),
+    rotationDegrees: distance < 0.01 ? rig.rotationDegrees : bearingDegrees(rig.position, point),
   }
 }
 
-// The oval handle sits on the minor-axis edge of the rig.
 export function reshapeRig(rig: CircleRig, point: Position): CircleRig {
   const { east, north } = localOffset(rig.position, point)
   const rotation = radians(rig.rotationDegrees)
   const minorDistance = east * Math.cos(rotation) - north * Math.sin(rotation)
-  return { ...rig, ovalRatio: clamp(Math.abs(minorDistance) / rig.radiusMeters, 0.1, 1) }
+  return { ...rig, ovalRatio: clamp(Math.abs(minorDistance) / rig.radiusMeters - rigHandleGap, 0.1, 1) }
 }
 
 export function metersPerPixel(latitude: number, zoom: number): number {

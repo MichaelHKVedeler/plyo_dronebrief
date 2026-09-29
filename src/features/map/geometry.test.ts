@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { bearingDegrees, destination, distanceMeters, normalizeHeading, pathCenter, reshapeRig, resizeRig, rigOutline, rigArrows, rigRadiusHandle, rotateRig, scaleAndRotateRig, type CircleRig } from './geometry'
+import { bearingDegrees, destination, distanceMeters, normalizeHeading, pathCenter, reshapeRig, resizeRig, rigOutline, rigArrows, rigOvalHandle, rigRadiusHandle, rotateRig, scaleAndRotateRig, type CircleRig } from './geometry'
 
 const rig: CircleRig = { id: 'rig', position: { lat: 59.9, lng: 10.7 }, arrowCount: 10, radiusMeters: 100, ovalRatio: 0.5, rotationDegrees: 35 }
 describe('map transform geometry', () => {
@@ -45,7 +45,7 @@ describe('map transform geometry', () => {
     expect(rotateRig(rig, rig.position)).toBe(rig)
   })
   it('adjusts ovalness in the rotated rig frame', () => {
-    const target = destination(rig.position, 40, rig.rotationDegrees + 90)
+    const target = rigOvalHandle({ ...rig, ovalRatio: 0.4 })
     expect(reshapeRig(rig, target).ovalRatio).toBeCloseTo(0.4)
     expect(reshapeRig(rig, destination(rig.position, 40, rig.rotationDegrees)).ovalRatio).toBe(0.1)
   })
@@ -79,7 +79,7 @@ describe('map transform geometry', () => {
   expect(distanceMeters(arrows[0].position, rigOutline(rig)[0])).toBeLessThan(0.001)
 })
 
-it.each([1, 2, 10, 17, 50])('keeps the radius handle between numbered points with %s arrows through repeated drags', (arrowCount) => {
+it.each([1, 2, 10, 17, 50])('keeps the radius handle outside numbered points with %s arrows through repeated drags', (arrowCount) => {
   for (const ovalRatio of [0.1, 0.5, 1]) {
     const current = { ...rig, arrowCount, ovalRatio }
     const handle = rigRadiusHandle(current)
@@ -93,5 +93,26 @@ it.each([1, 2, 10, 17, 50])('keeps the radius handle between numbered points wit
     expect(distanceMeters(rigRadiusHandle(repeated), target)).toBeLessThan(0.001)
     expect(repeated.radiusMeters).toBeCloseTo(changed.radiusMeters, 5)
     expect(repeated.rotationDegrees).toBeCloseTo(changed.rotationDegrees, 5)
+  }
+})
+
+it('keeps both rig handles outside numbered points for every supported arrow count', () => {
+  for (let arrowCount = 1; arrowCount <= 50; arrowCount++) {
+    for (const ovalRatio of [0.1, 0.5, 1]) {
+      const current = { ...rig, arrowCount, ovalRatio }
+      const arrows = rigArrows(current)
+      const radiusHandle = rigRadiusHandle(current)
+      const ovalHandle = rigOvalHandle(current)
+      expect(bearingDegrees(current.position, radiusHandle)).toBeCloseTo(current.rotationDegrees, 5)
+      expect(bearingDegrees(current.position, ovalHandle)).toBeCloseTo(current.rotationDegrees + 90, 5)
+      expect(distanceMeters(current.position, radiusHandle)).toBeGreaterThan(current.radiusMeters)
+      expect(distanceMeters(current.position, ovalHandle)).toBeGreaterThan(current.radiusMeters * ovalRatio)
+      for (const arrow of arrows) {
+        expect(distanceMeters(radiusHandle, arrow.position)).toBeGreaterThan(0.01)
+        expect(distanceMeters(ovalHandle, arrow.position)).toBeGreaterThan(0.01)
+      }
+      expect(distanceMeters(radiusHandle, ovalHandle)).toBeGreaterThan(0.01)
+      expect(reshapeRig(current, ovalHandle).ovalRatio).toBeCloseTo(ovalRatio, 5)
+    }
   }
 })

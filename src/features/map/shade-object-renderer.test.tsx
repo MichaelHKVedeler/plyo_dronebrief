@@ -60,7 +60,7 @@ it('thickens the rig outline and enlarges numbers on a narrow viewport', async (
   expect(screen.getByText('1').style.scale).toBe(String(compactRigNumberScale))
 })
 
-it.each(['Scale and rotate circle rig', 'Adjust rig ovalness'])('keeps the outline highlighted when moving onto %s', (label) => {
+it.each(['Scale and rotate circle rig', 'Adjust rig ovalness'])('does not thicken the outline when hovering or focusing %s', (label) => {
   vi.useFakeTimers()
   try {
     const rig: CircleRig = { id: 'rig', position: { lat: 60, lng: 10 }, arrowCount: 10, radiusMeters: 400, ovalRatio: 0.6, rotationDegrees: 0 }
@@ -68,7 +68,7 @@ it.each(['Scale and rotate circle rig', 'Adjust rig ovalness'])('keeps the outli
     const { container } = render(<Surface><canvas /><RigObject rig={rig} pixelsToMeters={1} editable interactive selected onSelect={vi.fn()} onCommit={commit} /></Surface>)
     const outline = container.querySelector('polygon')!
     const initial = outline.getAttribute('stroke-width')
-    expect(screen.queryByRole('button', { name: label })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: label })).toBeInTheDocument()
     fireEvent.pointerMove(container.querySelector('canvas')!, { clientX: 10, clientY: 60 })
     const highlighted = outline.getAttribute('stroke-width')
     expect(Number(highlighted)).toBeGreaterThan(Number(initial))
@@ -76,21 +76,21 @@ it.each(['Scale and rotate circle rig', 'Adjust rig ovalness'])('keeps the outli
     fireEvent.mouseEnter(control)
     fireEvent.pointerMove(control, { clientX: 10, clientY: 60 })
     act(() => vi.advanceTimersByTime(500))
-    expect(outline).toHaveAttribute('stroke-width', highlighted)
+    expect(outline).toHaveAttribute('stroke-width', initial)
     fireEvent.mouseLeave(control)
     expect(outline).toHaveAttribute('stroke-width', initial)
-    expect(screen.queryByRole('button', { name: label })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: label })).toBeInTheDocument()
     fireEvent.pointerMove(container.querySelector('canvas')!, { clientX: 10, clientY: 60 })
     fireEvent.focus(screen.getByRole('button', { name: label }))
     fireEvent.pointerMove(container.querySelector('canvas')!, { clientX: 100, clientY: 100 })
-    expect(outline).toHaveAttribute('stroke-width', highlighted)
+    expect(outline).toHaveAttribute('stroke-width', initial)
     fireEvent.blur(screen.getByRole('button', { name: label }))
     expect(outline).toHaveAttribute('stroke-width', initial)
-    expect(screen.queryByRole('button', { name: label })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: label })).toBeInTheDocument()
     fireEvent.pointerMove(container.querySelector('canvas')!, { clientX: 10, clientY: 60 })
     fireEvent.pointerMove(container.querySelector('canvas')!, { clientX: 100, clientY: 100 })
     expect(outline).toHaveAttribute('stroke-width', initial)
-    expect(screen.queryByRole('button', { name: label })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: label })).toBeInTheDocument()
     expect(commit).not.toHaveBeenCalled()
   } finally {
     cleanup()
@@ -104,7 +104,7 @@ function Camera({ commit, duplicate, editable = true }: { commit: (angle: Camera
   return <CameraMarker angle={angle} selected={selected} editable={editable} pixelsToMeters={1} duplicateNumber={2}
     onSelect={() => select(true)} onCommit={(value) => { setAngle(value); commit(value) }} onDuplicate={duplicate} />
 }
-it('reveals rig grab areas above overlapping cameras on hover, and removes them in viewer/export mode', () => {
+it('keeps rig grab areas visible above overlapping cameras, and removes them in viewer/export mode', () => {
   const rig: CircleRig = { id: 'rig', position: original.position, arrowCount: 10, radiusMeters: 80, ovalRatio: 0.6, rotationDegrees: 0 }
   const commit = vi.fn(), cameraCommit = vi.fn()
   const scene = (editable: boolean) => <Surface>
@@ -112,7 +112,7 @@ it('reveals rig grab areas above overlapping cameras on hover, and removes them 
     <CameraMarker angle={original} selected editable={editable} pixelsToMeters={1} onSelect={vi.fn()} onCommit={cameraCommit} />
   </Surface>
   const view = render(scene(true))
-  expect(screen.queryByRole('button', { name: 'Scale and rotate circle rig' })).not.toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'Scale and rotate circle rig' })).toBeInTheDocument()
   fireEvent.pointerMove(screen.getByRole('button', { name: 'Move DSLR 1' }), { clientX: 10, clientY: 60 })
   const control = screen.getByRole('button', { name: 'Scale and rotate circle rig' })
   const marker = control.closest<HTMLElement>('[data-shade-object]')!
@@ -120,7 +120,7 @@ it('reveals rig grab areas above overlapping cameras on hover, and removes them 
   const aim = screen.getByRole('button', { name: 'Aim DSLR 1' }).closest<HTMLElement>('[data-shade-object]')!
   expect(Number(marker.style.zIndex)).toBeGreaterThan(Number(camera.style.zIndex))
   expect(Number(marker.style.zIndex)).toBeGreaterThan(Number(aim.style.zIndex))
-  expect(control.parentElement).toHaveStyle({ minWidth: '32px', minHeight: '32px' })
+  expect(control.parentElement).toHaveStyle({ minWidth: '40px', minHeight: '40px' })
   // Dragging the enlarged area around the small visual handle still edits the rig.
   drag(control.parentElement!)
   expect(commit).toHaveBeenCalledTimes(1)
