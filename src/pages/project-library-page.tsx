@@ -268,15 +268,21 @@ function ProjectCard({ project, layout, owner, busy, canDelete, onOpen, onMove, 
         <span className="absolute right-3.5 bottom-3.5 z-10 grid size-7 place-items-center rounded-full bg-card text-foreground"><ArrowUpRight className="size-4" /></span>
       </Button>
     </div>
-    <CardContent className={'grid gap-3 py-4 pr-4 pl-6 ' + (layout === 'list' ? 'min-w-0 flex-1' : 'min-w-0')}>
+    <CardContent className={'grid grid-cols-1 gap-3 py-4 pr-4 pl-6 ' + (layout === 'list' ? 'min-w-0 flex-1' : 'min-w-0')}>
       <div className="flex items-center justify-between gap-2">
         <div className="min-w-0 flex-1">
           <ProjectName name={project.name} deleted={deleted} busy={busy} onOpen={onOpen} onRename={onRename} />
-          <p className="mt-1 text-[13px] text-muted-foreground">{project.clientName}</p>
+          <p className="mt-1 truncate text-[13px] text-muted-foreground" title={project.clientName}>{project.clientName}</p>
           {deleted && <div className="mt-2 flex flex-wrap gap-2">
             <Button size="sm" variant="outline" disabled={busy} onClick={onRestore}>Restore</Button>
             <Button size="sm" variant="destructive" disabled={busy} onClick={onPurge}>Delete permanently</Button>
           </div>}
+        </div>
+      </div>
+      <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
+        <div className="flex items-center gap-4">
+          <span className="flex items-center gap-1">Created <ActorAvatar label="Created by" actor={project.createdBy} at={project.createdAt} /></span>
+          <span className="flex items-center gap-1">Edited <ActorAvatar label="Edited by" actor={project.editedBy} at={project.updatedAt} /></span>
         </div>
         {!deleted && <DropdownMenu>
           <DropdownMenuTrigger asChild><Button variant="ghost" size="icon-sm" aria-label={`Actions for ${project.name}`}><MoreHorizontal /></Button></DropdownMenuTrigger>
@@ -285,10 +291,6 @@ function ProjectCard({ project, layout, owner, busy, canDelete, onOpen, onMove, 
             {canDelete && <DropdownMenuItem onClick={onDelete}>Delete project</DropdownMenuItem>}
           </DropdownMenuContent>
         </DropdownMenu>}
-      </div>
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
-        <span className="flex items-center gap-1">Created <ActorAvatar label="Created by" actor={project.createdBy} at={project.createdAt} /></span>
-        <span className="flex items-center gap-1">Edited <ActorAvatar label="Edited by" actor={project.editedBy} at={project.updatedAt} /></span>
       </div>
       <Separator />
       <div className="flex justify-between gap-3 text-xs text-muted-foreground">
