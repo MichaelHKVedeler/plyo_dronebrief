@@ -64,6 +64,8 @@ Use `@/` imports across features. Within a feature, relative imports are fine. P
 
 ## Checks before handoff
 
-Run `npm run check` after meaningful changes. Add focused tests for schema compatibility, persistence, import/export, or the edit/view boundary when those behaviors change. Avoid tests that merely mirror markup. For UI changes, exercise the relevant screen and check a narrow viewport, keyboard labels, empty states, and error states.
+Run `npm run check` after meaningful changes. Add focused tests for schema compatibility, persistence, import/export, or the edit/view boundary when those behaviors change. Avoid tests that merely mirror markup. For substantive UI changes, exercise the relevant screen and check a narrow viewport, keyboard labels, empty states, and error states.
+
+For small presentation-only UI changes, such as moving an existing field, adjusting spacing, or changing copy without behavior changes, do not run the full test suite or use browser/computer-use checks unless explicitly requested. The user will visually verify these changes. Run only a lightweight targeted check when it provides useful coverage.
 
 Do not remove failing tests to make checks pass. Avoid changing the vendored shadcn code solely to silence lint. Keep READMEs accurate and update docs/roadmap.md when a placeholder becomes a working feature.
