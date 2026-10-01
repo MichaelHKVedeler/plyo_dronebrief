@@ -22,6 +22,7 @@ it('places a new rig at the current view center without changing the legacy coor
   expect(addRig).toHaveClass('border-emerald-700', 'bg-emerald-50', 'dark:bg-emerald-950')
   fireEvent.click(addRig)
   expect(current.brief.circleRig?.position).toEqual({ lat: 60.123456789, lng: 11.987654321 })
+  expect(current.brief.circleRig?.arrowCount).toBe(8)
   expect(current.brief.coordinates).toEqual(brief.coordinates)
   expect(current.visibility.circleRig).toBe(true)
   const removeRig = screen.getByRole('button', { name: 'Remove Circle Rig' })

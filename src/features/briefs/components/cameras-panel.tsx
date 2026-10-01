@@ -72,17 +72,17 @@ export function CamerasPanel({ onCenterCamera, selectedCameraIds, onSelectCamera
       </div>
     })}
     {selected && points.some((angle) => angle.id === selected.id) && <Card className="py-4"><CardContent className="grid gap-4 px-3">
-      <NumberField label="Camera latitude" value={selected.position.lat} min={-90} max={90} onChange={(lat) => updateSelected((angle) => ({ ...angle, position: { ...angle.position, lat } }))} />
-      <NumberField label="Camera longitude" value={selected.position.lng} min={-180} max={180} onChange={(lng) => updateSelected((angle) => ({ ...angle, position: { ...angle.position, lng } }))} />
+      <NumberField label="Camera latitude" value={selected.position.lat} min={-90} max={90} resetKey={selected.id} onChange={(lat) => updateSelected((angle) => ({ ...angle, position: { ...angle.position, lat } }))} />
+      <NumberField label="Camera longitude" value={selected.position.lng} min={-180} max={180} resetKey={selected.id} onChange={(lng) => updateSelected((angle) => ({ ...angle, position: { ...angle.position, lng } }))} />
       {selected.type !== '360' && selected.type !== 'extra-coverage' && <NumberField label="Camera direction (degrees)" value={selected.directionDegrees} min={0} max={359.999999999}
-        onChange={(directionDegrees) => updateSelected((angle) => angle.type === '360' || angle.type === 'extra-coverage' ? angle : { ...angle, directionDegrees })} />}
+        resetValue={0} resetKey={selected.id} onChange={(directionDegrees) => updateSelected((angle) => angle.type === '360' || angle.type === 'extra-coverage' ? angle : { ...angle, directionDegrees })} />}
       {selected.type === '360' && <>
         <p className="text-sm text-muted-foreground">Right-drag this point on the map. Drag farther to widen its focus, and around it to aim.</p>
         {selected.focus ? <>
           <NumberField label="Focus direction (degrees)" value={selected.focus.directionDegrees} min={0} max={359.999999999}
-            onChange={(directionDegrees) => updateSelected((angle) => angle.type === '360' && angle.focus ? { ...angle, focus: { ...angle.focus, directionDegrees } } : angle)} />
+            resetValue={0} resetKey={selected.id} onChange={(directionDegrees) => updateSelected((angle) => angle.type === '360' && angle.focus ? { ...angle, focus: { ...angle.focus, directionDegrees } } : angle)} />
           <NumberField label="Focus FOV (degrees)" value={selected.focus.fovDegrees} min={min360Fov} max={max360Fov}
-            onChange={(fovDegrees) => updateSelected((angle) => angle.type === '360' && angle.focus ? { ...angle, focus: { ...angle.focus, fovDegrees } } : angle)} />
+            resetValue={90} resetKey={selected.id} onChange={(fovDegrees) => updateSelected((angle) => angle.type === '360' && angle.focus ? { ...angle, focus: { ...angle.focus, fovDegrees } } : angle)} />
           <Button variant="outline" onClick={() => updateSelected((angle) => angle.type === '360' ? { ...angle, focus: undefined } : angle)}>Clear 360 focus</Button>
         </> : <Button variant="outline" onClick={() => updateSelected((angle) => angle.type === '360' ? { ...angle, focus: { directionDegrees: 0, fovDegrees: 90 } } : angle)}>Set 360 focus</Button>}
       </>}

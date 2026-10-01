@@ -2,7 +2,7 @@ import type { Map } from 'maplibre-gl'
 
 // SVG/HTML objects sit above the SDK canvas. Route navigation gestures without
 // sending them through the object editing handlers or saving any brief data.
-export function attachShadeMapPan(map: Map, surface: HTMLElement) {
+export function attachShadeMapPan(map: Map, surface: HTMLElement, allowShiftPan: () => boolean = () => false) {
   let drag: { id: number; button: number; x: number; y: number; started: boolean; anchor: ReturnType<Map['getCenter']>; offset: [number, number] } | null = null
   let suppressClick = false
   const stop = (event: Event) => { event.preventDefault(); event.stopImmediatePropagation() }
@@ -26,7 +26,7 @@ export function attachShadeMapPan(map: Map, surface: HTMLElement) {
     suppressClick = false
     const target = event.target
     const interior = target.closest('[data-shade-pan-surface]')
-    const middle = event.button === 1 && (target === map.getCanvas() || target.closest('[data-shade-object], [data-shade-pan-surface]'))
+    const middle = (event.button === 1 || (event.button === 0 && event.shiftKey && allowShiftPan())) && (target === map.getCanvas() || target.closest('[data-shade-object], [data-shade-pan-surface]'))
     if (!middle && !(event.button === 0 && interior)) return
     drag = { id: event.pointerId, button: event.button, x: event.clientX, y: event.clientY, started: false, anchor: map.getCenter(), offset: [0, 0] }
     if (middle) stop(event)

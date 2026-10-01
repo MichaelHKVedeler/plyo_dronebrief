@@ -5,21 +5,22 @@ import { cameraAppearance } from './camera-appearance'
 import { HeightsField } from './heights-field'
 import { NumberField } from './number-field'
 
-export function CameraAddPanel({ brief, onAdd, onUpdate }: { brief: DroneBrief; onAdd: (type: CameraAngle['type']) => void; onUpdate: (update: (brief: DroneBrief) => DroneBrief) => void }) {
+export function CameraAddPanel({ brief, onAdd, onUpdate, placingType }: { placingType?: CameraAngle['type'] | null; brief: DroneBrief; onAdd: (type: CameraAngle['type']) => void; onUpdate: (update: (brief: DroneBrief) => DroneBrief) => void }) {
   return <div className="grid gap-5">
     {cameraTypes.filter((type) => type !== 'extra-coverage').map((type) => {
       const Icon = cameraAppearance[type].Icon
       return <div className="grid gap-2" key={type}>
-      <Button variant="outline" className={'justify-start ' + cameraAppearance[type].className} disabled={brief.angles.length >= 1000} onClick={() => onAdd(type)}>
-        <Icon />{type === 'drone-image' ? 'Add Extra Drone point' : 'Add ' + cameraLabels[type] + ' point'}
+      <Button variant="outline" aria-pressed={placingType === type} className={'h-auto min-h-9 justify-start whitespace-normal text-left ' + cameraAppearance[type].className + (placingType === type ? ' ring-2 ring-current ring-offset-2' : '')} disabled={brief.angles.length >= 1000} onClick={() => onAdd(type)}>
+        <Icon />{placingType === type ? 'Click in map to place' : type === 'drone-image' ? 'Add Extra Drone point' : 'Add ' + cameraLabels[type] + ' point'}
       </Button>
+      {placingType === type && <p className="text-xs text-muted-foreground">Scroll to zoom. Shift-drag or middle-drag to pan. Right-click or Esc to stop.</p>}
       <div className="ml-4 grid gap-2 border-l-2 border-current/15 py-1 pl-3">
       {type === 'dslr' ? <div className="grid grid-cols-2 items-start gap-3">
-        <NumberField label="Number of angles" value={brief.typeSettings.dslr.angleCount} min={1} max={maxDslrAngles} step={1} live
+        <NumberField label="Number of angles" value={brief.typeSettings.dslr.angleCount} min={1} max={maxDslrAngles} step={1} live resetValue={1} resetKey={brief.id}
           onChange={(angleCount) => onUpdate((b) => ({ ...b, typeSettings: { ...b.typeSettings, dslr: {
             ...b.typeSettings.dslr, angleCount, spacingDegrees: Math.min(b.typeSettings.dslr.spacingDegrees, maxDslrSpacing(angleCount)),
           } } }))} />
-        <NumberField label="Spacing (°)" value={brief.typeSettings.dslr.spacingDegrees} min={minDslrSpacing} max={maxDslrSpacing(brief.typeSettings.dslr.angleCount)} step={1} live
+        <NumberField label="Spacing (°)" value={brief.typeSettings.dslr.spacingDegrees} min={minDslrSpacing} max={maxDslrSpacing(brief.typeSettings.dslr.angleCount)} step={1} live resetValue={30} resetKey={brief.id}
           onChange={(spacingDegrees) => onUpdate((b) => ({ ...b, typeSettings: { ...b.typeSettings, dslr: { ...b.typeSettings.dslr, spacingDegrees } } }))} />
       </div> : <>
       <Label htmlFor={'heights-' + type}>{cameraLabels[type]} heights (m)</Label>

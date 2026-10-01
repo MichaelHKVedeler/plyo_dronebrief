@@ -11,6 +11,9 @@ function createImageCanvas(getState: () => ImageLayerState, projection: ImagePro
   svg.dataset.imageLayer = ''
   svg.setAttribute('aria-hidden', 'true')
   Object.assign(svg.style, { position: 'absolute', pointerEvents: 'none', overflow: 'hidden' })
+  const clips = new Map<string, SVGClipPathElement>()
+  const defs = document.createElementNS(ns, 'defs')
+  svg.append(defs)
   const images = new Map<string, SVGImageElement>()
   const outline = document.createElementNS(ns, 'polygon')
   outline.setAttribute('fill', 'none'); outline.setAttribute('stroke', '#ffffff'); outline.setAttribute('stroke-width', '2')
@@ -41,7 +44,7 @@ function createImageCanvas(getState: () => ImageLayerState, projection: ImagePro
   svg.append(outline, hoverOutline, anchor)
   const draw = (preview: ImageOverlay | null, previewAnchor: Position | null = null, hoveredId: string | null = null) => {
     const state = getState()
-    for (const [id, image] of images) if (!state.images.some((overlay) => overlay.id === id && state.sourceUrl(overlay))) { image.remove(); images.delete(id) }
+    for (const [id, image] of images) if (!state.images.some((overlay) => overlay.id === id && state.sourceUrl(overlay))) { image.remove(); images.delete(id); clips.get(id)?.remove(); clips.delete(id) }
     for (const saved of state.images) {
       const overlay = preview?.id === saved.id ? preview : saved
       const url = state.sourceUrl(overlay)
@@ -63,6 +66,18 @@ function createImageCanvas(getState: () => ImageLayerState, projection: ImagePro
       image.style.display = ''
       image.setAttribute('transform', `matrix(${b.x - a.x} ${b.y - a.y} ${d.x - a.x} ${d.y - a.y} ${a.x} ${a.y})`)
       image.setAttribute('opacity', String(overlay.opacity))
+      if (overlay.mask) {
+        let clip = clips.get(overlay.id)
+        if (!clip) {
+          clip = document.createElementNS(ns, 'clipPath')
+          clip.id = `floorplan-mask-${crypto.randomUUID()}`
+          clip.setAttribute('clipPathUnits', 'objectBoundingBox')
+          clip.append(document.createElementNS(ns, 'polygon'))
+          defs.append(clip); clips.set(overlay.id, clip)
+        }
+        clip.firstElementChild!.setAttribute('points', overlay.mask.map((p) => `${p.x},${p.y}`).join(' '))
+        image.setAttribute('clip-path', `url(#${clip.id})`)
+      } else image.removeAttribute('clip-path')
     }
     hoverOutline.style.display = 'none'
     const hovered = state.images.find((image) => image.id === hoveredId)

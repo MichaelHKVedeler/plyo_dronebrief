@@ -1,4 +1,4 @@
-import { effectivePanoramaHeights, type DroneBrief } from '../model/brief'
+import { effectiveRigHeights, effectivePanoramaHeights, type DroneBrief } from '../model/brief'
 import { countBriefImages } from '../model/image-count'
 import type { PdfLanguage } from '../export/pdf-copy'
 import { briefingCopy } from './briefing-copy'
@@ -39,7 +39,7 @@ export function captureInstructions(brief: DroneBrief, language: PdfLanguage): C
       label: copy.rig,
       rule: copy.rigRule,
       range: rigRange,
-      heights: droneHeights,
+      heights: formatCaptureHeights(effectiveRigHeights(brief)),
       images: counts.circleRig,
     })
   }

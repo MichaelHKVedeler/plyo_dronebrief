@@ -5,7 +5,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import type { DroneBrief } from '../model/brief'
 import { NumberField } from './number-field'
-import { applyScanDiameter, centerScanCircles, formatScanDiameter, scanDiameterBounds, scanDiameterStep, scanDiameterWarningLimits, scanDiameterWarnings, snapScanDiameterWithin, withoutScanCircle, type ScanRole } from '@/features/map/drone-scan'
+import { applyScanDiameter, centerScanCircles, defaultScanDiameters, formatScanDiameter, scanDiameterBounds, scanDiameterStep, scanDiameterWarningLimits, scanDiameterWarnings, snapScanDiameterWithin, withoutScanCircle, type ScanRole } from '@/features/map/drone-scan'
 
 export function DroneScanControls({ brief, editing, onAdd, onUpdate }: {
   brief: DroneBrief
@@ -67,7 +67,7 @@ function ScanControl({ role, label, brief, onAdd, onUpdate }: {
     <Button variant="outline" aria-label={`Remove ${label}`} className={'justify-start ' + colorClass} onClick={() => onUpdate((current) => withoutScanCircle(current, role))}>
       <X className="text-red-600 dark:text-red-400" />{label}
     </Button>
-    <NumberField label={`${label} diameter (m)`} value={value} min={limits.min} max={limits.max} step={scanDiameterStep} live
+    <NumberField label={`${label} diameter (m)`} value={value} min={limits.min} max={limits.max} step={scanDiameterStep} live resetValue={defaultScanDiameters[role]} resetKey={circle.id}
       onChange={(diameter) => onUpdate((current) => {
         const currentScan = current.droneScan
         const currentCircle = role === 'high' ? currentScan?.highRes : currentScan?.lowRes

@@ -6,12 +6,14 @@ import { ImageOverlayControls, type ImageControlsProps } from './image-overlay-c
 import { ReferenceImageControls } from './reference-image-controls'
 import { ImageCountSummary } from './image-count-summary'
 import { countBriefImages } from '../model/image-count'
+import type { LayerVisibility } from '../model/brief'
 import type { BriefSession } from '../state/brief-session'
 import type { LocalImages } from '../state/use-local-images'
 
-export function LayersPanel({ session, referenceImages, ...imageControls }: ImageControlsProps & {
+export function LayersPanel({ session, referenceImages, onVisibilityChange, ...imageControls }: ImageControlsProps & {
   session: BriefSession
   referenceImages: LocalImages
+  onVisibilityChange: (layer: keyof LayerVisibility, visible: boolean) => void
 }) {
   const { brief } = session
   const editing = session.mode === 'edit'
@@ -36,7 +38,7 @@ export function LayersPanel({ session, referenceImages, ...imageControls }: Imag
             <p className="mt-1 whitespace-pre-wrap text-sm text-muted-foreground">{brief.project.instructions || 'No instructions.'}</p></div>
         </>}
     </SettingsSection>
-    <SettingsSection value="floor-plan" title="Floor plan">
+    <SettingsSection value="floor-plan" title="Floor plan" visibility={{ visible: session.visibility.imageOverlays, onToggle: () => onVisibilityChange('imageOverlays', !session.visibility.imageOverlays) }}>
       <ImageOverlayControls {...imageControls} overlays={brief.imageOverlays} editable={editing} />
     </SettingsSection>
     <SettingsSection value="references" title="Reference images" count={brief.references.length}>

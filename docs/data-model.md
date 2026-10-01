@@ -9,7 +9,7 @@ The runtime contract is `src/features/briefs/model/brief.ts`. This document expl
 | createdAt, updatedAt | UTC ISO timestamps |
 | project | name, clientName, optional description and instructions (max 2000 each), calendar date YYYY-MM-DD, times HH:mm[], optional shoots[{date, time, endTime?}] (max 3) |
 | coordinates | Project/map reference point {lat, lng}; new briefs default to Oslo (59.9139, 10.7522) |
-| circleRig | null or {id, position, radiusMeters, ovalRatio, rotationDegrees, arrowCount} |
+| circleRig | null or {id, position, radiusMeters, ovalRatio, rotationDegrees, arrowCount, heightsMeters?} |
 | droneScan | null or {id, highRes, lowRes}; each circle is null or {id, position, radiusMeters} |
 | angles | Discriminated camera-angle array |
 | typeSettings | Drone/360 heightsMeters arrays (new briefs: drone 40, 60; 360 2, 5, 8); DSLR angleCount and spacingDegrees plus preserved legacy heightsMeters |
@@ -29,9 +29,9 @@ Every shoot slot is a range. `shoots[].endTime` (HH:mm) is the end on the slot's
 
 `radiusMeters` is the semi-major axis. `ovalRatio` is minor/major axis, 0.1–1; 1 is a circle. `rotationDegrees` rotates the major axis clockwise from north, in [0, 360). The rig's own position is independent of the project's reference coordinates.
 
-Map geometry uses spherical distances and bearings with longitude wrapping. The rig outline has 64 vertices. The combined edge dot sits half a numbered-point interval after point 1, between badges. Dragging changes the semi-major axis and rotation together, compensating for the handle’s angular offset and oval ratio so it stays under the pointer. The center and oval ratio remain fixed. The oval handle sits halfway along the minor axis and changes the ratio without changing the major radius. These are planning graphics, not survey geometry.
+Map geometry uses spherical distances and bearings with longitude wrapping. The rig outline has 64 vertices. The scale/rotate handle sits on the rotated major axis at 1.16 times the major radius; the oval handle sits on the rotated minor axis at the minor radius plus 0.16 times the major radius. Their positions are independent of arrow count. Dragging compensates for this clearance so the handles remain under the pointer. Scaling and rotating preserve the center and oval ratio; reshaping preserves the major radius. These are planning graphics, not survey geometry.
 
-`arrowCount` is an integer from 1–50, defaulting to 10 for new rigs and imported rigs missing the field. Numbered arrows follow clockwise parametric intervals around the circle/oval edge, starting at the rotated major-axis endpoint, and aim toward the center. Arrow symbols are offset 36 screen pixels toward the center; numbered badges are centered on the outline. Arrows have white fills and crisp 2-pixel colored strokes without shadows. They follow rig movement, rotation, and reshaping in both maps. This is an additive schema v1 extension; DB1/DB2 transport versions are unchanged. Older app builds ignore the field and lose it on re-export.
+`arrowCount` is an integer from 1–50. New rigs start with 8; imported rigs missing the field retain the legacy default of 10. Explicit saved counts are unchanged. Numbered arrows follow clockwise parametric intervals around the circle/oval edge, starting at the rotated major-axis endpoint, and aim toward the center. Arrow symbols are offset 36 screen pixels toward the center; numbered badges are centered on the outline. Arrows have white fills and crisp 2-pixel colored strokes without shadows. They follow rig movement, rotation, and reshaping in both maps. This is an additive schema v1 extension; DB1/DB2 transport versions are unchanged. Older app builds ignore the field and lose it on re-export.
 
 ## Drone scan
 
@@ -88,7 +88,7 @@ Right-dragging an existing icon previews focus in both maps, with one CSS pixel 
 
 ### 360 height override
 
-A 360 angle may store optional `heightsMeters`, the same meter list as `typeSettings['360'].heightsMeters` (up to 50 finite values from 0 to 10,000). The editor shows that list in a text field beside the point number. A non-empty list is the override and is used for image counts, project size and the public briefing. Clearing the field omits `heightsMeters`, and the point uses the shared 360 list. An imported empty array remains an override with no heights. Drone points and the circle rig still use the shared drone heights. Duplication copies the override. This is an additive schema v1 field; DB1/DB2 transport versions are unchanged. Older snapshots need no migration. Older builds ignore the field and lose it on re-export. Invalid lists are rejected at import and at the session update boundary.
+A 360 angle may store optional `heightsMeters`, the same meter list as `typeSettings['360'].heightsMeters` (up to 50 finite values from 0 to 10,000). The editor shows that list in a text field beside the point number. A non-empty list is the override and is used for image counts, project size and the public briefing. Clearing the field omits `heightsMeters`, and the point uses the shared 360 list. An imported empty array remains an override with no heights. Drone points use shared drone heights; rigs use their own heights when present. Duplication copies the override. This is an additive schema v1 field; DB1/DB2 transport versions are unchanged. Older snapshots need no migration. Older builds ignore the field and lose it on re-export. Invalid lists are rejected at import and at the session update boundary.
 
 ## Polygons and image overlays
 
@@ -125,3 +125,15 @@ Authenticated project links are live membership-gated resources; public links ar
 Imports and saved drafts pass through the same Zod schema. Invalid values, unsupported versions, oversized keys, and malformed encoding are rejected. Unrecognized object fields are stripped by Zod. Add explicit version migrations before introducing incompatible semantics.
 
 Transport versions are independent of the JSON schema: DB1 is base64url UTF-8 JSON; DB2 is base64url raw-DEFLATE UTF-8 JSON. New exports use DB2; imports accept both and retain the 2 MB uncompressed limit. Coordinates and other values are preserved without rounding. QR codes encode the same complete DB2 key and are omitted when it exceeds 2,200 characters.
+
+### Floorplan mask
+
+Optional `imageOverlays[].mask` is a closed polygon of 3–1000 `{x, y}` vertices in normalized image coordinates, each finite and in [0, 1], with (0, 0) at the top left. The inside remains visible; omission means no clipping. Straight segments join vertices and close implicitly. Self-intersections use the browser nonzero fill rule. The source image is unchanged; replacing it retains the normalized mask. Drawing previews and selections are ephemeral; completed edits use the session reducer and normal saving. Read-only views render the mask without edit tools.
+
+**Version decision:** additive schema v1 field; DB1/DB2 prefixes are unchanged. Existing snapshots require no migration. Older builds ignore and lose masks on re-export; update the shared backend schema before using masks in cloud projects.
+
+### Circle rig heights
+
+Optional `circleRig.heightsMeters` holds up to 50 finite heights from 0 to 10,000 meters. New rigs copy the current drone heights and then have independent heights. Counts use arrows x rig heights x shoot times; public instructions and PDF export use the same list. An explicit empty array counts zero images. Missing heights preserve legacy shared-drone-height behavior until edited.
+
+**Version decision:** additive schema v1 field; DB1/DB2 prefixes unchanged, no migration. Older builds ignore and lose this field on re-export. Deploy the updated shared backend schema before releasing the frontend to preserve heights in cloud saves/public links.

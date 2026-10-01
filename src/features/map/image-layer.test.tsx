@@ -15,6 +15,22 @@ const state: ImageLayerState = {
   onSelect: vi.fn(), onAnchor: vi.fn(), onCommit: vi.fn(),
 }
 
+it('clips image-space masks in the shared renderer and removes clipping when cleared', () => {
+  const surface = document.createElement('div')
+  surface.innerHTML = '<div data-map></div><div data-image-host></div>'
+  document.body.append(surface)
+  const map = { getContainer: () => surface.firstElementChild, project: ([lng, lat]: number[]) => ({ x: lng, y: lat }), on: () => {}, off: vi.fn() }
+  const masked = { ...state, images: [{ ...state.images[0], mask: [{ x: 0.1, y: 0.2 }, { x: 0.8, y: 0.2 }, { x: 0.8, y: 0.9 }] }] }
+  const view = render(<ShadeProjection value={map as unknown as LibreMap}><ImageLayer {...masked} /></ShadeProjection>)
+  const image = surface.querySelector('image')!
+  const clip = surface.querySelector('clipPath')!
+  expect(clip.getAttribute('clipPathUnits')).toBe('objectBoundingBox')
+  expect(clip.firstElementChild!.getAttribute('points')).toBe('0.1,0.2 0.8,0.2 0.8,0.9')
+  expect(image.getAttribute('clip-path')).toBe(`url(#${clip.id})`)
+  view.rerender(<ShadeProjection value={map as unknown as LibreMap}><ImageLayer {...state} /></ShadeProjection>)
+  expect(image.hasAttribute('clip-path')).toBe(false)
+})
+
 it('keeps Google imagery in pane coordinates throughout fractional zoom', () => {
   const surface = document.createElement('div')
   document.body.append(surface)

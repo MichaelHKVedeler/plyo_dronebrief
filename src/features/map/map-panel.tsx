@@ -89,7 +89,7 @@ function ConnectedMap({ imageLayer, selectedCameraIds, onSelectCamera, session, 
   return <>
     <Map defaultCenter={view.current.center} defaultZoom={view.current.zoom} colorScheme={dark ? 'DARK' : 'LIGHT'} reuseMaps
       mapId={import.meta.env.VITE_GOOGLE_MAPS_MAP_ID || 'DEMO_MAP_ID'} disableDefaultUI
-      tilt={0} heading={0} gestureHandling={middlePanning || (editing && tool.kind === 'camera') ? 'none' : 'greedy'} isFractionalZoomEnabled
+      tilt={0} heading={0} gestureHandling={middlePanning ? 'none' : 'greedy'} isFractionalZoomEnabled
       draggableCursor={middlePanning ? 'move' : editing && !interactive ? 'crosshair' : 'default'} draggingCursor="move"
       onCameraChanged={(event) => {
         if (!active) return
@@ -128,7 +128,7 @@ function ConnectedMap({ imageLayer, selectedCameraIds, onSelectCamera, session, 
       {capture.angles && pointCallout && <PointHeightsAnchor angle={captureAngles.find((angle) => angle.id === selectedId)} scale={objectScale}>{pointCallout}</PointHeightsAnchor>}
       </>
       }}</GoogleOverlayFrame>}
-      {active && <MiddleMousePan onActiveChange={setMiddlePanning} />}
+      {active && <MiddleMousePan allowShiftPan={editing && tool.kind === 'camera'} onActiveChange={setMiddlePanning} />}
       {active && editing && <CameraPlacementGesture tool={tool} onToolChange={onToolChange} onPlace={onCameraPlace} />}
       {active && <ImageLayer {...imageLayer} interactive={imageLayer.interactive && !middlePanning} />}
       <GoogleMapView active={active} satellite={satellite} view={view} />

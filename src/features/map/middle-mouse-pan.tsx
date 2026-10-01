@@ -1,12 +1,12 @@
 import { useEffect } from 'react'
 import { useMap } from '@vis.gl/react-google-maps'
 
-export function MiddleMousePan({ onActiveChange }: { onActiveChange: (active: boolean) => void }) {
+export function MiddleMousePan({ onActiveChange, allowShiftPan = false }: { allowShiftPan?: boolean; onActiveChange: (active: boolean) => void }) {
   const map = useMap()
   useEffect(() => {
     if (!map) return
     const surface = map.getDiv()
-    let last: { x: number; y: number; center: google.maps.Point; scale: number; projection: google.maps.Projection } | null = null
+    let last: { button: number; x: number; y: number; center: google.maps.Point; scale: number; projection: google.maps.Projection } | null = null
     const stop = (event: Event) => { event.preventDefault(); event.stopImmediatePropagation() }
     const inside = (event: Event) => event.composedPath().includes(surface)
     const reset = () => {
@@ -15,20 +15,20 @@ export function MiddleMousePan({ onActiveChange }: { onActiveChange: (active: bo
       last = null
     }
     const down = (event: PointerEvent) => {
-      if (event.button !== 1 || !inside(event)) return
+      if (!(event.button === 1 || (allowShiftPan && event.button === 0 && event.shiftKey)) || !inside(event)) return
       stop(event)
       const projection = map.getProjection()
       const center = map.getCenter()
       const zoom = map.getZoom()
       const point = center && projection?.fromLatLngToPoint(center)
       if (!projection || !point || zoom === undefined) return
-      last = { x: event.clientX, y: event.clientY, center: point, scale: 2 ** zoom, projection }
+      last = { button: event.button, x: event.clientX, y: event.clientY, center: point, scale: 2 ** zoom, projection }
       onActiveChange(true)
       surface.setAttribute('data-map-panning', '')
     }
     const move = (event: PointerEvent) => {
       if (!last) return
-      if (!(event.buttons & 4)) { reset(); return }
+      if (!(event.buttons & (last.button === 1 ? 4 : 1))) { reset(); return }
       stop(event)
       // Anchor to the initial center so rapid events never lose distance to
       // panBy's animation. World coordinates scale to CSS pixels at this zoom.
@@ -39,7 +39,7 @@ export function MiddleMousePan({ onActiveChange }: { onActiveChange: (active: bo
       if (center) map.moveCamera({ center })
     }
     const up = (event: PointerEvent) => {
-      if (!last || event.button !== 1) return
+      if (!last || event.button !== last.button) return
       stop(event)
       reset()
     }
@@ -68,6 +68,6 @@ export function MiddleMousePan({ onActiveChange }: { onActiveChange: (active: bo
       window.removeEventListener('wheel', wheel, true)
       mouseEvents.forEach((name) => window.removeEventListener(name, mouse, true))
     }
-  }, [map, onActiveChange])
+  }, [map, onActiveChange, allowShiftPan])
   return null
 }

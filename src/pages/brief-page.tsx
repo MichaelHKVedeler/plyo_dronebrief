@@ -31,7 +31,7 @@ export function BriefPage({ session, dispatch, error, pdfMapRef, imageTransport,
   function addRig() {
     if (session.mode !== 'edit') return
     const placement = rigPlacement.current?.() ?? { position: { ...viewCenter.current }, radiusMeters: 50 }
-    const rig = { id: crypto.randomUUID(), ...placement, arrowCount: defaultRigArrowCount, ovalRatio: 1, rotationDegrees: 0 }
+    const rig = { id: crypto.randomUUID(), ...placement, heightsMeters: [...session.brief.typeSettings['drone-image'].heightsMeters], arrowCount: defaultRigArrowCount, ovalRatio: 1, rotationDegrees: 0 }
     pendingRig.current = rig.id
     dispatch({ type: 'update', update: (brief) => brief.circleRig ? brief : { ...brief, circleRig: rig } })
     setTool(idleTool)
@@ -125,10 +125,11 @@ export function BriefPage({ session, dispatch, error, pdfMapRef, imageTransport,
             <TabsList className="mx-4 my-4 w-auto shrink-0"><TabsTrigger value="project">Project</TabsTrigger><TabsTrigger value="contents">Contents</TabsTrigger></TabsList>
             <ScrollArea type="always" className="min-h-0 flex-1 [&_[data-slot=scroll-area-viewport]]:overscroll-contain [&_[data-slot=scroll-area-viewport]>div]:block! [&_[data-slot=scroll-area-viewport]>div]:w-full! [&_[data-slot=scroll-area-viewport]>div]:min-w-0!">
               <div className="px-4 pb-4">
-                <TabsContent value="project"><ProjectPanel onCenterCamera={(angle) => setFocusPosition({ ...angle.position })} onAddRig={addRig} onAddScan={addScan} selectedCameraIds={selectedCameraIds} onSelectCamera={selectCamera} onRemoveCameras={removeCameras} session={session} selectedId={selectedId} onSelect={select} onAddCamera={addCamera} onUpdate={(update) => dispatch({ type: 'update', update })} /></TabsContent>
+                <TabsContent value="project"><ProjectPanel placingType={tool.kind === 'camera' ? tool.cameraType : null} onCenterCamera={(angle) => setFocusPosition({ ...angle.position })} onAddRig={addRig} onAddScan={addScan} selectedCameraIds={selectedCameraIds} onSelectCamera={selectCamera} onRemoveCameras={removeCameras} session={session} selectedId={selectedId} onSelect={select} onAddCamera={addCamera} onUpdate={(update) => dispatch({ type: 'update', update })} onVisibilityChange={(layer, visible) => dispatch({ type: 'visibility', layer, visible })} /></TabsContent>
                 <TabsContent value="contents"><LayersPanel lockedIds={lockedImageIds} onToggleLock={(id) => setLockedImageIds((current) => { const next = new Set(current); if (next.has(id)) next.delete(id); else next.add(id); return next })} session={session} images={images} referenceImages={referenceImages} selectedId={selectedId} onSelect={(id) => { select(id); setTool(idleTool) }}
                   placement={() => rigPlacement.current?.() ?? { position: viewCenter.current, radiusMeters: 50 }}
                   onUpdate={(update) => dispatch({ type: 'update', update })}
+                  onVisibilityChange={(layer, visible) => dispatch({ type: 'visibility', layer, visible })}
                   onShow={() => dispatch({ type: 'visibility', layer: 'imageOverlays', visible: true })} /></TabsContent>
               </div>
             </ScrollArea>
