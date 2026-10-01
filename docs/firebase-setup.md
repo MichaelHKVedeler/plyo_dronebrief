@@ -72,6 +72,12 @@ Run `npm run check`, then `npx firebase deploy --project plyo-dronebrief --only 
 
 ## Administration and persistence
 
+### Floorplan mask persistence — 2026-09-29
+
+Deployed the shared `imageOverlays[].mask` schema to `api` and `publicView` in `plyo-dronebrief`. Their previous deployments predated the mask field; older body validation stripped it on save/load. Both function updates completed successfully. Deployment discovery required `FUNCTIONS_DISCOVERY_TIMEOUT=60` after the default ten-second timeout.
+
+All 470 tests and frontend/backend builds passed, including a new cloud-body round-trip regression for creating, editing and removing masks. Firebase rules tests remain blocked by missing Java. A signed-in browser save/reload was not verified because the available browser session was signed out. Masks stripped by an earlier save must be redrawn or restored from an intact snapshot.
+
 Bootstrap creates Plyo and pending admin grants for `kristian.nordahl@plyo.com` and `michael.vedeler@plyo.com`. Each activates only after a matching verified Google sign-in. Its persistent marker prevents reruns from restoring removed admins.
 
 Admins add emails through **Manage organization**. Sign-in or **Refresh access** activates a matching grant. No invitation is sent. Admins may manage roles/remove members but cannot remove the last active admin; pending grants do not satisfy that invariant. Existing admins can create other organizations. Removing membership revokes both its UID membership and email grant, while organization projects remain.

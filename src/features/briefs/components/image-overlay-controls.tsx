@@ -6,6 +6,8 @@ import { Label } from '@/components/ui/label'
 import { Slider } from '@/components/ui/slider'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { FloorplanMaskViewer } from './floorplan-mask-viewer'
+import { maskClipPath } from '../model/image-mask'
 import type { DroneBrief, ImageOverlay, Position } from '../model/brief'
 import type { LocalImages } from '../state/use-local-images'
 import { imagePicker, type LocalImageHandle } from '../storage/local-images'
@@ -22,7 +24,9 @@ export function ImageOverlayControls({ overlays, editable, images, onUpdate, pla
   const reconnect = useRef<ImageOverlay | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
-  const [preview, setPreview] = useState<{ url: string; name: string } | null>(null)
+  const [preview, setPreview] = useState<string | null>(null)
+  const previewOverlay = overlays.find((overlay) => overlay.id === preview)
+  const previewUrl = previewOverlay ? images.sourceUrl(previewOverlay) : undefined
   async function accept(file: File, handle?: LocalImageHandle) {
     setBusy(true); setError('')
     try {
@@ -76,8 +80,8 @@ export function ImageOverlayControls({ overlays, editable, images, onUpdate, pla
       return <div key={overlay.id} className="grid min-w-0 gap-2 rounded-md border p-3">
         <div className="relative overflow-hidden rounded-md border bg-white">
           <Button variant="ghost" className="h-auto min-h-40 w-full rounded-none p-0 hover:bg-transparent" aria-label="View floorplan" disabled={!url}
-            onClick={() => { onSelect(overlay.id); onShow(); if (url) setPreview({ url, name: overlay.name }) }}>
-            {url ? <img src={url} alt="" className="aspect-[4/3] w-full object-contain" /> : <span className="p-8 text-sm text-muted-foreground">Floorplan unavailable</span>}
+            onClick={() => { onSelect(overlay.id); onShow(); if (url) setPreview(overlay.id) }}>
+            {url ? <img src={url} alt="" className="w-full" style={{ clipPath: maskClipPath(overlay.mask) }} /> : <span className="p-8 text-sm text-muted-foreground">Floorplan unavailable</span>}
           </Button>
           {editable && <>
             <Button size="icon-sm" variant="outline" className="absolute top-2 right-2 border-zinc-700 bg-zinc-900 text-white shadow-sm hover:bg-zinc-800 hover:text-white dark:border-zinc-700 dark:bg-zinc-900 dark:hover:bg-zinc-800" disabled={busy} aria-label={`Remove ${overlay.name}`} title="Remove floorplan"
@@ -108,6 +112,11 @@ export function ImageOverlayControls({ overlays, editable, images, onUpdate, pla
           onValueCommit={([value]) => { onUpdate((brief) => ({ ...brief, imageOverlays: brief.imageOverlays.map((image) => image.id === overlay.id ? { ...image, opacity: value / 100 } : image) })); images.previewOpacity(overlay.id) }} />
       </div>
     })}
-    <Dialog open={Boolean(preview)} onOpenChange={(open) => { if (!open) setPreview(null) }}><DialogContent aria-describedby={undefined} className="sm:max-w-4xl"><DialogHeader><DialogTitle>{preview?.name}</DialogTitle></DialogHeader>{preview && <img src={preview.url} alt={preview.name} className="max-h-[70dvh] w-full rounded-md bg-white object-contain" />}</DialogContent></Dialog>
+    <Dialog open={Boolean(previewOverlay)} onOpenChange={(open) => { if (!open) setPreview(null) }}><DialogContent onEscapeKeyDown={(event) => { if (document.querySelector('[data-mask-busy="true"]')) event.preventDefault() }} aria-describedby={undefined} className="max-h-[95dvh] overflow-y-auto sm:max-w-4xl"><DialogHeader><DialogTitle>{previewOverlay?.name}</DialogTitle></DialogHeader>
+      {previewOverlay && previewUrl && <FloorplanMaskViewer key={previewOverlay.id} overlay={previewOverlay} url={previewUrl} editable={editable} onChange={(mask) => {
+        const id = previewOverlay.id
+        onUpdate((brief) => ({ ...brief, imageOverlays: brief.imageOverlays.map((image) => image.id === id ? { ...image, mask } : image) }))
+      }} />}
+    </DialogContent></Dialog>
   </div>
 }

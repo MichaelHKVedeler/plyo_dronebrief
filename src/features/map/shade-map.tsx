@@ -180,7 +180,7 @@ export function ShadeMapPanel({ imageLayer, dimOpacity, objectSizePercent, dispa
       canvas.style.cursor = ''
     }
   }, [map, session.mode, tool.kind])
-  useEffect(() => { if (map && host.current?.parentElement) return attachShadeMapPan(map, host.current.parentElement) }, [map])
+  useEffect(() => { if (map && host.current?.parentElement) return attachShadeMapPan(map, host.current.parentElement, () => latest.current.session.mode === 'edit' && latest.current.tool.kind === 'camera') }, [map])
   const cameraType = session.mode === 'edit' && tool.kind === 'camera' ? tool.cameraType : null
   useEffect(() => {
     if (!map || !cameraType || !host.current?.parentElement) return

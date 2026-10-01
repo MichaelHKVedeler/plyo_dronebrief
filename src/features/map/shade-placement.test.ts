@@ -21,7 +21,7 @@ function setup(type: CameraAngle['type'] = 'dslr') {
     tool = result.tool
     if (result.angle) angles.push(result.angle)
   })
-  cleanups.push(attachShadeMapPan(map as unknown as Map, surface))
+  cleanups.push(attachShadeMapPan(map as unknown as Map, surface, () => tool.kind === 'camera'))
   cleanups.push(attachShadePlacement(map as unknown as Map, surface, () => ({ tool, onToolChange: change, onPlace: place })))
   const send = (type: string, x = 10, y = 60, button = 0, target: EventTarget = canvas) => {
     const event = new MouseEvent(type, { bubbles: true, cancelable: true, button, buttons: button === 1 ? 4 : 1, clientX: x, clientY: y })
@@ -40,9 +40,9 @@ it.each(['dslr', 'drone-image'] as const)('places and aims repeated %s cameras o
   send('pointerdown', 12); send('pointerup', 13)
   expect(angles).toHaveLength(2)
   expect(map.panTo).not.toHaveBeenCalled()
-  expect(map.dragPan.disable).toHaveBeenCalledOnce()
+  expect(map.dragPan.disable).not.toHaveBeenCalled()
   cleanups.pop()!()
-  expect(map.dragPan.enable).toHaveBeenCalledOnce()
+  expect(map.dragPan.enable).not.toHaveBeenCalled()
 })
 it.each(['360', 'extra-coverage'] as const)('places a %s point with a single click and no direction', (type) => {
   const { send, angles } = setup(type)
@@ -71,4 +71,19 @@ it('leaves toolbar controls and middle-button navigation available during placem
   expect(map.panTo).toHaveBeenCalledWith({ lat: 60, lng: 10 }, expect.objectContaining({ offset: [10, 10], duration: 0 }))
   expect(place).not.toHaveBeenCalled()
   expect(angles).toEqual([])
+})
+
+it('pans with Shift-drag and leaves wheel zoom available without placing', () => {
+  const { canvas, place, map, getTool } = setup()
+  const down = new MouseEvent('pointerdown', { bubbles: true, cancelable: true, button: 0, buttons: 1, shiftKey: true })
+  canvas.dispatchEvent(down)
+  canvas.dispatchEvent(new MouseEvent('pointermove', { bubbles: true, buttons: 1, clientX: 40 }))
+  canvas.dispatchEvent(new MouseEvent('pointerup', { bubbles: true, button: 0 }))
+  const wheel = new WheelEvent('wheel', { bubbles: true, cancelable: true, deltaY: 100 })
+  canvas.dispatchEvent(wheel)
+  expect(down.defaultPrevented).toBe(true)
+  expect(map.panTo).toHaveBeenCalled()
+  expect(wheel.defaultPrevented).toBe(false)
+  expect(place).not.toHaveBeenCalled()
+  expect(getTool()).toEqual(startCameraPlacement('dslr'))
 })

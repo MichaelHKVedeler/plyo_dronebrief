@@ -30,6 +30,6 @@ export function placeCamera(tool: MapTool, point: Position, id: string, labelNum
 export function placementHint(tool: MapTool): string | null {
   if (tool.kind === 'camera') return tool.position
     ? 'Drag to aim, then release to place. Right-click or Esc stops placement.'
-    : (tool.cameraType === '360' ? 'Click to place a 360 point. ' : tool.cameraType === 'extra-coverage' ? 'Click to place an Extra coverage point. ' : 'Press and drag to place and aim a camera. ') + 'Keep placing points; right-click or Esc stops.'
+    : (tool.cameraType === '360' ? 'Click to place a 360 point. ' : tool.cameraType === 'extra-coverage' ? 'Click to place an Extra coverage point. ' : 'Press and drag to place and aim a camera. ') + 'Scroll to zoom; Shift-drag or middle-drag to pan. Right-click or Esc stops.'
   return null
 }

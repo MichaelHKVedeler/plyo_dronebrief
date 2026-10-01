@@ -1,3 +1,4 @@
+import { effectiveRigHeights } from '../model/brief'
 import { PDFDocument, rgb, type PDFPage, type PDFFont } from 'pdf-lib'
 import fontkit from '@pdf-lib/fontkit'
 import { effectivePanoramaHeights, formatShootTime, shootSlots } from '../model/brief'
@@ -80,7 +81,7 @@ export async function createBriefPdf(input: PdfExportInput, assets: PdfAssets): 
   const panoramaHeights = panoramaLists.every((list) => heights(list) === heights(panoramaLists[0] ?? [])) ? heights(panoramaLists[0] ?? []) : c.perPoint
   const pointsLabel = (count: number) => `${count} ${count === 1 ? c.point.toLowerCase() : c.points}`
   const captureRows = [
-    ...(brief.circleRig ? [{ name: c.rig, count: counts.circleRig, detail: `${brief.circleRig.arrowCount} ${c.arrows} · ${c.heights}: ${heights(brief.typeSettings['drone-image'].heightsMeters)}`, rule: c.rigRule }] : []),
+    ...(brief.circleRig ? [{ name: c.rig, count: counts.circleRig, detail: `${brief.circleRig.arrowCount} ${c.arrows} · ${c.heights}: ${heights(effectiveRigHeights(brief))}`, rule: c.rigRule }] : []),
     ...(byType.drone ? [{ name: c.drone, count: counts.droneImage, detail: `${pointsLabel(byType.drone)} · ${c.heights}: ${heights(brief.typeSettings['drone-image'].heightsMeters)}`, rule: c.droneRule }] : []),
     ...(byType.panorama.length ? [{ name: c.panorama, count: counts.panorama, detail: `${pointsLabel(byType.panorama.length)} · ${c.heights}: ${panoramaHeights}`, rule: `${c.individual}. ${c.panoramaRule}.` }] : []),
     ...(byType.dslr ? [{ name: c.dslr, count: counts.dslr, detail: `${pointsLabel(byType.dslr)} · ${brief.typeSettings.dslr.angleCount} ${c.arrows} · ${brief.typeSettings.dslr.spacingDegrees}°`, rule: `${c.ground}. ${c.dslrRule}.` }] : []),

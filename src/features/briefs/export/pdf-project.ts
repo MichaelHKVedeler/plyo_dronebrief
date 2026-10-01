@@ -1,4 +1,4 @@
-import { effectivePanoramaHeights, type DroneBrief } from '../model/brief'
+import { effectiveRigHeights, effectivePanoramaHeights, type DroneBrief } from '../model/brief'
 import { numberedCameras } from '../model/camera-numbers'
 import { rigArrows } from '@/features/map/geometry'
 
@@ -13,7 +13,7 @@ export function pdfProjectSize(brief: DroneBrief): PdfProjectSize {
   const aerial = (brief.circleRig?.arrowCount ?? 0) + brief.angles.filter((a) => a.type === 'drone-image').length
   const panorama = brief.angles.filter((a) => a.type === '360').length
   const dslr = brief.angles.filter((a) => a.type === 'dslr').length
-  const aerialHeights = aerial ? brief.typeSettings['drone-image'].heightsMeters.length : 0
+  const aerialHeights = Math.max(effectiveRigHeights(brief).length, brief.angles.some((a) => a.type === 'drone-image') ? brief.typeSettings['drone-image'].heightsMeters.length : 0)
   const panoramaPoints = brief.angles.filter((angle) => angle.type === '360')
   const panoramaHeights = panoramaPoints.length
     ? Math.max(...panoramaPoints.map((angle) => effectivePanoramaHeights(brief.typeSettings['360'].heightsMeters, angle).length))

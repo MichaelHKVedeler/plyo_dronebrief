@@ -10,7 +10,7 @@ export function attachPlacementGesture(surface: HTMLElement, point: (event: Poin
   function down(event: PointerEvent) {
     if (!inside(event)) return
     if (event.button === 2) { stop(event); cancel(); return }
-    if (event.button !== 0 || event.buttons & 4) return
+    if (event.button !== 0 || event.buttons & 4 || event.shiftKey) return
     if (event.target instanceof Element && event.target.closest('button, input, textarea, [role="switch"], [role="slider"], a')) return
     const position = point(event)
     const tool = getLatest().tool

@@ -28,3 +28,23 @@ it('preserves both drone scan circles across cloud body save and reload', () => 
   restored.brief.droneScan = null
   expect(decodeBody(encodeBody(restored)).brief.droneScan).toBeNull()
 })
+
+it('preserves floorplan masks through cloud validation, saving, editing and reloading', () => {
+  const brief = createBrief({ name: 'Mask persistence', clientName: 'Test' })
+  brief.imageOverlays = [{ id: 'plan', name: 'Plan', source: 'data:image/png;base64,AAAA', position: brief.coordinates,
+    widthMeters: 10, heightMeters: 10, rotationDegrees: 0, opacity: 1,
+    mask: [{ x: .1, y: .1 }, { x: .9, y: .1 }, { x: .5, y: .9 }],
+  }]
+  const restored = decodeBody(encodeBody({ brief, assets: {} }))
+  expect(restored.brief.imageOverlays[0].mask).toEqual(brief.imageOverlays[0].mask)
+  restored.brief.imageOverlays[0].mask![1] = { x: .8, y: .2 }
+  expect(decodeBody(encodeBody(restored)).brief.imageOverlays[0].mask![1]).toEqual({ x: .8, y: .2 })
+  delete restored.brief.imageOverlays[0].mask
+  expect(decodeBody(encodeBody(restored)).brief.imageOverlays[0].mask).toBeUndefined()
+})
+
+it('preserves independent circle rig heights through cloud body validation', () => {
+  const brief = createBrief({ name: 'Rig heights', clientName: 'Test' })
+  brief.circleRig = { id: 'rig', position: brief.coordinates, radiusMeters: 50, ovalRatio: 1, rotationDegrees: 0, arrowCount: 10, heightsMeters: [15, 30, 45] }
+  expect(decodeBody(encodeBody({ brief, assets: {} })).brief.circleRig?.heightsMeters).toEqual([15, 30, 45])
+})

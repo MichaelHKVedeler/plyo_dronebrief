@@ -48,8 +48,13 @@ const imageSourceSchema = z.union([
   z.string().max(1_500_000).regex(/^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/]+=*$/),
   z.object({ kind: z.literal('local-file'), fileId: z.uuid(), fileName: z.string().min(1).max(255) }),
 ])
-export const defaultRigArrowCount = 10
+export const defaultRigArrowCount = 8
 export const maxRigArrows = 50
+export const imageMaskSchema = z.array(z.object({
+  x: z.number().finite().min(0).max(1),
+  y: z.number().finite().min(0).max(1),
+})).min(3).max(1000)
+export type ImageMask = z.infer<typeof imageMaskSchema>
 const scanCircleSchema = z.object({
   id, position: positionSchema,
   radiusMeters: z.number().finite().positive().max(10000),
@@ -74,7 +79,9 @@ export const briefSchema = z.object({
   coordinates: positionSchema,
   circleRig: z.object({
     id, position: positionSchema,
-    arrowCount: z.number().int().min(1).max(maxRigArrows).default(defaultRigArrowCount),
+    heightsMeters: heights.shape.heightsMeters.optional(),
+    // Snapshots written before arrowCount existed used ten arrows.
+    arrowCount: z.number().int().min(1).max(maxRigArrows).default(10),
     radiusMeters: z.number().finite().positive().max(10000),
     ovalRatio: z.number().finite().min(0.1).max(1),
     rotationDegrees: heading,
@@ -93,6 +100,8 @@ export const briefSchema = z.object({
     heightMeters: z.number().finite().positive().max(10000),
     rotationDegrees: heading,
     opacity: z.number().finite().min(0).max(1),
+    // Additive v1: normalized image-space polygon; omission shows the whole image.
+    mask: imageMaskSchema.optional(),
   })).max(10),
   // Additive v1: optional reference photos for PDF and public briefing. Older snapshots omit them.
   references: z.array(z.object({
@@ -209,4 +218,9 @@ export function localFileSources(brief: Pick<DroneBrief, 'imageOverlays' | 'refe
 
 export function hasLocalFiles(brief: Pick<DroneBrief, 'imageOverlays' | 'references'>) {
   return localFileSources(brief).length > 0
+}
+
+/** Older rigs retain their shared drone heights until explicitly edited. */
+export function effectiveRigHeights(brief: DroneBrief): number[] {
+  return brief.circleRig ? brief.circleRig.heightsMeters ?? brief.typeSettings['drone-image'].heightsMeters : []
 }

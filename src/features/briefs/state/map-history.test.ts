@@ -85,15 +85,89 @@ describe('map transform history', () => {
     expect(undo(session).brief.circleRig?.radiusMeters).toBe(50)
   })
 
-  it('never resurrects removed objects and retains independent movement history', () => {
+  it('undoes and redoes camera additions and deletions with their data and order intact', () => {
     let session = openSession(scene(), 'edit')
-    session = edit(session, (b) => ({ ...b, circleRig: { ...b.circleRig!, radiusMeters: 80 } }))
+    const added = { id: 'added', label: 'Added 360', type: '360' as const, position: { lat: 58, lng: 12 }, heightsMeters: [3, 6], focus: { directionDegrees: 45, fovDegrees: 70 } }
+    session = edit(session, (b) => ({ ...b, angles: [...b.angles.slice(0, 2), added, ...b.angles.slice(2)] }))
+    expect(session.brief.angles[2]).toEqual(added)
+    session = undo(session)
+    expect(session.brief.angles.map((angle) => angle.id)).toEqual(['drone', 'dslr', '360', 'extra'])
+    session = redo(session)
+    expect(session.brief.angles[2]).toEqual(added)
+
+    session = edit(session, (b) => ({ ...b, angles: b.angles.filter((angle) => !['dslr', '360'].includes(angle.id)) }))
+    expect(session.brief.angles.map((angle) => angle.id)).toEqual(['drone', 'added', 'extra'])
+    session = undo(session)
+    expect(session.brief.angles.map((angle) => angle.id)).toEqual(['drone', 'dslr', 'added', '360', 'extra'])
+    expect(session.brief.angles[3]).toMatchObject({ id: '360', label: '360', type: '360' })
+    session = redo(session)
+    expect(session.brief.angles.map((angle) => angle.id)).toEqual(['drone', 'added', 'extra'])
+  })
+
+  it('retains earlier point transforms after undoing a deletion', () => {
+    let session = openSession(scene(), 'edit')
     session = edit(session, (b) => ({ ...b, angles: b.angles.map((a) => ({ ...a, position: { lat: 58, lng: 11 } })) }))
     session = edit(session, (b) => ({ ...b, angles: b.angles.filter((a) => a.id !== 'drone') }))
     session = undo(session)
-    expect(session.brief.circleRig?.radiusMeters).toBe(50)
-    expect(session.brief.angles).toHaveLength(3)
-    expect(session.brief.angles[0].position.lat).toBe(58)
+    expect(session.brief.angles).toHaveLength(4)
+    expect(session.brief.angles[0]).toMatchObject({ id: 'drone', position: { lat: 58, lng: 11 } })
+    session = undo(session)
+    expect(session.brief.angles.every((angle) => angle.position.lat === scene().coordinates.lat)).toBe(true)
+  })
+
+  it('undoes and redoes adding and removing the circle rig with all settings intact', () => {
+    const brief = scene()
+    const rig = { ...brief.circleRig!, heightsMeters: [20, 35], arrowCount: 18, ovalRatio: 0.6, rotationDegrees: 45 }
+    brief.circleRig = null
+    let session = openSession(brief, 'edit')
+    session = edit(session, (b) => ({ ...b, circleRig: rig }))
+    expect(session.brief.circleRig).toEqual(rig)
+    session = undo(session)
+    expect(session.brief.circleRig).toBeNull()
+    session = redo(session)
+    expect(session.brief.circleRig).toEqual(rig)
+
+    const configured = { ...rig, heightsMeters: [25, 50], arrowCount: 22 }
+    session = edit(session, (b) => ({ ...b, circleRig: configured }))
+    session = undo(session)
+    expect(session.brief.circleRig).toBeNull()
+    session = redo(session)
+    expect(session.brief.circleRig).toEqual(configured)
+
+    session = edit(session, (b) => ({ ...b, circleRig: { ...b.circleRig!, radiusMeters: 90 } }))
+    session = edit(session, (b) => ({ ...b, circleRig: null }))
+    session = undo(session)
+    expect(session.brief.circleRig).toEqual({ ...configured, radiusMeters: 90 })
+    session = undo(session)
+    expect(session.brief.circleRig).toEqual(configured)
+    session = redo(session)
+    session = redo(session)
+    expect(session.brief.circleRig).toBeNull()
+  })
+
+  it('undoes and redoes adding and removing each drone scan circle', () => {
+    const brief = scene()
+    const highRes = brief.droneScan!.highRes!
+    const lowRes = brief.droneScan!.lowRes!
+    brief.droneScan = null
+    let session = openSession(brief, 'edit')
+    session = edit(session, (b) => ({ ...b, droneScan: { id: 'scan', highRes, lowRes: null } }))
+    session = edit(session, (b) => ({ ...b, droneScan: { ...b.droneScan!, lowRes } }))
+    expect(session.brief.droneScan).toEqual({ id: 'scan', highRes, lowRes })
+    session = undo(session)
+    expect(session.brief.droneScan).toEqual({ id: 'scan', highRes, lowRes: null })
+    session = undo(session)
+    expect(session.brief.droneScan).toBeNull()
+    session = redo(session)
+    session = redo(session)
+    expect(session.brief.droneScan).toEqual({ id: 'scan', highRes, lowRes })
+
+    session = edit(session, (b) => ({ ...b, droneScan: { ...b.droneScan!, highRes: null } }))
+    expect(session.brief.droneScan).toEqual({ id: 'scan', highRes: null, lowRes })
+    session = undo(session)
+    expect(session.brief.droneScan).toEqual({ id: 'scan', highRes, lowRes })
+    session = redo(session)
+    expect(session.brief.droneScan).toEqual({ id: 'scan', highRes: null, lowRes })
   })
 
   it('bounds memory, resets on opening a brief and omits history from portable snapshots', () => {

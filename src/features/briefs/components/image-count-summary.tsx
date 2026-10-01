@@ -1,4 +1,4 @@
-import { cameraLabels, effectivePanoramaHeights, type DroneBrief } from '../model/brief'
+import { effectiveRigHeights, cameraLabels, effectivePanoramaHeights, type DroneBrief } from '../model/brief'
 import { countBriefImages, imageCaptureConfig } from '../model/image-count'
 import { CaptureKindGlyph } from './capture-kind-glyph'
 
@@ -17,7 +17,7 @@ export function ImageCountSummary({ brief }: { brief: DroneBrief }) {
     {
       key: 'circleRig' as const, label: 'Circle rig',
       rule: `${imageCaptureConfig.circleRigPerArrowAndHeight} per arrow, height, and time`,
-      detail: `${brief.circleRig?.arrowCount ?? 0} arrows · ${droneHeights} heights · ${counts.times} times`,
+      detail: `${brief.circleRig?.arrowCount ?? 0} arrows · ${effectiveRigHeights(brief).length} heights · ${counts.times} times`,
       images: counts.circleRig,
     },
     {

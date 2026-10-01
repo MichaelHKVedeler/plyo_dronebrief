@@ -72,3 +72,18 @@ it('disables object interaction and blocks wheel zoom for the entire middle gest
   surface.dispatchEvent(normalWheel)
   expect(normalWheel.defaultPrevented).toBe(false)
 })
+
+it('supports Shift-left-drag during placement and ends when the left button is released', () => {
+  const surface = document.createElement('div')
+  document.body.append(surface)
+  map.getDiv.mockReturnValue(surface)
+  const active = vi.fn()
+  render(<MiddleMousePan allowShiftPan onActiveChange={active} />)
+  surface.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, cancelable: true, button: 0, buttons: 1, shiftKey: true, clientX: 100, clientY: 100 }))
+  pointer(window, 'pointermove', -1, 1, 125, 90)
+  expect(map.moveCamera).toHaveBeenCalledWith({ center: { x: 121.75, y: 130.5 } })
+  pointer(window, 'pointerup', 0, 0)
+  expect(active).toHaveBeenLastCalledWith(false)
+  pointer(window, 'pointermove', -1, 0, 150, 80)
+  expect(map.moveCamera).toHaveBeenCalledOnce()
+})
