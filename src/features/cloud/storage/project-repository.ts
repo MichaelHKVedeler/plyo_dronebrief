@@ -17,6 +17,8 @@ export const cloudProjects = {
 }
 export async function publicRequest(token: string, assetId?: string, signal?: AbortSignal) {
   const response = await fetch(publicEndpoint(), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token, assetId }), cache: 'no-store', referrerPolicy: 'no-referrer', signal })
+  if (response.status === 429) throw new Error('Too many requests. Please wait before trying again.')
+  if (response.status === 503) throw new Error('Public links are temporarily unavailable. Please try again shortly.')
   if (!response.ok) throw new Error('This project or floorplan is unavailable, or its public link has been revoked.')
   return response
 }

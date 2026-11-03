@@ -7,6 +7,11 @@ import { connectStorageEmulator, getStorage, ref, uploadBytes, getBytes } from '
 import sharp from 'sharp'
 
 const projectId = 'demo-dronebrief'
+// The regression probes seed private quota counters through the Admin SDK.
+// Pin that SDK to the same local demo emulator; never use operator credentials.
+process.env.GCLOUD_PROJECT = projectId
+process.env.FIRESTORE_EMULATOR_HOST = '127.0.0.1:8080'
+process.env.FIREBASE_CONFIG = JSON.stringify({ projectId, storageBucket: `${projectId}.appspot.com` })
 const app = initializeApp({ apiKey: 'demo-key', projectId, storageBucket: `${projectId}.appspot.com` })
 const auth = getAuth(app); connectAuthEmulator(auth, 'http://127.0.0.1:9099', { disableWarnings: true })
 const functions = getFunctions(app, 'europe-west1'); connectFunctionsEmulator(functions, '127.0.0.1', 5001)
@@ -40,5 +45,29 @@ try {
   assert.equal((await publicRead(token, assetId)).status, 200)
   const admin = await api('organization', { orgId: 'plyo', action: 'list' })
   assert.ok(admin.grants.some((grant) => grant.email === 'michael.vedeler@plyo.com' && grant.status === 'pending'))
+  const { db } = await import('../functions/lib/functions/src/context.js')
+  const { Timestamp } = await import('firebase-admin/firestore')
+  const { publicRequestBudgets, publicTransferBudgets, requestBudgetDocumentId, REQUEST_LIMITS } = await import('../functions/lib/functions/src/request-budget.js')
+  const transfer = publicTransferBudgets(token, 1).find((budget) => budget.policy === 'public-bytes-day')
+  const transferRef = db.collection('rateLimits').doc(requestBudgetDocumentId(transfer))
+  const beforeInvalid = (await transferRef.get()).get('count')
+  assert.equal((await publicRead('A'.repeat(43), crypto.randomUUID())).status, 404)
+  assert.equal((await transferRef.get()).get('count'), beforeInvalid, 'Invalid links must not consume transfer bytes')
+
+  let accountLimited = false
+  for (let i = 0; i <= REQUEST_LIMITS.accountUidMinute; i++) {
+    try { await api('account') } catch (error) {
+      assert.equal(error.code, 'functions/resource-exhausted')
+      accountLimited = true
+      break
+    }
+  }
+  assert.ok(accountLimited, 'The callable HTTP handler must enforce its account budget')
+  const daily = publicRequestBudgets('test-network', token).find((budget) => budget.policy === 'public-global-day')
+  const dayStart = Math.floor(Date.now() / daily.windowMs) * daily.windowMs
+  await db.collection('rateLimits').doc(requestBudgetDocumentId(daily)).set({ policy: daily.policy, windowStart: Timestamp.fromMillis(dayStart), count: daily.limit, expiresAt: Timestamp.fromMillis(dayStart + daily.windowMs) })
+  const limited = await publicRead(token)
+  assert.equal(limited.status, 429, 'The public HTTP handler must preserve rate-limit status')
+  assert.ok(Number(limited.headers.get('Retry-After')) >= 1)
   console.log(JSON.stringify({ passed: true, projectId: project.summary.id, publicUrl: `http://127.0.0.1:5173/#/s/${token}`, originalBytes: original.length, optimizedBytes: asset.size, dimensions: [asset.width, asset.height] }))
 } finally { await deleteApp(app) }

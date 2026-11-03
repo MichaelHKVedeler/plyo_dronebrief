@@ -5,11 +5,21 @@ import { cloudId, cloudName, roleSchema, type Actor } from '../../src/features/c
 import { db, emailKey, memberRef, now, requireMember } from './context.js'
 
 type Identity = Actor & { email: string }
+const PROFILE_REFRESH_MS = 15 * 60_000
+
+async function refreshProfile(user: Identity) {
+  await db.runTransaction(async (tx) => {
+    const ref = db.doc(`users/${user.uid}`)
+    const profile = await tx.get(ref)
+    const lastSeen = Date.parse(String(profile.get('lastSeenAt') ?? ''))
+    if (profile.get('name') === user.name && profile.get('email') === user.email
+      && Number.isFinite(lastSeen) && Date.now() - lastSeen < PROFILE_REFRESH_MS) return
+    tx.set(ref, { name: user.name, email: user.email, lastSeenAt: now() }, { merge: true })
+  })
+}
+
 export async function initializeAccount(user: Identity) {
-  const [grants] = await Promise.all([
-    db.collection(`emailGrants/${emailKey(user.email)}/organizations`).where('status', '==', 'pending').get(),
-    db.doc(`users/${user.uid}`).set({ name: user.name, email: user.email, lastSeenAt: now() }, { merge: true }),
-  ])
+  const grants = await db.collection(`emailGrants/${emailKey(user.email)}/organizations`).where('status', '==', 'pending').get()
   for (const candidate of grants.docs) await db.runTransaction(async (tx) => {
     const grant = await tx.get(candidate.ref)
     if (grant.get('status') !== 'pending' || grant.get('email') !== user.email) return
@@ -26,6 +36,8 @@ export async function initializeAccount(user: Identity) {
     tx.set(db.doc(`indexJobs/${randomUUID()}`), { orgId: candidate.id, uid: user.uid, after: null, kind: 'member', createdAt: stamp })
   })
   const organizations = await db.collection(`users/${user.uid}/organizations`).get()
+  // Uninvited Google accounts need an access result, not a persisted profile.
+  if (!organizations.empty) await refreshProfile(user)
   return organizations.docs.map((doc) => doc.data())
 }
 

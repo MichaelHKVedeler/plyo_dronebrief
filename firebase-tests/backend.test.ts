@@ -184,7 +184,9 @@ describe('rules and optimized assets', () => {
     await bucket().file(upload.path).save(Buffer.from('not an image'), { metadata: { contentType: 'image/png' } })
     await expect(finalizeUpload(owner, { projectId: project.summary.id, assetId })).rejects.toMatchObject({ code: 'invalid-argument' })
     const asset = db.doc(`projects/${project.summary.id}/assets/${assetId}`)
-    await asset.update({ createdAt: new Date(Date.now() - 2 * 86400_000).toISOString() })
+    // Failed decoding now releases its lease immediately. Simulate an active
+    // worker explicitly to keep testing the janitor's lease protection.
+    await asset.update({ createdAt: new Date(Date.now() - 2 * 86400_000).toISOString(), processingUntil: new Date(Date.now() + 60_000).toISOString() })
     await cleanExpired()
     expect((await bucket().file(upload.path).exists())[0]).toBe(true)
     await asset.update({ processingUntil: new Date(0).toISOString() })

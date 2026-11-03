@@ -15,4 +15,9 @@ writeFileSync('firestore.indexes.json', JSON.stringify({ indexes, fieldOverrides
   { collectionGroup: 'library', fieldPath: 'prefixes', indexes: [] },
   { collectionGroup: 'assets', fieldPath: 'createdAt', indexes: [{ order: 'ASCENDING', queryScope: 'COLLECTION_GROUP' }] },
   { collectionGroup: 'library', fieldPath: 'id', indexes: [{ order: 'ASCENDING', queryScope: 'COLLECTION_GROUP' }] },
+  { collectionGroup: 'projects', fieldPath: 'pendingUploads', indexes: [] },
+  { collectionGroup: 'rateLimits', fieldPath: '*', indexes: [] },
+  { collectionGroup: 'rateLimits', fieldPath: 'expiresAt', ttl: true, indexes: [] },
+  { collectionGroup: 'uploadBudgets', fieldPath: '*', indexes: [] },
+  { collectionGroup: 'uploadBudgets', fieldPath: 'expiresAt', ttl: true, indexes: [] },
 ] }, null, 2) + '\n')

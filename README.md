@@ -19,6 +19,8 @@ With Firebase configured, Google sign-in opens the project home: create a projec
 
 See [Firebase setup and operations](docs/firebase-setup.md) for emulators, EU provisioning, admin bootstrap, deployment, permissions, uploads and recovery. `npm run check` additionally requires Java 21+ for rules/backend emulator tests. Cloud deployment needs your Firebase project, billing and operator credentials; it is separate from a successful local build.
 
+Cloud operations enforce server-side request budgets. Image uploads require user-bound, expiring reservations and shared user/organization byte quotas; copied images also consume those quotas. Public links have request and validated-transfer budgets. See [request and image budgets](docs/firebase-setup.md#request-and-image-budgets) for defaults, retry behavior and the coordinated deployment order.
+
 The project library loads independently of the editor, export dialogs, and organization management. Opening a project loads the editor and project data together. Overlapping account and library reads share an in-flight request within the same signed-in session; results are not cached after completion, and mutations invalidate pending reads so subsequent refreshes get fresh data.
 
 ```sh

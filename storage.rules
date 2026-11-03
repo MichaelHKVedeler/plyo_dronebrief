@@ -8,9 +8,20 @@ service firebase.storage {
         && firestore.get(/databases/(default)/documents/projects/$(project)).data.orgId == org
         && firestore.get(/databases/(default)/documents/projects/$(project)).data.deletedAt == null;
     }
+    function reservedUpload(project, asset) {
+      // Reuse the project document: Storage rules permit only two Firestore reads.
+      let reservation = firestore.get(/databases/(default)/documents/projects/$(project)).data.pendingUploads[asset];
+      return reservation.uid == request.auth.uid
+        && reservation.expiresAt is timestamp && request.time < reservation.expiresAt
+        && reservation.maxBytes is int && reservation.maxBytes > 0
+        && reservation.maxBytes <= 30 * 1024 * 1024
+        && request.resource.size <= reservation.maxBytes;
+    }
     match /organizations/{org}/projects/{project}/staging/{asset} {
       allow create: if resource == null && allowed(org, project) && asset.matches('[a-f0-9-]{36}')
+        && reservedUpload(project, asset)
         && request.resource.size > 0 && request.resource.size <= 30 * 1024 * 1024
+        && request.resource.contentEncoding in [null, 'identity']
         && request.resource.contentType in ['image/jpeg', 'image/png'];
     }
     match /organizations/{org}/projects/{project}/floorplans/{file} {

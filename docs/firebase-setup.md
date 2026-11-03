@@ -110,6 +110,41 @@ Public links contain an unguessable token in the URL fragment, submitted to the 
 
 ## Maintenance
 
+### Request and image budgets
+
+The API uses atomic, server-only Firestore counters in `rateLimits`. All budgets must admit a request before its operation runs. Exhausted callable requests return `resource-exhausted`; public requests return HTTP 429 with `Retry-After`. A limiter outage fails closed with a temporary-unavailable response. A bounded process-local cache can repeat a denial until its window ends, but never authorizes a request.
+
+Defaults are defined in `functions/src/request-budget.ts`:
+
+| Scope | Limit |
+| --- | --- |
+| API, all callers | 1,000/minute; 100,000/day |
+| API, one user | 180/minute; 10,000/day |
+| API, one network bucket | 600/minute |
+| Account initialization, one user | 6/minute |
+| Image optimization/copy, one user | 20/minute combined |
+| Public requests, all callers | 1,000/minute; 50,000/day |
+| Public requests, one network bucket / one share token | 120/minute / 240/minute |
+| Public response bytes, all shares / one share | 16 GiB/day / 4 GiB/day |
+
+Minute/day windows use UTC and can admit bursts across a boundary. Public request counts are checked before looking up a link. Transfer budgets are charged only after a valid link/resource is established: serialized brief bytes or the trusted optimized asset size, before sending/downloading it. Invalid links never consume transfer allowance. A failed delivery is not refunded. Normal 30-second public refreshes remain supported.
+
+Network keys use only the last valid forwarding hop; forged prefixes and malformed headers do not create arbitrary buckets. This can group a platform proxy or a shared network, so UID/share/global quotas are the authoritative ceilings. It does not promise exact identification of each human client. Rejected requests, limiter reads, and infrastructure overhead can still incur charges; these controls bound admitted work, not total cloud spending. Monitor rejection rates and tune constants before raising limits. App Check or a trusted edge gate can provide additional abuse filtering.
+
+Uninvited Google accounts no longer create user-profile documents. Member profiles only refresh `lastSeenAt` every 15 minutes unless their name/email changes; membership and grant activation are still checked on every admitted account request.
+
+`prepareUpload` reserves 30 MiB per new original against 600 MiB/user/day and 3 GiB/organization/day (20 original-upload reservations/user/day if no copied bytes are charged). Copies consume their canonical optimized byte size against the same budgets. Charges are atomic, private, not refunded on failure/expiry, and not repeated for an identical operation retry. Quota documents in `uploadBudgets` use fixed per-user/org IDs. Limits are defined in `functions/src/upload-budget.ts`.
+
+Each project holds at most 20 unexpired `pendingUploads` entries, bound to the initiating UID, a byte ceiling, and a 30-minute trusted expiry. Storage requires that reservation plus current membership and an active project. This reuses the project lookup to stay within Storage's two-Firestore-document access limit. Clients cannot edit reservations/counters. Preparation retries cannot extend expired reservations, change the file identity, or reuse a completed identifier. Start a new upload after expiry. Completed pre-expiry originals can still be finalized later while retained; originals created after expiry are rejected. Finalization is protected by a 10-minute processing lease and at most three attempts. A failed image decode ends its upload authority.
+
+Gzip/other encoded originals are rejected by both Storage rules and backend metadata validation. Downloads disable automatic decompression before byte validation. Finalization removes upload authority before deleting the original, preventing reuse of its path. Pending-reservation changes alone do not trigger library projection fan-out. Failed/abandoned originals retain the existing daily cleanup policy.
+
+`firestore.indexes.json` enables TTL on private counter `expiresAt` fields and exempts counter fields and project reservation maps from indexing. TTL cleanup is eventual; request authorization checks the stored window directly and never depends on TTL having run. Keep `scripts/build-indexes.mjs` in sync with these overrides.
+
+Release this change in order: build and test; deploy `api`, `publicView`, `projectIndex`, and `janitor`; then deploy Storage rules and Firestore index/TTL configuration; then deploy the built frontend for clear temporary-limit messages. Existing clients already call `prepareUpload`, so no upload request schema change is required. Uploads prepared before this backend release have no reservation and must be restarted after the new rules become active. Pending legacy image-copy operations can be retried with a new destination if required.
+
+Use `npm run check` for regression coverage. The additional `scripts/smoke-emulators.mjs` flow now verifies the actual callable account limit, public HTTP 429/`Retry-After`, and that invalid tokens do not consume transfer bytes. These probes pin Admin SDK access to local `demo-dronebrief`; they must never target production. If a shared emulator cache is locked on Windows, set `FIREBASE_EMULATORS_PATH` to an isolated cache directory before running checks.
+
 `projectIndex` and `libraryIndex` perform retryable, paginated projection updates. Monitor failed invocations and outstanding `indexJobs` if indexing stalls. `janitor` runs daily and writes its completion to `maintenance/cleanup`. It clears expired unused assets and permanently deletes up to 100 projects past the 30-day recovery period per run. Retry failures safely. Monitor Functions failures, indexing backlog, cleanup completion, upload durations and Storage/Firestore usage.
 
 Projects are marked as purging before physical cleanup, preventing restoration during deletion. Moving a project to Deleted projects revokes public sharing; restore never reactivates the old token. Administrators can restore a project from Deleted projects within 30 days or delete it permanently. Deploy backend operations and security rules together.

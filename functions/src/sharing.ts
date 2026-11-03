@@ -4,6 +4,7 @@ import { HttpsError } from 'firebase-functions/v2/https'
 import { cloudId, summarySchema, type Actor, type CloudProject } from '../../src/features/cloud/model/cloud.js'
 import { bucket, db, projectRef, requireMember, canManage, requireActive, denied, now } from './context.js'
 import { readBody } from './body.js'
+import { enforcePublicTransferBudget } from './request-budget.js'
 
 export async function shareProject(user: Actor, input: unknown) {
   const data = z.object({ projectId: cloudId, action: z.enum(['enable', 'revoke', 'status']) }).parse(input)
@@ -49,6 +50,8 @@ export async function publicAsset(token: string, assetId: string) {
   const project = await loadPublicProject(token)
   const asset = Object.values(project.assets).find((candidate) => candidate.id === assetId)
   if (!asset) throw new HttpsError('not-found', 'Floorplan unavailable.')
+  // Charge canonical, validated size only after the token and asset exist.
+  await enforcePublicTransferBudget(token, asset.size)
   const [bytes] = await bucket().file(asset.path).download()
   // Revalidate after the download in case the link was revoked while reading Storage.
   const current = await loadPublicProject(token)

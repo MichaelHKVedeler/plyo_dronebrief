@@ -1,4 +1,4 @@
-import { type QueryDocumentSnapshot } from 'firebase-admin/firestore'
+import { FieldValue, type QueryDocumentSnapshot } from 'firebase-admin/firestore'
 import { bucket, db, now, projectRef } from './context.js'
 
 export async function eraseProject(projectId: string, orgId: string) {
@@ -35,7 +35,9 @@ export async function cleanup() {
         const project = await tx.get(projectRef(asset.get('projectId')))
         if (current.get('processingUntil') > now()) return null
         if (!current.exists || (project.get('assetIds') as string[] | undefined)?.includes(asset.id)) return false
-        tx.update(asset.ref, { state: 'deleting' }); return true
+        tx.update(asset.ref, { state: 'deleting' })
+        if (project.exists) tx.update(project.ref, { [`pendingUploads.${asset.id}`]: FieldValue.delete() })
+        return true
       })
       if (remove === null) continue
       const prefix = `organizations/${asset.get('orgId')}/projects/${asset.get('projectId')}`
@@ -48,8 +50,7 @@ export async function cleanup() {
     if (page.size < 100) break
     cursor = page.docs.at(-1)
   }
-  // Rules allow member staging uploads before finalization. Also sweep files without
-  // asset records, including uploads interrupted before their preparation response.
+  // Sweep pre-hardening unreserved uploads as well as interrupted uploads.
   let pageToken: string | undefined
   do {
     const [files, next] = await bucket().getFiles({ prefix: 'organizations/', autoPaginate: false, maxResults: 1000, pageToken })
