@@ -8,7 +8,8 @@ import { cloudError } from '@/features/cloud/auth/firebase'
 import { cloudOrganizations } from '@/features/cloud/storage/organization-repository'
 import { Problem } from '@/features/cloud/components/problem'
 import { Choice } from '@/features/cloud/components/choice'
-import type { Grant, Membership, Organization } from '@/features/cloud/model/cloud'
+import { toolkitsUrl } from '@/features/cloud/auth/toolkits-login'
+import { toolkitsOrganization, type Grant, type Membership, type Organization } from '@/features/cloud/model/cloud'
 
 export function OrganizationPage({ organization, onChange }: { organization: Organization; onChange: () => Promise<void> }) {
   const [grants, setGrants] = useState<Grant[]>([]); const [members, setMembers] = useState<Membership[]>([])
@@ -16,6 +17,7 @@ export function OrganizationPage({ organization, onChange }: { organization: Org
   const [error, setError] = useState<string | null>(null); const [busy, setBusy] = useState(false); const [loadedRevision, setLoadedRevision] = useState(-1)
   const [refresh, setRefresh] = useState(0); const [remove, setRemove] = useState<Grant | null>(null)
   const loading = loadedRevision !== refresh
+  const managed = organization.id === toolkitsOrganization
   useEffect(() => {
     let active = true
     void cloudOrganizations.list(organization.id).then((result) => { if (active) { setGrants(result.grants); setMembers(result.members) } }).catch((error) => { if (active) setError(cloudError(error)) }).finally(() => { if (active) setLoadedRevision(refresh) })
@@ -27,9 +29,9 @@ export function OrganizationPage({ organization, onChange }: { organization: Org
     catch (error) { setError(cloudError(error)) } finally { setBusy(false) }
   }
   return <main className="mx-auto grid w-full max-w-5xl gap-5 p-6"><h1 className="text-2xl font-semibold">Manage {organization.name}</h1><Problem message={error} />
-    <form className="flex flex-wrap items-end gap-3" onSubmit={(event) => { event.preventDefault(); void act(() => cloudOrganizations.add(organization.id, email)) }}><div className="grid flex-1 gap-1"><Label htmlFor="member-email">Google account email</Label><Input id="member-email" type="email" required value={email} onChange={(event) => setEmail(event.target.value)} /></div><Button disabled={busy}>Add member</Button></form>
-    <p className="text-sm text-muted-foreground">Access activates after a matching verified Google sign-in. No invitation is sent. An already signed-in person can use Refresh access.</p>
-    {loading ? <p role="status">Loading members…</p> : <Table><TableHeader><TableRow>{['Member', 'Email', 'Access', 'Role', 'Actions'].map((name) => <TableHead key={name}>{name}</TableHead>)}</TableRow></TableHeader><TableBody>{grants.filter((grant) => grant.status !== 'revoked').map((grant) => <TableRow key={grant.id}><TableCell>{members.find((member) => member.uid === grant.uid)?.name ?? '—'}</TableCell><TableCell>{grant.email}</TableCell><TableCell>{grant.status === 'pending' ? 'Awaiting first sign-in' : 'Active'}</TableCell><TableCell><Choice label={`Role for ${grant.email}`} value={grant.role} disabled={busy} onChange={(role) => void act(() => cloudOrganizations.setRole(organization.id, grant.id, role))} options={[{ value: 'member', label: 'Member' }, { value: 'admin', label: 'Admin' }]} /></TableCell><TableCell><Button variant="ghost" disabled={busy} onClick={() => setRemove(grant)}>Remove</Button></TableCell></TableRow>)}</TableBody></Table>}
+    {managed ? <p className="text-sm text-muted-foreground">People and roles in {organization.name} are managed in <a className="underline" href={toolkitsUrl}>Plyo Toolkits</a>, under Manage Users. A change there reaches Dronebrief within a minute.</p> : <><form className="flex flex-wrap items-end gap-3" onSubmit={(event) => { event.preventDefault(); void act(() => cloudOrganizations.add(organization.id, email)) }}><div className="grid flex-1 gap-1"><Label htmlFor="member-email">Google account email</Label><Input id="member-email" type="email" required value={email} onChange={(event) => setEmail(event.target.value)} /></div><Button disabled={busy}>Add member</Button></form>
+    <p className="text-sm text-muted-foreground">Access activates after a matching verified Google sign-in. No invitation is sent. An already signed-in person can use Refresh access.</p></>}
+    {loading ? <p role="status">Loading members…</p> : <Table><TableHeader><TableRow>{['Member', 'Email', 'Access', 'Role', ...(managed ? [] : ['Actions'])].map((name) => <TableHead key={name}>{name}</TableHead>)}</TableRow></TableHeader><TableBody>{grants.filter((grant) => grant.status !== 'revoked').map((grant) => <TableRow key={grant.id}><TableCell>{members.find((member) => member.uid === grant.uid)?.name ?? '—'}</TableCell><TableCell>{grant.email}</TableCell><TableCell>{grant.status === 'pending' ? 'Awaiting first sign-in' : 'Active'}</TableCell><TableCell>{managed ? (grant.role === 'admin' ? 'Admin' : 'Member') : <Choice label={`Role for ${grant.email}`} value={grant.role} disabled={busy} onChange={(role) => void act(() => cloudOrganizations.setRole(organization.id, grant.id, role))} options={[{ value: 'member', label: 'Member' }, { value: 'admin', label: 'Admin' }]} />}</TableCell>{!managed && <TableCell><Button variant="ghost" disabled={busy} onClick={() => setRemove(grant)}>Remove</Button></TableCell>}</TableRow>)}</TableBody></Table>}
     <form className="grid max-w-xl gap-2 rounded-lg border p-4" onSubmit={(event) => {
       event.preventDefault(); setBusy(true); setError(null)
       void cloudOrganizations.create(organization.id, orgName, crypto.randomUUID()).then(async () => { setOrgName(''); await onChange() }).catch((error) => setError(cloudError(error))).finally(() => setBusy(false))

@@ -5,6 +5,8 @@ import { mapViewSchema } from './map-view.js'
 export const cloudId = z.string().regex(/^[A-Za-z0-9_-]{1,128}$/)
 export const cloudName = z.string().trim().min(1).max(200)
 export const roleSchema = z.enum(['admin', 'member'])
+// Plyo Toolkits decides who is in this organization (Manage Users there); other organizations are managed in Dronebrief.
+export const toolkitsOrganization = 'plyo'
 export const actorSchema = z.object({ uid: cloudId, name: cloudName })
 export const membershipSchema = z.object({ orgId: cloudId, uid: cloudId, name: cloudName, role: roleSchema, joinedAt: z.iso.datetime() })
 export const organizationSchema = z.object({ id: cloudId, name: cloudName, role: roleSchema, indexing: z.boolean().default(false) })

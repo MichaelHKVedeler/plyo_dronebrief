@@ -4,7 +4,9 @@ import { onSchedule } from 'firebase-functions/v2/scheduler'
 import { setGlobalOptions } from 'firebase-functions/v2'
 import { z } from 'zod'
 import { db, now, principal } from './context.js'
-import { createOrganization, initializeAccount, manageOrganization } from './organizations.js'
+import { createOrganization, initializeAccount, manageOrganization, syncOrganization } from './organizations.js'
+import { requireAccounts } from './accounts-sync.js'
+import { roleSchema } from '../../src/features/cloud/model/cloud.js'
 import { createProject, loadProject, purgeProject, renameProject, saveProject, trashProject } from './projects.js'
 import { prepareUpload, finalizeUpload, copyAsset } from './assets.js'
 import { collections, listLibrary, processIndexJob } from './library.js'
@@ -73,6 +75,21 @@ export const publicView = onRequest({ cors: true, timeoutSeconds: 60, memory: '5
       return
     }
     response.status(404).json({ message: 'This project or floorplan is unavailable, or its public link has been revoked.' })
+  }
+})
+// Plyo Toolkits sends the members of the Plyo organization here whenever its own list changes (Manage Users there).
+export const accountsSync = onRequest({ timeoutSeconds: 120, maxInstances: 1, concurrency: 1 }, async (request, response) => {
+  response.set({ 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' })
+  if (request.method !== 'POST') { response.status(405).end(); return }
+  try {
+    await requireAccounts(request.get('Authorization'))
+    // An empty list is refused: a mistake on the other side must never remove everyone.
+    const { members } = z.object({ members: z.array(z.object({ email: z.email().max(254), role: roleSchema })).min(1).max(1000) }).parse(request.body)
+    response.json(await syncOrganization(members))
+  } catch (error) {
+    const status = error instanceof z.ZodError ? 400 : error instanceof HttpsError ? error.httpErrorCode.status : 500
+    if (status === 500) console.error('Accounts sync failed', error)
+    response.status(status).json({ message: status === 500 ? 'The member list could not be applied.' : 'Refused.' })
   }
 })
 export const projectIndex = onDocumentWritten({ document: 'projects/{projectId}', retry: true }, async (event) => {
