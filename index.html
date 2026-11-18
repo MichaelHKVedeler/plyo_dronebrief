@@ -6,6 +6,8 @@
     <meta name="description" content="Create and share drone photography briefs." />
     <link rel="icon" type="image/svg+xml" href="/brand/plyo-mark-shaded-light.svg" />
     <script>
+      // The Plyo loading screen (vite.config.ts) covers only a sign-in arriving from Plyo Toolkits, so the hops between the two sites read as one wait.
+      if (!/[?&]plyo-connect=/.test(location.search) && !location.hash.startsWith('#plyo-code=')) document.documentElement.removeAttribute('data-plyo-loading');
       // Apply the preference before the first paint; the header keeps it in sync.
       try {
         const theme = localStorage.getItem('dronebrief:theme');

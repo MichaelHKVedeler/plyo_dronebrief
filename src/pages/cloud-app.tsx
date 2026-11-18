@@ -34,6 +34,8 @@ const MigrateDialog = lazy(() => import('@/features/cloud/components/migrate-dia
 const readRoute = () => location.hash.slice(1) || '/'
 export function CloudApp() {
   const account = useAccount()
+  // The Plyo loading screen covers a sign-in from Plyo Toolkits (index.html) until there is a screen to show.
+  useEffect(() => { if (!account.loading) document.documentElement.removeAttribute('data-plyo-loading') }, [account.loading])
   const uid = account.user?.uid
   const [route, setRoute] = useState(readRoute); const routeRef = useRef(route)
   const [orgId, setOrgId] = useState(''); const organization = account.organizations.find((org) => org.id === orgId) ?? account.organizations[0]
