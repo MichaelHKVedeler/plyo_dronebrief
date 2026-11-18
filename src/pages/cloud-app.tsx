@@ -28,7 +28,6 @@ const BriefPage = lazy(() => import('@/pages/brief-page').then((module) => ({ de
 const PdfExportDialog = lazy(() => import('@/features/briefs/components/pdf-export-dialog').then((module) => ({ default: module.PdfExportDialog })))
 const loadCloudBrief = () => import('@/features/cloud/components/cloud-brief').then((module) => ({ default: module.CloudBrief }))
 const CloudBrief = lazy(loadCloudBrief)
-const OrganizationPage = lazy(() => import('@/pages/organization-page').then((module) => ({ default: module.OrganizationPage })))
 const MigrateDialog = lazy(() => import('@/features/cloud/components/migrate-dialog').then((module) => ({ default: module.MigrateDialog })))
 
 const readRoute = () => location.hash.slice(1) || '/'
@@ -119,12 +118,10 @@ export function CloudApp() {
       : projectId ? (loaded ? <CloudBrief key={`${account.user.uid}-${projectId}-${loadTick}`} initial={loaded} organization={projectOrganization} uid={account.user.uid} onDirty={onDirty} onOpen={openProject} onHome={home} headerActions={headerActions} /> : !error && <p role="status" className="p-6">Loading project…</p>)
       : !organization ? <main className="mx-auto grid max-w-xl gap-4 p-6"><h1 className="text-2xl font-semibold">Organization access required</h1><p>Ask an administrator to give you Dronebrief in Plyo Toolkits, under Manage Users.</p><Button onClick={() => void account.refresh()}>Refresh access</Button><Button variant="outline" onClick={() => setImportOpen(true)}>Open portable snapshot</Button></main>
       : route === '/create' ? <>{busy && <p role="status" className="px-6">Creating your project…</p>}<CreateBriefPage onCreate={(brief) => void create(brief)} onCancel={() => goNow('/')} /></>
-      : route === '/organization' && organization.role === 'admin' ? <OrganizationPage key={organization.id} organization={organization} onChange={account.refresh} />
       : route === '/' || route === '/library' ? <ProjectLibraryPage key={organization.id} organization={organization} uid={account.user.uid} onOpen={openProject} onCreate={() => goNow('/create')} drafts={drafts} onSaveDraft={setMigrate} header={<div className="flex w-full min-w-0 flex-wrap items-center justify-end gap-6">
         <ThemeToggle className="-mx-2.5" />
         {account.organizations.length > 1 && <Choice label="Organization" value={organization.id} onChange={(id) => { setOrgId(id); goNow('/') }} options={account.organizations.map((org) => ({ value: org.id, label: org.name }))} />}
         <Button asChild variant="ghost" className="-mx-2 px-2"><a href={toolkitsUrl}>Toolkits</a></Button>
-        {organization.role === 'admin' && <Button variant="ghost" className="-mx-2 px-2" onClick={() => goNow('/organization')}>Manage organization</Button>}
         <span className="max-w-48 truncate text-sm leading-9" title={account.user.displayName ?? account.user.email ?? undefined}>{account.user.displayName ?? account.user.email}</span>
         <Button variant="outline" onClick={() => guard(() => { void signOutGoogle().catch((error) => setError(cloudError(error))) })}>Sign out</Button>
       </div>} />

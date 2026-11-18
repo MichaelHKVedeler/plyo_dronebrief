@@ -44,6 +44,8 @@ export async function initializeAccount(user: Identity) {
   return organizations.docs.map((doc) => doc.data())
 }
 
+// createOrganization and manageOrganization are no longer reachable from the app: people are managed in Plyo Toolkits.
+// They stay because the emulator tests set up and check memberships through them.
 export async function createOrganization(user: Identity, input: unknown) {
   const data = z.object({ sourceOrgId: cloudId, name: cloudName, operationId: z.uuid() }).parse(input)
   const id = data.operationId

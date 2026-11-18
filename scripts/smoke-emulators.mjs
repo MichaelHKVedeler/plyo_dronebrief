@@ -43,8 +43,6 @@ try {
   assert.equal(publicResult.status, 200); assert.match(publicResult.headers.get('cache-control'), /no-store/)
   assert.equal((await publicResult.json()).summary.createdBy.name, 'Emulator QA')
   assert.equal((await publicRead(token, assetId)).status, 200)
-  const admin = await api('organization', { orgId: 'plyo', action: 'list' })
-  assert.ok(admin.grants.some((grant) => grant.email === 'michael.vedeler@plyo.com' && grant.status === 'pending'))
   const { db } = await import('../functions/lib/functions/src/context.js')
   const { Timestamp } = await import('firebase-admin/firestore')
   const { publicRequestBudgets, publicTransferBudgets, requestBudgetDocumentId, REQUEST_LIMITS } = await import('../functions/lib/functions/src/request-budget.js')

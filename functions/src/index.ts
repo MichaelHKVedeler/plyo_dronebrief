@@ -4,7 +4,7 @@ import { onSchedule } from 'firebase-functions/v2/scheduler'
 import { setGlobalOptions } from 'firebase-functions/v2'
 import { z } from 'zod'
 import { db, now, principal } from './context.js'
-import { createOrganization, initializeAccount, manageOrganization, syncOrganization } from './organizations.js'
+import { initializeAccount, syncOrganization } from './organizations.js'
 import { requireAccounts } from './accounts-sync.js'
 import { roleSchema } from '../../src/features/cloud/model/cloud.js'
 import { createProject, loadProject, purgeProject, renameProject, saveProject, trashProject } from './projects.js'
@@ -24,8 +24,6 @@ const handle = async (request: CallableRequest) => {
     await enforceApiBudget(user.uid, requestNetworkKey(request.rawRequest.headers), operation)
     switch (operation) {
       case 'account': return await initializeAccount(user)
-      case 'createOrganization': return await createOrganization(user, data)
-      case 'organization': return await manageOrganization(user, data)
       case 'createProject': return await createProject(user, data)
       case 'loadProject': return await loadProject(user, data)
       case 'saveProject': return await saveProject(user, data)
