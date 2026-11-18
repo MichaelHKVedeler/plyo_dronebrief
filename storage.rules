@@ -3,7 +3,9 @@ service firebase.storage {
   match /b/{bucket}/o {
     function allowed(org, project) {
       return request.auth != null && request.auth.token.email_verified == true
-        && request.auth.token.firebase.sign_in_provider == 'google.com'
+        // Google sign-in, or the Plyo Toolkits custom token for the same Google-verified email (see firestore.rules).
+        && (request.auth.token.firebase.sign_in_provider == 'google.com'
+          || (request.auth.token.firebase.sign_in_provider == 'custom' && request.auth.token.plyo_tool == 'dronebrief' && request.auth.token.plyo_accounts_project == 'plyo-accounts-prod'))
         && firestore.exists(/databases/(default)/documents/organizations/$(org)/members/$(request.auth.uid))
         && firestore.get(/databases/(default)/documents/projects/$(project)).data.orgId == org
         && firestore.get(/databases/(default)/documents/projects/$(project)).data.deletedAt == null;

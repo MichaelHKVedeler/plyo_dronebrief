@@ -20,6 +20,7 @@ const owner = { uid: 'owner', name: 'Owner', email: 'owner@plyo.com' }
 const member = { uid: 'member', name: 'Member', email: 'member@plyo.com' }
 const outsider = { uid: 'outsider', name: 'Outsider', email: 'outsider@plyo.com' }
 const google = { email: owner.email, email_verified: true, firebase: { sign_in_provider: 'google.com' } }
+const toolkits = { ...google, firebase: { sign_in_provider: 'custom' }, plyo_tool: 'dronebrief', plyo_accounts_project: 'plyo-accounts-prod' }
 beforeAll(async () => { env = await initializeTestEnvironment({ projectId: 'demo-dronebrief', firestore: { rules: readFileSync('firestore.rules', 'utf8') }, storage: { rules: readFileSync('storage.rules', 'utf8') } }) })
 afterAll(async () => { await env.cleanup() })
 beforeEach(async () => {
@@ -143,6 +144,8 @@ describe('rules and optimized assets', () => {
     const authenticated = env.authenticatedContext(owner.uid, google).firestore()
     const foreign = env.authenticatedContext(outsider.uid, { ...google, email: outsider.email }).firestore()
     await assertSucceeds(getDoc(doc(authenticated, 'projects', project.summary.id)))
+    await assertSucceeds(getDoc(doc(env.authenticatedContext(owner.uid, toolkits).firestore(), 'projects', project.summary.id)))
+    for (const claims of [{ ...toolkits, plyo_tool: 'renderflow' }, { ...toolkits, plyo_accounts_project: 'plyo-accounts-staging' }, { ...google, firebase: { sign_in_provider: 'custom' } }]) await assertFails(getDoc(doc(env.authenticatedContext(owner.uid, claims).firestore(), 'projects', project.summary.id)))
     await assertFails(getDoc(doc(foreign, 'projects', project.summary.id)))
     await assertFails(getDoc(doc(env.unauthenticatedContext().firestore(), 'projects', project.summary.id)))
     await assertFails(setDoc(doc(authenticated, 'projects', project.summary.id), { ...project.summary, revision: 999 }))
@@ -164,6 +167,8 @@ describe('rules and optimized assets', () => {
     const content = kind === 'floorplan' ? { imageOverlays: [geometry] } : { references: [reference] }
     await saveProject(owner, { projectId: project.summary.id, expectedRevision: 1, operationId: crypto.randomUUID(), brief: { ...project.brief, ...content }, assets: { [fileId]: asset } })
     await assertSucceeds(getBytes(ref(storage, asset.path)))
+    await assertSucceeds(getBytes(ref(env.authenticatedContext(owner.uid, toolkits).storage('gs://demo-dronebrief.appspot.com'), asset.path)))
+    await assertFails(getBytes(ref(env.authenticatedContext(owner.uid, { ...toolkits, plyo_tool: 'renderflow' }).storage('gs://demo-dronebrief.appspot.com'), asset.path)))
     await assertFails(getBytes(ref(env.unauthenticatedContext().storage('gs://demo-dronebrief.appspot.com'), asset.path)))
     await assertFails(getBytes(ref(env.authenticatedContext(outsider.uid, { ...google, email: outsider.email }).storage('gs://demo-dronebrief.appspot.com'), asset.path)))
     await assertFails(uploadBytes(ref(storage, asset.path), image, { contentType: 'image/webp' }))

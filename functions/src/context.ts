@@ -12,8 +12,10 @@ export const now = () => new Date().toISOString()
 export const hash = (value: string) => createHash('sha256').update(value).digest('hex')
 export const emailKey = (email: string) => hash(email.trim().toLowerCase())
 export function principal(request: CallableRequest): Actor & { email: string } {
-  const auth = request.auth
-  if (!auth || auth.token.email_verified !== true || auth.token.firebase?.sign_in_provider !== 'google.com' || typeof auth.token.email !== 'string') {
+  const auth = request.auth, provider = auth?.token.firebase?.sign_in_provider
+  // Plyo Toolkits signs people in with a custom token from production Plyo Accounts, for the identity of their Google-verified email.
+  const toolkits = provider === 'custom' && auth?.token.plyo_tool === 'dronebrief' && auth.token.plyo_accounts_project === 'plyo-accounts-prod'
+  if (!auth || auth.token.email_verified !== true || (provider !== 'google.com' && !toolkits) || typeof auth.token.email !== 'string') {
     throw new HttpsError('unauthenticated', 'Sign in with a verified Google account.')
   }
   return { uid: auth.uid, name: String(auth.token.name || 'Google user').trim().slice(0, 200) || 'Google user', email: auth.token.email.toLowerCase() }

@@ -8,6 +8,14 @@ Project: `plyo-dronebrief` (project number `923952642548`). Site: https://plyo-d
 
 Google sign-in is enabled. Authorized domains are `localhost`, `127.0.0.1`, `plyo-dronebrief.web.app`, `plyo-dronebrief.firebaseapp.com`, and `michaelhkvedeler.github.io`. The provider is declared in `firebase.json`; domain changes must also be applied in Firebase Authentication settings (the installed CLI's auth deploy does not apply an `authorizedDomains` field).
 
+### Sign-in from Plyo Toolkits
+
+Opening https://plyo-dronebrief.web.app from the Photo Brief card in Plyo Toolkits (`?plyo-connect=1`) signs the person in without a second Google prompt. The vendored `@plyo/accounts-client` (`vendor/`, built from the Plyo Toolkits repository) exchanges a one-time code with Plyo Accounts at `https://plyo-toolkits.web.app` for a Firebase custom token, and `src/features/cloud/auth/toolkits-login.ts` signs in with it before the app reads the URL. Direct Google sign-in is unchanged.
+
+Plyo Accounts signs the token for the Dronebrief user that already has the person's Google-verified email, so memberships, projects and collections stay with the same UID; a first-time person gets a new user and activates pending grants as usual. `principal()`, `firestore.rules` and `storage.rules` accept such a session only when it is a custom token with `plyo_tool == 'dronebrief'` and `plyo_accounts_project == 'plyo-accounts-prod'` and the user has a verified email. Organization membership is still required for all data.
+
+Only the `https://plyo-dronebrief.web.app` origin is registered with Plyo Accounts; a launch on GitHub Pages or localhost fails with a message and a link to continue with Google sign-in. Signing out of Toolkits does not end an open Dronebrief session. The service account and IAM bindings this needs in `plyo-dronebrief` are listed in the Plyo Toolkits repository, `docs/production.md`. Deploy `api` and both rule sets before the site: an older backend rejects these sessions with "Sign in with a verified Google account."
+
 The Standard `(default)` Firestore database and private `plyo-dronebrief.firebasestorage.app` bucket are in `europe-west1`. Bucket versioning and soft deletion are disabled. CORS permits image reads from the two Firebase hosted domains, `https://michaelhkvedeler.github.io`, and local port 5173. Storage's service agent has the Firestore rules integration role. The Plyo bootstrap has run; Kristian and Michael's documented admin grants activate on their verified Google sign-ins.
 
 The ignored `.env.local` contains the web app configuration and `VITE_FIREBASE_EMULATORS=false`. Restart Vite after changing configuration, and remove shell-level emulator variables, which override `.env.local`. Do not replace these values with the demo configuration below unless intentionally testing emulators. Google Maps and ShadeMap still need their separate provider keys.

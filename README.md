@@ -2,7 +2,7 @@
 
 A drone photography brief editor with local drafts and optional Firebase organization projects.
 
-Live app: [Plyo Dronebrief](https://plyo-dronebrief.web.app). The `plyo-dronebrief` Firebase project uses real Google sign-in. Local development uses the ignored `.env.local`; keep `VITE_FIREBASE_EMULATORS=false` to use real accounts. Emulator mode intentionally opens a test-user form instead of Google's account picker.
+Live app: [Plyo Dronebrief](https://plyo-dronebrief.web.app). The `plyo-dronebrief` Firebase project uses real Google sign-in, and accepts the sign-in carried over when it is opened from Plyo Toolkits (see docs/firebase-setup.md). Local development uses the ignored `.env.local`; keep `VITE_FIREBASE_EMULATORS=false` to use real accounts. Emulator mode intentionally opens a test-user form instead of Google's account picker.
 
 ## Start
 

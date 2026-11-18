@@ -2,7 +2,9 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     // All writes use validated, transactional trusted operations. No client role fields are authoritative.
-    function googleUser() { return request.auth != null && request.auth.token.email_verified == true && request.auth.token.firebase.sign_in_provider == 'google.com'; }
+    function googleUser() { return request.auth != null && request.auth.token.email_verified == true && (request.auth.token.firebase.sign_in_provider == 'google.com' || toolkitsUser()); }
+    // Plyo Toolkits sign-in: a custom token from production Plyo Accounts for the identity of the same Google-verified email.
+    function toolkitsUser() { return request.auth.token.firebase.sign_in_provider == 'custom' && request.auth.token.plyo_tool == 'dronebrief' && request.auth.token.plyo_accounts_project == 'plyo-accounts-prod'; }
     function member(org) { return googleUser() && exists(/databases/$(database)/documents/organizations/$(org)/members/$(request.auth.uid)); }
     function admin(org) { return member(org) && get(/databases/$(database)/documents/organizations/$(org)/members/$(request.auth.uid)).data.role == 'admin'; }
     match /projects/{project} {
