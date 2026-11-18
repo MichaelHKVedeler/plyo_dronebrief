@@ -39,3 +39,11 @@ it('ignores completions after disposal and supports StrictMode effect reattachme
   const calls = changed.mock.calls.length; pending.resolve(summary(2)); await Promise.resolve()
   expect(changed).toHaveBeenCalledTimes(calls)
 })
+it('retries its own failed save when a newer revision appears, instead of declaring a conflict', async () => {
+  const save = vi.fn().mockRejectedValueOnce(new Error('Reply lost')).mockResolvedValueOnce(summary(2))
+  const coordinator = new SaveCoordinator(1, save, vi.fn())
+  coordinator.enqueue(brief, {}); await vi.waitFor(() => expect(coordinator.status).toBe('Save failed'))
+  coordinator.remoteRevision(2)
+  await vi.waitFor(() => expect(coordinator.status).toBe('Saved'))
+  expect(save.mock.calls[1][0]).toEqual(save.mock.calls[0][0]); expect(coordinator.dirty).toBe(false)
+})

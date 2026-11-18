@@ -46,7 +46,7 @@ export function ImageOverlayControls({ overlays, editable, images, onUpdate, pla
         onSelect(overlay.id); onShow()
       } else if (editable) {
         const existingId = existing.id
-        onUpdate((brief) => ({ ...brief, imageOverlays: brief.imageOverlays.map((overlay) => overlay.id === existingId ? { ...overlay, name: file.name.slice(0, 200), source: { kind: 'local-file', fileId, fileName: file.name } } : overlay) }))
+        onUpdate((brief) => ({ ...brief, imageOverlays: brief.imageOverlays.map((overlay) => overlay.id === existingId ? { ...overlay, name: file.name.slice(0, 200), heightMeters: overlay.widthMeters * image.height / image.width, source: { kind: 'local-file', fileId, fileName: file.name } } : overlay) }))
       }
     } catch (reason) { setError(reason instanceof Error ? reason.message : 'The image could not be opened.') }
     finally { setBusy(false); reconnect.current = null }

@@ -6,7 +6,7 @@ import { editorMapView } from '../../src/features/cloud/model/map-view.js'
 import { eraseProject } from './cleanup.js'
 import { db, hash, projectRef, requireMember, requireActive, canManage, now, actorOnly, denied } from './context.js'
 import { bodySchema, encodeBody, readBody, writeBody, type ProjectBody } from './body.js'
-import type { Transaction } from 'firebase-admin/firestore'
+import { Timestamp, type Transaction } from 'firebase-admin/firestore'
 
 export async function validateAssets(tx: Transaction, projectId: string, orgId: string, body: ProjectBody) {
   const used = new Set(localFileSources(body.brief).map((source) => source.fileId))
@@ -78,7 +78,8 @@ export async function saveProject(user: Actor, input: unknown) {
     const summary = { ...previous, name: data.brief.project.name, clientName: data.brief.project.clientName, editedBy: actorOnly(user), updatedAt: now(), revision: previous.revision + 1, map: editorMapView(data.brief) }
     const chunkCount = writeBody(tx, ref, { brief: data.brief, assets }, doc.get('chunkCount'))
     tx.update(ref, { ...summary, chunkCount, assetIds: Object.values(assets).map((a) => a.id) })
-    tx.create(receipt, { fingerprint, summary, createdAt: now() })
+    // A receipt only makes a retried save safe; the database removes it after 30 days (TTL in firestore.indexes.json).
+    tx.create(receipt, { fingerprint, summary, createdAt: now(), expiresAt: Timestamp.fromMillis(Date.now() + 30 * 86400_000) })
     return summary
   })
 }

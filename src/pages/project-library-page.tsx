@@ -71,7 +71,7 @@ export function ProjectLibraryPage({ organization, uid, onOpen, onCreate, header
   }, [])
   const selectedCollection = collections.find((item) => item.id === query.collectionId)
   const heading = selectedCollection?.name ?? viewLabels[query.view]
-  const completePage = Boolean(page && !page.cursor && !query.search && !query.creatorId && !query.collectionId)
+  const completePage = Boolean(page && !page.cursor && !query.cursor && !query.search && !query.creatorId && !query.collectionId)
   const shown = page?.projects.length ?? 0
   const summary = selectedCollection
     ? `${shown} project${shown === 1 ? '' : 's'} in this collection${page?.cursor ? ' on this page' : ''}`
@@ -147,7 +147,7 @@ export function ProjectLibraryPage({ organization, uid, onOpen, onCreate, header
       </div></ProjectMapProvider>}
       {!loading && !page?.projects.length && <p>No projects match this view.</p>}
       <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
-        {!loading && page && <p className="text-sm text-muted-foreground">{shown ? `1–${shown}${page.cursor ? '' : ` of ${shown}`}` : '0 projects'}</p>}
+        {!loading && page && <p className="text-sm text-muted-foreground">{shown ? (query.cursor ? `${shown} projects on this page` : `1–${shown}${page.cursor ? '' : ` of ${shown}`}`) : '0 projects'}</p>}
         <div className="flex gap-2">
           <Button variant="outline" disabled={!query.cursor || loading} onClick={() => change({})}>First page</Button>
           <Button variant="outline" disabled={!page?.cursor || loading} onClick={() => setQuery((previous) => ({ ...previous, cursor: page?.cursor ?? null }))}>Next page</Button>

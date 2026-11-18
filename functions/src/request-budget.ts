@@ -163,8 +163,12 @@ export async function enforceApiBudget(uid: string, networkKey: string, operatio
   await enforceBudgets(apiRequestBudgets(uid, networkKey, operation))
 }
 
-export async function enforcePublicBudget(networkKey: string, token: string, assetId?: string): Promise<void> {
-  await enforceBudgets(publicRequestBudgets(networkKey, token, assetId))
+/**
+ * Called twice per request. Before the link is looked up only the caller's own network is charged, so a stranger
+ * guessing link codes cannot use up the allowance every link shares; those caps are charged once the link exists.
+ */
+export async function enforcePublicBudget(networkKey: string, token: string, linkExists: boolean): Promise<void> {
+  await enforceBudgets(publicRequestBudgets(networkKey, token).filter(({ policy }) => (policy === 'public-network-minute') !== linkExists))
 }
 
 export async function enforcePublicTransferBudget(token: string, bytes: number): Promise<void> {

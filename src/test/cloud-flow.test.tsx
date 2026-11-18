@@ -1,12 +1,13 @@
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { StrictMode } from 'react'
 import { CloudApp } from '@/pages/cloud-app'
 import { createBrief } from '@/features/briefs/model/brief'
-import type { CloudProject, Organization } from '@/features/cloud/model/cloud'
+import type { CloudAsset, CloudProject, Organization } from '@/features/cloud/model/cloud'
 import { cloudLibrary } from '@/features/cloud/storage/library-repository'
-import { cloudProjects, loadPublic } from '@/features/cloud/storage/project-repository'
+import { cloudProjects, loadPublic, PublicLinkGone } from '@/features/cloud/storage/project-repository'
+import { downloadFloorplan, uploadFloorplan } from '@/features/cloud/storage/uploads'
 import { callCloud, signInGoogle } from '@/features/cloud/auth/firebase'
 import { briefRepository } from '@/features/briefs/storage/brief-repository'
 import { exportBriefKey } from '@/features/briefs/storage/share-key'
@@ -21,9 +22,10 @@ vi.mock('@/features/map/pdf-address', () => ({ lookupPdfAddress: vi.fn(async () 
 let account: { user: { uid: string; displayName: string; email: string } | null; organizations: Organization[]; loading: boolean; error: null; refresh: () => Promise<void> }
 vi.mock('@/features/cloud/auth/use-account', () => ({ useAccount: () => account }))
 vi.mock('@/features/cloud/auth/firebase', () => ({ callCloud: vi.fn(), cloudError: (error: Error) => error.message, signInGoogle: vi.fn(), signOutGoogle: vi.fn() }))
-vi.mock('@/features/cloud/storage/project-repository', () => ({ cloudProjects: { load: vi.fn(), watch: vi.fn(() => () => {}), save: vi.fn(), create: vi.fn(), list: vi.fn(), trash: vi.fn(), purge: vi.fn(), rename: vi.fn() }, loadPublic: vi.fn() }))
+vi.mock('@/features/cloud/storage/project-repository', () => ({ cloudProjects: { load: vi.fn(), watch: vi.fn(() => () => {}), save: vi.fn(), create: vi.fn(), list: vi.fn(), trash: vi.fn(), purge: vi.fn(), rename: vi.fn() }, loadPublic: vi.fn(), PublicLinkGone: class extends Error {} }))
 vi.mock('@/features/cloud/storage/library-repository', () => ({ cloudLibrary: { search: vi.fn(), collections: vi.fn(async () => ({ collections: [], creators: [] })) } }))
 vi.mock('@/features/cloud/storage/uploads', () => ({ downloadFloorplan: vi.fn(), uploadFloorplan: vi.fn() }))
+vi.mock('@/features/briefs/storage/local-images', () => ({ imagePicker: () => undefined, readImageHandle: async () => undefined, rememberImageHandle: async () => {}, readLocalImage: async () => ({ url: 'blob:chosen', width: 640, height: 360 }) }))
 const project = (): CloudProject => {
   const brief = createBrief({ name: 'Cloud project', clientName: 'Client' })
   return { envelopeVersion: 1, brief, assets: {}, summary: { id: 'project', orgId: 'org', name: brief.project.name, clientName: brief.project.clientName, revision: 1, createdBy: { uid: 'owner', name: 'Owner' }, editedBy: { uid: 'owner', name: 'Owner' }, createdAt: brief.createdAt, updatedAt: brief.updatedAt, deletedAt: null, collectionId: null, collectionName: '' } }
@@ -254,4 +256,57 @@ it('shows the public briefing link as soon as Export opens, without capturing th
   expect(screen.queryByRole('group', { name: 'PDF map source' })).not.toBeInTheDocument()
   expect(screen.getByRole('button', { name: 'Export PDF' })).toBeVisible()
   expect(cloudProjects.save).not.toHaveBeenCalled()
+})
+it('keeps a public brief on screen through a failed check and removes it only when the link is revoked', async () => {
+  history.replaceState(null, '', '/#/s/' + 'x'.repeat(43)); account.user = null
+  vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('visible')
+  vi.mocked(loadPublic).mockResolvedValueOnce(project())
+  render(<CloudApp />)
+  expect(await screen.findByRole('region', { name: 'Brief map' })).toBeInTheDocument()
+  vi.mocked(loadPublic).mockRejectedValueOnce(new TypeError('Failed to fetch'))
+  await act(async () => { document.dispatchEvent(new Event('visibilitychange')) })
+  expect(loadPublic).toHaveBeenCalledTimes(2)
+  expect(screen.getByRole('region', { name: 'Brief map' })).toBeInTheDocument()
+  vi.mocked(loadPublic).mockRejectedValueOnce(new PublicLinkGone('This link has been revoked.'))
+  await act(async () => { document.dispatchEvent(new Event('visibilitychange')) })
+  expect(await screen.findByRole('button', { name: 'Retry project' })).toBeVisible()
+  expect(screen.queryByRole('region', { name: 'Brief map' })).not.toBeInTheDocument()
+})
+it('reloads a clean editor once when a colleague saves, and leaves unsaved work alone', async () => {
+  history.replaceState(null, '', '/#/projects/project')
+  vi.mocked(cloudProjects.load).mockResolvedValue(project())
+  let colleagueSaved!: (revision: number) => void
+  vi.mocked(cloudProjects.watch).mockImplementation((_id, onRevision) => { colleagueSaved = onRevision; return () => {} })
+  vi.mocked(cloudProjects.save).mockReturnValue(new Promise(() => {}))
+  render(<CloudApp />)
+  await screen.findByRole('button', { name: 'Edit title' })
+  act(() => colleagueSaved(2))
+  await waitFor(() => expect(cloudProjects.load).toHaveBeenCalledTimes(2))
+  await userEvent.click(await screen.findByRole('button', { name: 'Edit title' }))
+  const name = screen.getByLabelText('Project name')
+  fireEvent.change(name, { target: { value: 'Still mine' } }); fireEvent.blur(name)
+  await waitFor(() => expect(cloudProjects.save).toHaveBeenCalled())
+  act(() => colleagueSaved(3))
+  await new Promise((resolve) => setTimeout(resolve, 20))
+  expect(cloudProjects.load).toHaveBeenCalledTimes(2)
+  expect(screen.getByRole('heading', { name: 'Still mine' })).toBeVisible()
+})
+it('saves a replacement floorplan even when its file name, and so the brief, is unchanged', async () => {
+  vi.stubGlobal('URL', class extends URL { static createObjectURL = vi.fn(() => 'blob:stored'); static revokeObjectURL = vi.fn() })
+  const fileId = crypto.randomUUID(); const data = project()
+  const stored = (id: string) => ({ id, fileId }) as CloudAsset
+  // Same proportions as the chosen file (640 x 360), so replacing it changes nothing in the brief itself.
+  data.brief.imageOverlays = [{ id: 'plan', name: 'plan.png', source: { kind: 'local-file', fileId, fileName: 'plan.png' }, position: data.brief.coordinates, widthMeters: 160, heightMeters: 90, rotationDegrees: 0, opacity: 0.7 }]
+  data.assets = { [fileId]: stored('old-copy') }
+  history.replaceState(null, '', '/#/projects/project')
+  vi.mocked(cloudProjects.load).mockResolvedValue(data)
+  vi.mocked(cloudProjects.save).mockImplementation(async (_id, revision) => ({ ...data.summary, revision: revision + 1 }))
+  vi.mocked(downloadFloorplan).mockResolvedValue(new Blob(['old']))
+  vi.mocked(uploadFloorplan).mockResolvedValue(stored('new-copy'))
+  render(<CloudApp />)
+  await userEvent.click(await screen.findByRole('tab', { name: 'Contents' }))
+  await userEvent.click(await screen.findByRole('button', { name: 'Replace floorplan' }))
+  await userEvent.upload(screen.getByLabelText('Local image file'), new File(['new'], 'plan.png', { type: 'image/png' }))
+  await waitFor(() => expect(cloudProjects.save).toHaveBeenCalledWith('project', 1, expect.any(String), expect.anything(), { [fileId]: stored('new-copy') }))
+  vi.unstubAllGlobals()
 })

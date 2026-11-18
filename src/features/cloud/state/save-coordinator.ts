@@ -47,7 +47,9 @@ export class SaveCoordinator {
     } finally { this.running = false }
   }
   remoteRevision(revision: number) {
-    if (revision > this.revision && this.dirty && !this.running) this.publish('Conflict')
+    if (revision <= this.revision || !this.dirty || this.running) return
+    // After a failed save the newer revision may be our own save whose reply was lost: the retry tells which.
+    if (this.status === 'Save failed') void this.flush(); else this.publish('Conflict')
   }
   dispose() { this.stopped = true; this.queued = null }
 }

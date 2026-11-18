@@ -1,3 +1,4 @@
+import { useRef } from 'react'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Accordion } from '@/components/ui/accordion'
@@ -17,7 +18,11 @@ export function LayersPanel({ session, referenceImages, onVisibilityChange, ...i
 }) {
   const { brief } = session
   const editing = session.mode === 'edit'
+  // Notes save after a pause in typing, so closing the tab mid-note loses a second of text, not all of it.
+  const pause = useRef<number>(undefined)
+  const soon = (field: 'description' | 'instructions', value: string) => { clearTimeout(pause.current); pause.current = window.setTimeout(() => commit(field, value), 1000) }
   function commit(field: 'description' | 'instructions', value: string) {
+    clearTimeout(pause.current)
     if (value !== brief.project[field]) imageControls.onUpdate((current) => ({ ...current, project: { ...current.project, [field]: value } }))
   }
   return <Accordion type="multiple" defaultValue={['description', 'floor-plan', 'references', 'calculate-images']}>
@@ -26,10 +31,10 @@ export function LayersPanel({ session, referenceImages, onVisibilityChange, ...i
         ? <>
           <div className="grid gap-2"><Label htmlFor="property-information">Property information</Label>
             <Textarea id="property-information" key={brief.id + '-description'} defaultValue={brief.project.description} maxLength={2000}
-              placeholder="Notes about this property" onBlur={(event) => commit('description', event.target.value)} /></div>
+              placeholder="Notes about this property" onChange={(event) => soon('description', event.target.value)} onBlur={(event) => commit('description', event.target.value)} /></div>
           <div className="grid gap-2"><Label htmlFor="instructions">Instructions</Label>
             <Textarea id="instructions" key={brief.id + '-instructions'} defaultValue={brief.project.instructions} maxLength={2000}
-              placeholder="Notes for the shoot" onBlur={(event) => commit('instructions', event.target.value)} /></div>
+              placeholder="Notes for the shoot" onChange={(event) => soon('instructions', event.target.value)} onBlur={(event) => commit('instructions', event.target.value)} /></div>
         </>
         : <>
           <div><p className="text-sm font-medium">Property information</p>

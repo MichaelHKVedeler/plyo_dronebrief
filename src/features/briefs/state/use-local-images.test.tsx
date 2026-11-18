@@ -38,7 +38,7 @@ it('restarts an interrupted cloud download under StrictMode and releases its pri
   const id = crypto.randomUUID()
   const image: ImageOverlay = { id: 'overlay', name: 'Plan', source: { kind: 'local-file', fileId: id, fileName: 'plan.png' }, position: { lat: 0, lng: 0 }, widthMeters: 100, heightMeters: 80, rotationDegrees: 30, opacity: 0.5 }
   const load = vi.fn(async (_id: string, signal: AbortSignal) => { await Promise.resolve(); signal.throwIfAborted(); return new Blob(['optimized']) })
-  const transport: ImageTransport = { version: 'asset-1', description: 'Cloud floorplan', load }
+  const transport: ImageTransport = { version: () => 'asset-1', description: 'Cloud floorplan', load }
   const { result, unmount } = renderHook(() => useLocalImages([image], transport), { wrapper: StrictMode })
   await waitFor(() => expect(result.current.sourceUrl(image)).toBe('blob:optimized'))
   expect(load).toHaveBeenCalledTimes(2)
@@ -50,10 +50,22 @@ it('does not let an older failed image request hide a successful replacement', a
   const id = crypto.randomUUID()
   const image: ImageOverlay = { id: 'overlay', name: 'Plan', source: { kind: 'local-file', fileId: id, fileName: 'plan.png' }, position: { lat: 0, lng: 0 }, widthMeters: 100, heightMeters: 80, rotationDegrees: 30, opacity: 0.5 }
   let rejectOld!: (error: Error) => void
-  const first: ImageTransport = { version: 'old', description: '', load: () => new Promise((_resolve, reject) => { rejectOld = reject }) }
-  const second: ImageTransport = { version: 'new', description: '', load: async () => new Blob(['new']) }
+  const first: ImageTransport = { version: () => 'old', description: '', load: () => new Promise((_resolve, reject) => { rejectOld = reject }) }
+  const second: ImageTransport = { version: () => 'new', description: '', load: async () => new Blob(['new']) }
   const { result, rerender } = renderHook(({ transport }) => useLocalImages([image], transport), { initialProps: { transport: first } })
   rerender({ transport: second })
   await act(async () => rejectOld(new Error('Old image disappeared')))
   await waitFor(() => expect(result.current.sourceUrl(image)).toBe('blob:replacement'))
+})
+it('fetches again only the cloud image whose stored copy changed', async () => {
+  vi.stubGlobal('URL', class extends URL { static createObjectURL = vi.fn(() => 'blob:image'); static revokeObjectURL = vi.fn() })
+  const overlay = (fileId: string): ImageOverlay => ({ id: fileId, name: 'Plan', source: { kind: 'local-file', fileId, fileName: 'plan.png' }, position: { lat: 0, lng: 0 }, widthMeters: 100, heightMeters: 80, rotationDegrees: 0, opacity: 0.5 })
+  const images = [overlay('kept'), overlay('replaced')]
+  const load = vi.fn(async (_fileId: string) => new Blob(['image']))
+  const stored = (copies: Record<string, string>): ImageTransport => ({ version: (fileId) => copies[fileId], description: '', load })
+  const { result, rerender } = renderHook(({ transport }) => useLocalImages(images, transport), { initialProps: { transport: stored({ kept: 'a1', replaced: 'b1' }) } })
+  await waitFor(() => expect(result.current.sourceUrl(images[1])).toBe('blob:image'))
+  rerender({ transport: stored({ kept: 'a1', replaced: 'b2' }) })
+  await waitFor(() => expect(load).toHaveBeenCalledTimes(3))
+  expect(load.mock.calls.map(([fileId]) => fileId)).toEqual(['kept', 'replaced', 'replaced'])
 })

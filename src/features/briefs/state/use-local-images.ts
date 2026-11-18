@@ -14,7 +14,7 @@ export function useLocalImages(overlays: ImageSourceItem[], transport?: ImageTra
   const pending = useRef(new Set<string>())
   const alive = useRef(true)
   const transfers = useRef(new AbortController())
-  const cloudVersion = useRef(transport?.version)
+  const versions = useRef<Record<string, string | undefined>>({})
   useEffect(() => {
     alive.current = true
     const urls = ownedUrls.current
@@ -30,31 +30,27 @@ export function useLocalImages(overlays: ImageSourceItem[], transport?: ImageTra
     setResources((previous) => ({ ...previous, [id]: resource }))
   }
   useEffect(() => {
-    if (cloudVersion.current !== transport?.version) {
-      cloudVersion.current = transport?.version
-      for (const url of ownedUrls.current) URL.revokeObjectURL(url)
-      ownedUrls.current.clear(); resourceCache.current = {}; setResources({})
-      return
-    }
     const ids = new Set(overlays.flatMap((image) => typeof image.source === 'string' ? [] : [image.source.fileId]))
-    for (const id of referenced.current) if (!ids.has(id)) {
+    // An image is dropped, and fetched again, only when it left the brief or its own stored copy changed.
+    for (const id of referenced.current) if (!ids.has(id) || versions.current[id] !== transport?.version(id)) {
       const url = resourceCache.current[id]?.url
       if (url) { URL.revokeObjectURL(url); ownedUrls.current.delete(url) }
       delete resourceCache.current[id]
       setResources((previous) => { const next = { ...previous }; delete next[id]; return next })
     }
     referenced.current = ids
+    for (const id of ids) versions.current[id] = transport?.version(id)
     for (const overlay of overlays) {
       if (typeof overlay.source === 'string' || resources[overlay.source.fileId] || pending.current.has(overlay.source.fileId)) continue
       const id = overlay.source.fileId
-      const version = cloudVersion.current
+      const version = versions.current[id]
       const signal = transfers.current.signal
       pending.current.add(id)
       void (async () => {
         try {
           if (transport) {
             const blob = await transport.load(id, signal)
-            if (signal.aborted || !alive.current || version !== cloudVersion.current || !referenced.current.has(id) || resourceCache.current[id]) return
+            if (signal.aborted || !alive.current || version !== versions.current[id] || !referenced.current.has(id) || resourceCache.current[id]) return
             publish(id, { url: URL.createObjectURL(blob) }); return
           }
           const handle = await readImageHandle(id)
@@ -68,8 +64,8 @@ export function useLocalImages(overlays: ImageSourceItem[], transport?: ImageTra
           const image = await readLocalImage(await handle.getFile())
           if (!referenced.current.has(id) || resourceCache.current[id]) { URL.revokeObjectURL(image.url); return }
           publish(id, { url: image.url, handle })
-        } catch { if (!signal.aborted && alive.current && version === cloudVersion.current && referenced.current.has(id)) publish(id, { message: transport ? 'This image could not be loaded. Retry when the connection is available.' : 'The local image is unavailable. Reconnect it to continue.' }) }
-        finally { pending.current.delete(id); if (alive.current && (signal.aborted || version !== cloudVersion.current)) setResources((previous) => ({ ...previous })) }
+        } catch { if (!signal.aborted && alive.current && version === versions.current[id] && referenced.current.has(id)) publish(id, { message: transport ? 'This image could not be loaded. Retry when the connection is available.' : 'The local image is unavailable. Reconnect it to continue.' }) }
+        finally { pending.current.delete(id); if (alive.current && (signal.aborted || version !== versions.current[id])) setResources((previous) => ({ ...previous })) }
       })()
     }
   }, [overlays, resources, transport])

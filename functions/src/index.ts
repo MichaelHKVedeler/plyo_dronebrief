@@ -1,4 +1,4 @@
-import { onCall, onRequest, HttpsError } from 'firebase-functions/v2/https'
+import { onCall, onRequest, HttpsError, type CallableRequest } from 'firebase-functions/v2/https'
 import { onDocumentCreated, onDocumentWritten } from 'firebase-functions/v2/firestore'
 import { onSchedule } from 'firebase-functions/v2/scheduler'
 import { setGlobalOptions } from 'firebase-functions/v2'
@@ -15,7 +15,7 @@ import { requestNetworkKey } from './network-key.js'
 import { projectNeedsIndex } from './project-index.js'
 
 setGlobalOptions({ region: 'europe-west1', maxInstances: 20 })
-export const api = onCall({ memory: '2GiB', timeoutSeconds: 300, concurrency: 1 }, async (request) => {
+const handle = async (request: CallableRequest) => {
   const user = principal(request)
   try {
     const { operation, data } = z.object({ operation: z.string().max(64), data: z.unknown() }).parse(request.data)
@@ -42,13 +42,21 @@ export const api = onCall({ memory: '2GiB', timeoutSeconds: 300, concurrency: 1 
     if (error instanceof z.ZodError) throw new HttpsError('invalid-argument', 'Invalid request data.', error.flatten())
     throw error
   }
-})
+}
+// Everything but image processing shares instances, so requests sent together do not each wait for a new one to start.
+// shortcut: still 2GiB because tabs opened before the split send image processing here; lower it once those are gone.
+export const api = onCall({ memory: '2GiB', timeoutSeconds: 300 }, handle)
+// Decoding a large floorplan needs an instance to itself. The browser sends finalizeUpload here.
+export const processing = onCall({ memory: '2GiB', timeoutSeconds: 300, concurrency: 1 }, handle)
 export const publicView = onRequest({ cors: true, timeoutSeconds: 60, memory: '512MiB', concurrency: 8 }, async (request, response) => {
   response.set({ 'Cache-Control': 'no-store, private', 'Referrer-Policy': 'no-referrer', 'X-Content-Type-Options': 'nosniff' })
   if (request.method !== 'POST') { response.status(405).end(); return }
   try {
     const { token, assetId } = z.object({ token: z.string().regex(/^[A-Za-z0-9_-]{43}$/), assetId: z.uuid().optional() }).parse(request.body)
-    await enforcePublicBudget(requestNetworkKey(request.headers), token, assetId)
+    const networkKey = requestNetworkKey(request.headers)
+    await enforcePublicBudget(networkKey, token, false)
+    if (!(await db.doc(`publicShares/${token}`).get()).exists) throw new HttpsError('not-found', 'This link is unavailable or has been revoked.')
+    await enforcePublicBudget(networkKey, token, true)
     if (assetId) response.type('image/webp').send(await publicAsset(token, assetId))
     else {
       const body = JSON.stringify(await loadPublicProject(token))

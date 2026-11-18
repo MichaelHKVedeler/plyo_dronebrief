@@ -1,7 +1,14 @@
-import { getBlob, ref, uploadBytesResumable } from 'firebase/storage'
+import { connectStorageEmulator, getBlob, getStorage, ref, uploadBytesResumable, type FirebaseStorage } from 'firebase/storage'
 import { assetSchema, type CloudAsset } from '../model/cloud'
-import { callCloud, firebase } from '../auth/firebase'
+import { callCloud, emulated, firebase } from '../auth/firebase'
 import { publicRequest } from './project-repository'
+
+// Created here, so only the editor downloads the Storage SDK.
+let bucket: FirebaseStorage | undefined
+function storage() {
+  if (!bucket) { bucket = getStorage(firebase().app); if (emulated) connectStorageEmulator(bucket, '127.0.0.1', 9199) }
+  return bucket
+}
 
 export async function uploadFloorplan(projectId: string, fileId: string, file: File, progress: (label: string) => void, signal: AbortSignal): Promise<CloudAsset> {
   signal.throwIfAborted()
@@ -9,7 +16,7 @@ export async function uploadFloorplan(projectId: string, fileId: string, file: F
   const assetId = crypto.randomUUID()
   const { path } = await callCloud<{ path: string }>('prepareUpload', { projectId, fileId, assetId, fileName: file.name })
   signal.throwIfAborted()
-  const task = uploadBytesResumable(ref(firebase().storage, path), file, { contentType: file.type || (/\.png$/i.test(file.name) ? 'image/png' : 'image/jpeg') })
+  const task = uploadBytesResumable(ref(storage(), path), file, { contentType: file.type || (/\.png$/i.test(file.name) ? 'image/png' : 'image/jpeg') })
   const cancel = () => task.cancel()
   signal.addEventListener('abort', cancel, { once: true })
   try {
@@ -22,7 +29,7 @@ export async function uploadFloorplan(projectId: string, fileId: string, file: F
 }
 export async function downloadFloorplan(asset: CloudAsset, publicToken?: string, signal?: AbortSignal) {
   if (publicToken) return (await publicRequest(publicToken, asset.id, signal)).blob()
-  const blob = await getBlob(ref(firebase().storage, asset.path), 4 * 1024 * 1024)
+  const blob = await getBlob(ref(storage(), asset.path), 4 * 1024 * 1024)
   signal?.throwIfAborted()
   return blob
 }
