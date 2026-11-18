@@ -14,6 +14,7 @@ import type { PdfMapCapture } from '@/features/briefs/export/pdf-types'
 import { ProjectLibraryPage } from '@/pages/project-library-page'
 import { useAccount } from '@/features/cloud/auth/use-account'
 import { cloudError, signInGoogle, signOutGoogle } from '@/features/cloud/auth/firebase'
+import { toolkitsUrl } from '@/features/cloud/auth/toolkits-login'
 import { Choice } from '@/features/cloud/components/choice'
 import { Problem } from '@/features/cloud/components/problem'
 import { cloudProjects, loadPublic } from '@/features/cloud/storage/project-repository'
@@ -100,6 +101,7 @@ export function CloudApp() {
         {!briefScreen && organization && <div className="min-w-0"><Choice label="Organization" value={organization.id} onChange={(id) => { setOrgId(id); goNow('/') }} options={account.organizations.map((org) => ({ value: org.id, label: org.name }))} /></div>}
         <Button className="h-9 shrink-0" variant="outline" onClick={() => guard(() => { void signOutGoogle().catch((error) => setError(cloudError(error))) })}>Sign out</Button>
       </div>}
+      {account.user && !briefScreen && <Button asChild variant="outline" className="h-9 shrink-0 self-end"><a href={toolkitsUrl}>Toolkits</a></Button>}
       {briefScreen && !publicToken && <Button variant="outline" onClick={home}>Home</Button>}
   </>
   return <div className={briefScreen || libraryHome ? 'flex h-dvh min-h-0 flex-col overflow-hidden' : 'min-h-svh'}><Suspense fallback={<p role="status" className="p-6">Loading workspace…</p>}>
@@ -119,6 +121,7 @@ export function CloudApp() {
       : route === '/' || route === '/library' ? <ProjectLibraryPage key={organization.id} organization={organization} uid={account.user.uid} onOpen={openProject} onCreate={() => goNow('/create')} drafts={drafts} onSaveDraft={setMigrate} header={<div className="flex w-full min-w-0 flex-wrap items-center justify-end gap-6">
         <ThemeToggle className="-mx-2.5" />
         {account.organizations.length > 1 && <Choice label="Organization" value={organization.id} onChange={(id) => { setOrgId(id); goNow('/') }} options={account.organizations.map((org) => ({ value: org.id, label: org.name }))} />}
+        <Button asChild variant="ghost" className="-mx-2 px-2"><a href={toolkitsUrl}>Toolkits</a></Button>
         {organization.role === 'admin' && <Button variant="ghost" className="-mx-2 px-2" onClick={() => goNow('/organization')}>Manage organization</Button>}
         <span className="max-w-48 truncate text-sm leading-9" title={account.user.displayName ?? account.user.email ?? undefined}>{account.user.displayName ?? account.user.email}</span>
         <Button variant="outline" onClick={() => guard(() => { void signOutGoogle().catch((error) => setError(cloudError(error))) })}>Sign out</Button>

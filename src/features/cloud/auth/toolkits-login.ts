@@ -2,6 +2,7 @@ import { continueToolLaunch, hasToolLaunch } from '@plyo/accounts-client/tool-la
 import { cloudConfigured } from './config'
 
 const accounts = 'https://plyo-toolkits.web.app'
+export const toolkitsUrl = `${accounts}/toolkits/`
 async function signIn() {
   // Runs up to its first request at import: the launch leaves the URL before the hash is read as a route.
   const token = await continueToolLaunch(accounts, `${accounts}/api/shared-login/redeem`, new AbortController().signal, 'dronebrief')

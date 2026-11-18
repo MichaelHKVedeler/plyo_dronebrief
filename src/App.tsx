@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useState } from 'react'
 import { cloudConfigured } from '@/features/cloud/auth/config'
-import { toolkitsSignIn } from '@/features/cloud/auth/toolkits-login'
+import { toolkitsSignIn, toolkitsUrl } from '@/features/cloud/auth/toolkits-login'
 
 const CloudApp = lazy(() => import('@/pages/cloud-app').then((module) => ({ default: module.CloudApp })))
 const LocalApp = lazy(() => import('@/pages/local-app').then((module) => ({ default: module.LocalApp })))
@@ -10,7 +10,7 @@ export default function App() {
   const [toolkitsError, setToolkitsError] = useState<string | null | undefined>(toolkitsSignIn ? undefined : null)
   useEffect(() => { void toolkitsSignIn?.then(setToolkitsError) }, [])
   if (toolkitsError === undefined) return <p role="status" className="p-6">Signing in with Plyo Toolkits…</p>
-  if (toolkitsError) return <main className="mx-auto grid max-w-xl gap-4 p-6"><h1 className="text-2xl font-semibold">Plyo Toolkits sign-in did not complete</h1><p role="alert">{toolkitsError}</p><p><a className="underline" href="https://plyo-toolkits.web.app/toolkits/">Back to Plyo Toolkits</a> · <a className="underline" href={location.pathname}>Continue to Dronebrief</a></p></main>
+  if (toolkitsError) return <main className="mx-auto grid max-w-xl gap-4 p-6"><h1 className="text-2xl font-semibold">Plyo Toolkits sign-in did not complete</h1><p role="alert">{toolkitsError}</p><p><a className="underline" href={toolkitsUrl}>Back to Plyo Toolkits</a> · <a className="underline" href={location.pathname}>Continue to Dronebrief</a></p></main>
   if (!cloudConfigured && /^#\/(projects|s)\//.test(location.hash)) return <main className="mx-auto max-w-xl p-6"><h1 className="text-2xl font-semibold">Cloud projects are not configured</h1><p className="mt-4" role="alert">This installation needs Firebase configuration to open project links. Follow docs/firebase-setup.md.</p></main>
   return <Suspense fallback={<p role="status" className="p-6">{cloudConfigured ? 'Loading account…' : 'Loading Dronebrief…'}</p>}>
     {cloudConfigured ? <CloudApp /> : <LocalApp />}
