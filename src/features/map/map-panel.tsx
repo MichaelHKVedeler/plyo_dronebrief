@@ -298,12 +298,13 @@ function MapWorkspace(props: Props) {
         </p>}
       </div>
     </div>
-    {/* Public links: the layer menu runs flush left from the top down to just above the Instructions button. */}
-    {briefing && <div className="pointer-events-none absolute top-3 bottom-[5.5rem] left-0 z-20 flex flex-col items-start lg:bottom-8">
+    {/* Public links: a full-height layer menu on the left edge, with the Instructions button beside it. */}
+    {briefing && <div className="pointer-events-none absolute inset-y-0 left-0 z-20 flex items-end gap-3">
       {props.layerControls?.(<>
         <MapObjectSizeControl value={objectSizePercent} onChange={setObjectSize} upright />
         <MapDimmerControl value={dimOpacity} onChange={setDimOpacity} upright />
       </>)}
+      <div className="mb-8">{props.bottomLeading}</div>
     </div>}
     {!briefing && <div className="pointer-events-auto absolute right-3 bottom-[5.5rem] z-20 grid max-h-[calc(100%-7rem)] w-[calc(100%-196px)] max-w-3xl gap-1 overflow-y-auto rounded-lg border bg-card p-2 shadow-sm @min-[750px]:right-auto @min-[750px]:bottom-8 @min-[750px]:left-1/2 @min-[750px]:w-[calc(100%-384px)] @min-[750px]:-translate-x-1/2 @min-[750px]:p-3">
       <ResponsiveShadowTimeControl totalImages={countBriefImages(brief).total} slots={slots} activeIndex={Math.min(activeSlot, slots.length - 1)} activeEndpoint={activeEndpoint}
@@ -315,7 +316,7 @@ function MapWorkspace(props: Props) {
           <MapObjectSizeControl value={objectSizePercent} onChange={setObjectSize} />
           <MapDimmerControl value={dimOpacity} onChange={setDimOpacity} />
         </div>}
-        {props.bottomLeading}
+        {!briefing && props.bottomLeading}
       </div>
       <MapControls brief={brief} navigation={shadeActive ? shadeNavigation : googleMap} />
     </div>

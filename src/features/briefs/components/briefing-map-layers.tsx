@@ -59,8 +59,8 @@ export function BriefingMapLayers({ brief, language, sliders, hiddenKinds, onHid
   }
   if (!sliders && !rows.length && !hasFloorplan && !hasScan && !splitKinds.length && !onZonesVisible) return null
   const collapseLabel = collapsed ? copy.showLayerButtons : copy.hideLayerButtons
-  // Glued to the left edge; buttons keep their size and the sliders shrink so the menu fits any height.
-  return <div className="pointer-events-auto flex max-h-full w-fit flex-col items-center gap-2.5 overflow-y-auto rounded-r-lg border border-l-0 bg-card p-2 shadow-sm [&>*]:shrink-0">
+  // A full-height bar on the left edge; buttons keep their size and the sliders shrink so it fits any height.
+  return <div className="pointer-events-auto flex h-full w-fit flex-col items-center gap-2.5 overflow-y-auto border-r bg-card p-2 shadow-sm [&>*]:shrink-0">
     <Button type="button" variant="ghost" size="icon-sm" className="rounded-full" aria-expanded={!collapsed} aria-label={collapseLabel} title={collapseLabel}
       onClick={() => setCollapsed(!collapsed)}>
       {collapsed ? <ChevronDown /> : <ChevronUp />}
