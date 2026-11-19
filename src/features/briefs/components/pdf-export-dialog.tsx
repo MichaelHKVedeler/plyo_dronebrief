@@ -203,7 +203,7 @@ export function PdfExportDialog({ brief, editable, captureRef, onSaveNotes, onCl
         <div className="grid gap-2"><Label>Map pages</Label><div className="grid gap-2 sm:grid-cols-2" role="group" aria-label="PDF map source">
           <Button disabled={busy} variant={!diagram ? 'default' : 'outline'} aria-pressed={!diagram} onClick={() => setDiagram(false)}>Google Maps</Button>
           <Button disabled={busy} variant={diagram ? 'default' : 'outline'} aria-pressed={diagram} onClick={() => setDiagram(true)}>Point diagram</Button>
-        </div><p className="text-sm text-muted-foreground">{diagram ? 'A labeled position diagram without a basemap or floor plan. Coordinates are listed in the PDF.' : 'Google Maps frames all points for export, then restores your view. Includes a second map without the floor plan when one is present.'}</p></div>
+        </div><p className="text-sm text-muted-foreground">{diagram ? 'A labeled position diagram without a basemap or site plan. Coordinates are listed in the PDF.' : 'Google Maps frames all points for export, then restores your view. Includes a second map without the site plan when one is present.'}</p></div>
         {brief.references.length > 0 && <p className="text-sm text-muted-foreground">{brief.references.length} reference image{brief.references.length === 1 ? '' : 's'} from Contents will be included.</p>}
       </div>}
       {error && <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>}

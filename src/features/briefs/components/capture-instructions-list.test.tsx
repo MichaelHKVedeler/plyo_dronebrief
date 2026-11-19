@@ -58,7 +58,7 @@ it('hides a capture type from the map overlay and shows it again on a second cli
   const onHiddenKinds = vi.fn()
   const user = userEvent.setup()
   const view = render(<BriefingMapLayers brief={captureBrief()} language="en" hiddenKinds={new Set()} onHiddenKinds={onHiddenKinds} />)
-  expect(screen.queryByRole('button', { name: 'Hide floorplan' })).not.toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: 'Hide site plan' })).not.toBeInTheDocument()
   await user.click(screen.getByRole('button', { name: 'Hide Aerial photo' }))
   expect(onHiddenKinds).toHaveBeenCalledWith(new Set(['drone-image']))
   view.rerender(<BriefingMapLayers brief={captureBrief()} language="en" hiddenKinds={new Set(['drone-image'])} onHiddenKinds={onHiddenKinds} />)
@@ -68,7 +68,7 @@ it('hides a capture type from the map overlay and shows it again on a second cli
   expect(onHiddenKinds).toHaveBeenLastCalledWith(new Set())
 })
 
-it('toggles the floorplan under the capture icons without hiding cameras', async () => {
+it('toggles the site plan under the capture icons without hiding cameras', async () => {
   const onHiddenKinds = vi.fn()
   const onFloorplanVisible = vi.fn()
   const brief = captureBrief()
@@ -78,11 +78,11 @@ it('toggles the floorplan under the capture icons without hiding cameras', async
   }]
   const user = userEvent.setup()
   const view = render(<BriefingMapLayers brief={brief} language="en" hiddenKinds={new Set()} onHiddenKinds={onHiddenKinds} floorplanVisible onFloorplanVisible={onFloorplanVisible} />)
-  const hide = screen.getByRole('button', { name: 'Hide floorplan' })
+  const hide = screen.getByRole('button', { name: 'Hide site plan' })
   expect(hide).toHaveAttribute('aria-pressed', 'true')
   await user.click(hide)
   expect(onFloorplanVisible).toHaveBeenCalledWith(false)
   expect(onHiddenKinds).not.toHaveBeenCalled()
   view.rerender(<BriefingMapLayers brief={brief} language="en" hiddenKinds={new Set()} onHiddenKinds={onHiddenKinds} floorplanVisible={false} onFloorplanVisible={onFloorplanVisible} />)
-  expect(screen.getByRole('button', { name: 'Show floorplan' })).toHaveAttribute('aria-pressed', 'false')
+  expect(screen.getByRole('button', { name: 'Show site plan' })).toHaveAttribute('aria-pressed', 'false')
 })

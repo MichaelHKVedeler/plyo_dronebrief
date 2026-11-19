@@ -49,7 +49,7 @@ const handle = async (request: CallableRequest) => {
 // Everything but image processing shares instances, so requests sent together do not each wait for a new one to start.
 // shortcut: still 2GiB because tabs opened before the split send image processing here; lower it once those are gone.
 export const api = onCall({ memory: '2GiB', timeoutSeconds: 300 }, handle)
-// Decoding a large floorplan needs an instance to itself. The browser sends finalizeUpload here.
+// Decoding a large site plan needs an instance to itself. The browser sends finalizeUpload here.
 export const processing = onCall({ memory: '2GiB', timeoutSeconds: 300, concurrency: 1 }, handle)
 export const publicView = onRequest({ cors: true, timeoutSeconds: 60, memory: '512MiB', concurrency: 8 }, async (request, response) => {
   response.set({ 'Cache-Control': 'no-store, private', 'Referrer-Policy': 'no-referrer', 'X-Content-Type-Options': 'nosniff' })
@@ -75,7 +75,7 @@ export const publicView = onRequest({ cors: true, timeoutSeconds: 60, memory: '5
         : 'Public links are temporarily unavailable. Please try again shortly.' })
       return
     }
-    response.status(404).json({ message: 'This project or floorplan is unavailable, or its public link has been revoked.' })
+    response.status(404).json({ message: 'This project or site plan is unavailable, or its public link has been revoked.' })
   }
 })
 // Public and identical for everyone, so browsers and CDNs may cache it. It holds no project data.

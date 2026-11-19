@@ -109,7 +109,7 @@ it('locks movement, transforms and anchors while leaving map gestures available'
   down(); move(); up()
   expect(state.onCommit).toHaveBeenCalledOnce()
 })
-it('discards an ongoing drag if the floorplan becomes locked', () => {
+it('discards an ongoing drag if the site plan becomes locked', () => {
   const { state, down, move, up } = setup()
   down(); move()
   state.lockedIds = new Set([image.id])

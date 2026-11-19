@@ -140,7 +140,7 @@ it('loads a viewer and toggles layers without writing or replacing the local dra
   expect(mapLayers.getByRole('button', { name: 'Hide Circle rig' })).toHaveAttribute('aria-pressed', 'true')
   expect(screen.getByText('No property information.')).toBeVisible()
   expect(screen.getByText('No instructions.')).toBeVisible()
-  expect(screen.getByRole('button', { name: 'Floor plan' })).toBeVisible()
+  expect(screen.getByRole('button', { name: 'Site plan' })).toBeVisible()
   expect(screen.getByRole('button', { name: 'Calculate images' })).toBeVisible()
   expect(screen.queryByText(/50 m radius/)).not.toBeInTheDocument()
   const overlaySize = screen.getByRole('slider', { name: 'Icon size' })

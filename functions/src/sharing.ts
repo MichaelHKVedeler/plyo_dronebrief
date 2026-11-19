@@ -49,12 +49,12 @@ export async function loadPublicProject(token: string): Promise<CloudProject> {
 export async function publicAsset(token: string, assetId: string) {
   const project = await loadPublicProject(token)
   const asset = Object.values(project.assets).find((candidate) => candidate.id === assetId)
-  if (!asset) throw new HttpsError('not-found', 'Floorplan unavailable.')
+  if (!asset) throw new HttpsError('not-found', 'Site plan unavailable.')
   // Charge canonical, validated size only after the token and asset exist.
   await enforcePublicTransferBudget(token, asset.size)
   const [bytes] = await bucket().file(asset.path).download()
   // Revalidate after the download in case the link was revoked while reading Storage.
   const current = await loadPublicProject(token)
-  if (!Object.values(current.assets).some((candidate) => candidate.id === assetId)) throw new HttpsError('not-found', 'Floorplan unavailable.')
+  if (!Object.values(current.assets).some((candidate) => candidate.id === assetId)) throw new HttpsError('not-found', 'Site plan unavailable.')
   return bytes
 }

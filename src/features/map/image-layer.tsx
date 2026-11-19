@@ -29,7 +29,7 @@ function createImageCanvas(getState: () => ImageLayerState, projection: ImagePro
   // Stroke is centered on the radius, so the disc's outer edge matches an icon-sm handle.
   disc.setAttribute('r', String(imageAnchorRadius - 1))
   disc.setAttribute('fill', 'var(--card)')
-  // Partly see-through so the floorplan shows under the handle; grabbing is a distance test, not a fill hit.
+  // Partly see-through so the site plan shows under the handle; grabbing is a distance test, not a fill hit.
   disc.setAttribute('fill-opacity', '0.6')
   disc.setAttribute('stroke', 'var(--primary)')
   disc.setAttribute('stroke-width', '2')

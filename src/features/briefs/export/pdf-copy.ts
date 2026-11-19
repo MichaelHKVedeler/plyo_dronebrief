@@ -13,7 +13,7 @@ export const pdfCopy = {
     heights: 'Heights', ground: 'Ground-level', perPoint: 'Heights set per point', photos: 'photos', time: 'time slot', times: 'time slots', perTime: 'per time slot',
     individual: 'Individual photos, not a stitched panorama', panoramaRule: '10 photos per point and height',
     droneRule: '1 photo per point and height', rigRule: '1 photo per arrow and height', dslrRule: '1 photo per angle',
-    notSet: 'Not specified', none: 'No camera points or rig added.', map: 'Photo positions', mapPlan: 'Photo positions with floor plan', droneScan: 'Drone scan', extraCoverage: 'Extra coverage',
+    notSet: 'Not specified', none: 'No camera points or rig added.', map: 'Photo positions', mapPlan: 'Photo positions with site plan', droneScan: 'Drone scan', extraCoverage: 'Extra coverage',
     diagram: 'Point diagram - no basemap', reference: 'Reference', positions: 'Points', delivery: 'Files',
     positionsNote: 'All points are indicative. Move the point of view if anything blocks the drone or camera.',
     files: 'RAW + JPG', folders: 'Organize in folders: Time slot / Type / Point / Height',

@@ -69,7 +69,7 @@ it('shows the clicked point heights, including a 360 override', async () => {
   expect(screen.queryByRole('status', { name: /Heights/ })).not.toBeInTheDocument()
 })
 
-it('hides the floorplan from the public map without writing the brief', async () => {
+it('hides the site plan from the public map without writing the brief', async () => {
   const brief = createBrief({ name: 'Cloud project', clientName: 'Client', date: '2026-05-16', times: ['09:00'] })
   brief.angles = [{ id: 'd1', label: 'D1', type: 'drone-image', position: brief.coordinates, directionDegrees: 0 }]
   brief.imageOverlays = [{
@@ -84,12 +84,12 @@ it('hides the floorplan from the public map without writing the brief', async ()
     return <BriefingPage session={session} dispatch={(action) => setSession((value) => reduceSession(value, action))} error={null} presentation={defaultBriefingPresentation} />
   }
   render(<Fixture />)
-  const hide = screen.getByRole('button', { name: 'Hide floorplan' })
+  const hide = screen.getByRole('button', { name: 'Hide site plan' })
   expect(hide).toHaveAttribute('aria-pressed', 'true')
   await user.click(hide)
   expect(current.visibility.imageOverlays).toBe(false)
   expect(current.brief).toBe(brief)
-  expect(screen.getByRole('button', { name: 'Show floorplan' })).toHaveAttribute('aria-pressed', 'false')
+  expect(screen.getByRole('button', { name: 'Show site plan' })).toHaveAttribute('aria-pressed', 'false')
 })
 
 it('offers the scan toggle for extra coverage alone, hidden at first, and toggles kinds independently without saving', async () => {

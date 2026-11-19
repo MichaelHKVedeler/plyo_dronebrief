@@ -122,7 +122,7 @@ export async function copyAsset(user: Actor, input: unknown) {
     await requireMember(tx, from.orgId, user.uid); await requireMember(tx, to.orgId, user.uid)
     requireActive(from); requireActive(to)
     const original = await tx.get(source.ref.collection('assets').doc(data.assetId))
-    if (original.get('state') !== 'ready') throw new HttpsError('permission-denied', 'Floorplan unavailable.')
+    if (original.get('state') !== 'ready') throw new HttpsError('permission-denied', 'Site plan unavailable.')
     const existing = await tx.get(target.ref.collection('assets').doc(data.assetId))
     const canonical = assetSchema.parse(original.data())
     const sourceFingerprint = hash(JSON.stringify(canonical))
@@ -130,7 +130,7 @@ export async function copyAsset(user: Actor, input: unknown) {
     if (existing.get('state') === 'ready') return { original: canonical, sourceFingerprint, result: assetSchema.parse(existing.data()), ready: true }
     if (existing.exists) {
       if (existing.get('state') !== 'copying' || existing.get('copiedBy') !== user.uid || existing.get('sourceProjectId') !== data.sourceProjectId || existing.get('sourceFingerprint') !== sourceFingerprint || existing.get('path') !== path || existing.get('fileId') !== canonical.fileId) {
-        throw new HttpsError('failed-precondition', 'Floorplan copy belongs to a different operation. Try a new project.')
+        throw new HttpsError('failed-precondition', 'Site plan copy belongs to a different operation. Try a new project.')
       }
       return { original: canonical, sourceFingerprint, result: assetSchema.parse(existing.data()), ready: false }
     }
@@ -143,7 +143,7 @@ export async function copyAsset(user: Actor, input: unknown) {
   })
   if (asset.ready) return asset.result
   const [bytes] = await bucket().file(asset.original.path).download({ decompress: false })
-  if (bytes.length !== asset.original.size) throw new HttpsError('failed-precondition', 'Floorplan contents do not match the saved image.')
+  if (bytes.length !== asset.original.size) throw new HttpsError('failed-precondition', 'Site plan contents do not match the saved image.')
   try { await bucket().file(asset.result.path).save(bytes, { resumable: false, preconditionOpts: { ifGenerationMatch: 0 }, metadata: { contentType: 'image/webp', cacheControl: 'private, no-store' } }) } catch (error) { if ((error as { code?: number }).code !== 412) throw error }
   return db.runTransaction(async (tx) => {
     const source = await tx.get(projectRef(data.sourceProjectId)); const target = await tx.get(projectRef(data.projectId))
@@ -152,9 +152,9 @@ export async function copyAsset(user: Actor, input: unknown) {
     requireActive(summarySchema.parse(source.data())); requireActive(summarySchema.parse(target.data()))
     const original = await tx.get(source.ref.collection('assets').doc(data.assetId))
     const existing = await tx.get(target.ref.collection('assets').doc(data.assetId))
-    if (original.get('state') !== 'ready' || hash(JSON.stringify(assetSchema.parse(original.data()))) !== asset.sourceFingerprint) throw new HttpsError('permission-denied', 'Floorplan unavailable.')
+    if (original.get('state') !== 'ready' || hash(JSON.stringify(assetSchema.parse(original.data()))) !== asset.sourceFingerprint) throw new HttpsError('permission-denied', 'Site plan unavailable.')
     if (existing.get('state') === 'ready') return assetSchema.parse(existing.data())
-    if (existing.get('state') !== 'copying' || existing.get('copiedBy') !== user.uid || existing.get('sourceProjectId') !== data.sourceProjectId || existing.get('sourceFingerprint') !== asset.sourceFingerprint) throw new HttpsError('failed-precondition', 'Floorplan copy is unavailable.')
+    if (existing.get('state') !== 'copying' || existing.get('copiedBy') !== user.uid || existing.get('sourceProjectId') !== data.sourceProjectId || existing.get('sourceFingerprint') !== asset.sourceFingerprint) throw new HttpsError('failed-precondition', 'Site plan copy is unavailable.')
     tx.set(target.ref.collection('assets').doc(data.assetId), { ...asset.result, state: 'ready' })
     return asset.result
   })

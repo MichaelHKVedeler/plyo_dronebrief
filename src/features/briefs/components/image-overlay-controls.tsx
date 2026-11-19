@@ -35,11 +35,11 @@ export function ImageOverlayControls({ overlays, editable, images, onUpdate, pla
     setBusy(true); setError('')
     const opening = images.cloud ? 'Uploading %s…' : 'Opening %s…'
     try {
-      setProgress(isPdf(picked) ? 'Converting PDF to JPG…' : opening.replace('%s', 'floorplan'))
+      setProgress(isPdf(picked) ? 'Converting PDF to JPG…' : opening.replace('%s', 'site plan'))
       const file = isPdf(picked) ? await pdfToJpeg(picked) : picked
       // A converted PDF has no file on disk to reopen, so it is not remembered locally.
       const handle = file === picked ? pickedHandle : undefined
-      setProgress(opening.replace('%s', 'floorplan'))
+      setProgress(opening.replace('%s', 'site plan'))
       const existing = reconnect.current
       if (!existing && !editable) return
       const source = existing?.source
@@ -89,25 +89,25 @@ export function ImageOverlayControls({ overlays, editable, images, onUpdate, pla
       const value = Math.round((images.opacityOverrides[overlay.id] ?? overlay.opacity) * 100)
       return <div key={overlay.id} className="grid min-w-0 gap-2 rounded-md border p-3">
         <div className="relative overflow-hidden rounded-md border bg-white">
-          <Button variant="ghost" className="h-auto min-h-40 w-full rounded-none p-0 hover:bg-transparent" aria-label="View floorplan" disabled={!url}
+          <Button variant="ghost" className="h-auto min-h-40 w-full rounded-none p-0 hover:bg-transparent" aria-label="View site plan" disabled={!url}
             onClick={() => open(overlay.id, url)}>
-            {url ? <img src={url} alt="" className="w-full" style={{ clipPath: maskClipPath(overlay.mask) }} /> : <span className="p-8 text-sm text-muted-foreground">Floorplan unavailable</span>}
+            {url ? <img src={url} alt="" className="w-full" style={{ clipPath: maskClipPath(overlay.mask) }} /> : <span className="p-8 text-sm text-muted-foreground">Site plan unavailable</span>}
           </Button>
           {editable && <>
-            <Button size="icon-sm" variant="outline" className="absolute top-2 left-2 border-zinc-700 bg-zinc-900 text-white shadow-sm hover:bg-zinc-800 hover:text-white dark:border-zinc-700 dark:bg-zinc-900 dark:hover:bg-zinc-800" disabled={!url} aria-label={`Mask floorplan ${overlay.name}`} title="Mask floorplan"
+            <Button size="icon-sm" variant="outline" className="absolute top-2 left-2 border-zinc-700 bg-zinc-900 text-white shadow-sm hover:bg-zinc-800 hover:text-white dark:border-zinc-700 dark:bg-zinc-900 dark:hover:bg-zinc-800" disabled={!url} aria-label={`Mask site plan ${overlay.name}`} title="Mask site plan"
               onClick={() => open(overlay.id, url)}><PenTool /></Button>
-            <Button size="icon-sm" variant="outline" className="absolute top-2 right-2 border-zinc-700 bg-zinc-900 text-white shadow-sm hover:bg-zinc-800 hover:text-white dark:border-zinc-700 dark:bg-zinc-900 dark:hover:bg-zinc-800" disabled={busy} aria-label={`Remove ${overlay.name}`} title="Remove floorplan"
+            <Button size="icon-sm" variant="outline" className="absolute top-2 right-2 border-zinc-700 bg-zinc-900 text-white shadow-sm hover:bg-zinc-800 hover:text-white dark:border-zinc-700 dark:bg-zinc-900 dark:hover:bg-zinc-800" disabled={busy} aria-label={`Remove ${overlay.name}`} title="Remove site plan"
               onClick={() => { onUpdate((brief) => ({ ...brief, imageOverlays: brief.imageOverlays.filter((image) => image.id !== overlay.id) })); if (selectedId === overlay.id) onSelect(null) }}><X /></Button>
-            <Button size="icon-sm" variant="outline" className="absolute bottom-2 left-2 border-zinc-700 bg-zinc-900 text-white shadow-sm hover:bg-zinc-800 hover:text-white dark:border-zinc-700 dark:bg-zinc-900 dark:hover:bg-zinc-800" aria-pressed={lockedIds.has(overlay.id)} aria-label={`${lockedIds.has(overlay.id) ? 'Unlock' : 'Lock'} floorplan ${overlay.name}`} title={lockedIds.has(overlay.id) ? 'Unlock floorplan' : 'Lock floorplan'} onClick={() => onToggleLock(overlay.id)}>
+            <Button size="icon-sm" variant="outline" className="absolute bottom-2 left-2 border-zinc-700 bg-zinc-900 text-white shadow-sm hover:bg-zinc-800 hover:text-white dark:border-zinc-700 dark:bg-zinc-900 dark:hover:bg-zinc-800" aria-pressed={lockedIds.has(overlay.id)} aria-label={`${lockedIds.has(overlay.id) ? 'Unlock' : 'Lock'} site plan ${overlay.name}`} title={lockedIds.has(overlay.id) ? 'Unlock site plan' : 'Lock site plan'} onClick={() => onToggleLock(overlay.id)}>
               {lockedIds.has(overlay.id) ? <Lock /> : <LockOpen />}
             </Button>
-            <Button size="icon-sm" variant="outline" className="absolute right-2 bottom-2 border-zinc-700 bg-zinc-900 text-white shadow-sm hover:bg-zinc-800 hover:text-white dark:border-zinc-700 dark:bg-zinc-900 dark:hover:bg-zinc-800" disabled={busy} aria-label="Replace floorplan" title="Replace floorplan" onClick={() => void choose(overlay)}><RefreshCw /></Button>
+            <Button size="icon-sm" variant="outline" className="absolute right-2 bottom-2 border-zinc-700 bg-zinc-900 text-white shadow-sm hover:bg-zinc-800 hover:text-white dark:border-zinc-700 dark:bg-zinc-900 dark:hover:bg-zinc-800" disabled={busy} aria-label="Replace site plan" title="Replace site plan" onClick={() => void choose(overlay)}><RefreshCw /></Button>
           </>}
         </div>
         {typeof overlay.source !== 'string' && <>
           <p className="break-all text-xs text-muted-foreground">{overlay.source.fileName}</p>
           {resource?.message && <p className="text-xs text-muted-foreground">{resource.message}</p>}
-          {!resource?.url && images.cloud && <Button size="sm" variant="outline" onClick={() => { if (typeof overlay.source !== 'string') images.retry(overlay.source.fileId) }}>Retry floorplan</Button>}
+          {!resource?.url && images.cloud && <Button size="sm" variant="outline" onClick={() => { if (typeof overlay.source !== 'string') images.retry(overlay.source.fileId) }}>Retry site plan</Button>}
           {!resource?.url && !images.cloud && <div className="flex flex-wrap gap-2">
             {resource?.handle && <Button size="sm" variant="outline" disabled={busy} onClick={async () => {
               if (typeof overlay.source === 'string' || !resource.handle) return

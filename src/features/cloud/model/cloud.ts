@@ -22,7 +22,7 @@ export const assetSchema = z.object({
 })
 // A small JPEG of the editor map for the project card. It is only ever shown as an image.
 export const previewImage = z.string().max(150_000).regex(/^data:image\/jpeg;base64,\/9j\/[A-Za-z0-9+/]+={0,2}$/)
-export const assetsSchema = z.record(z.uuid(), assetSchema).refine((assets) => Object.keys(assets).length <= 10, 'Maximum ten floorplans.')
+export const assetsSchema = z.record(z.uuid(), assetSchema).refine((assets) => Object.keys(assets).length <= 10, 'Maximum ten site plans.')
 export const summarySchema = z.object({
   id: cloudId, orgId: cloudId, name: cloudName, clientName: cloudName,
   createdBy: actorSchema, editedBy: actorSchema, createdAt: z.iso.datetime(), updatedAt: z.iso.datetime(),

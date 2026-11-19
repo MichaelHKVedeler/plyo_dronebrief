@@ -43,7 +43,7 @@ export function LayersPanel({ session, referenceImages, onVisibilityChange, ...i
             <p className="mt-1 whitespace-pre-wrap text-sm text-muted-foreground">{brief.project.instructions || 'No instructions.'}</p></div>
         </>}
     </SettingsSection>
-    <SettingsSection value="floor-plan" title="Floor plan" visibility={{ visible: session.visibility.imageOverlays, onToggle: () => onVisibilityChange('imageOverlays', !session.visibility.imageOverlays) }}>
+    <SettingsSection value="floor-plan" title="Site plan" visibility={{ visible: session.visibility.imageOverlays, onToggle: () => onVisibilityChange('imageOverlays', !session.visibility.imageOverlays) }}>
       <ImageOverlayControls {...imageControls} overlays={brief.imageOverlays} editable={editing} />
     </SettingsSection>
     <SettingsSection value="references" title="Reference images" count={brief.references.length}>

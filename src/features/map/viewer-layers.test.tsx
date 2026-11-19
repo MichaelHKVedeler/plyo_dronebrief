@@ -23,7 +23,7 @@ it('toggles map layer visibility without changing a read-only brief', async () =
   expect(current.visibility.droneScan).toBe(false)
   await user.click(within(overlay).getByRole('button', { name: 'Hide Camera points' }))
   expect(current.visibility.angles).toBe(false)
-  await user.click(within(overlay).getByRole('button', { name: 'Hide Floor plan' }))
+  await user.click(within(overlay).getByRole('button', { name: 'Hide Site plan' }))
   expect(current.visibility.imageOverlays).toBe(false)
   await user.click(within(overlay).getByRole('button', { name: 'Hide no-fly zones' }))
   expect(current.visibility.droneZones).toBe(false)

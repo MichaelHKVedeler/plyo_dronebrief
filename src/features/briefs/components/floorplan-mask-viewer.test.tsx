@@ -17,8 +17,8 @@ beforeEach(() => {
 })
 afterEach(() => { cleanup(); vi.restoreAllMocks(); vi.unstubAllGlobals() })
 function draw() {
-  fireEvent.click(screen.getByRole('button', { name: 'Draw floorplan mask' }))
-  const canvas = screen.getByLabelText('Floorplan mask canvas')
+  fireEvent.click(screen.getByRole('button', { name: 'Draw site plan mask' }))
+  const canvas = screen.getByLabelText('Site plan mask canvas')
   const svg = canvas.querySelector('svg')!
   for (const [x, y] of [[20, 20], [80, 20], [80, 80], [20, 80]]) fireEvent.pointerDown(svg, { button: 0, clientX: x, clientY: y })
   return canvas
@@ -36,7 +36,7 @@ it('closes by right-click, inserts a point, deletes a vertex, and clears the mas
   fireEvent.lostPointerCapture(canvas)
   fireEvent.keyDown(canvas, { key: 'Delete' })
   expect(save.mock.lastCall?.[0]).toHaveLength(4)
-  fireEvent.click(screen.getByRole('button', { name: 'Remove floorplan mask' }))
+  fireEvent.click(screen.getByRole('button', { name: 'Remove site plan mask' }))
   expect(save.mock.lastCall?.[0]).toBeUndefined()
 })
 it('closes on the first point and commits segment movement only on release; Escape cancels vertex movement', () => {
@@ -57,8 +57,8 @@ it('closes on the first point and commits segment movement only on release; Esca
 })
 it('does not close incomplete masks, cancels drawing, and exposes image errors', () => {
   render(<Harness />)
-  fireEvent.click(screen.getByRole('button', { name: 'Draw floorplan mask' }))
-  const canvas = screen.getByLabelText('Floorplan mask canvas')
+  fireEvent.click(screen.getByRole('button', { name: 'Draw site plan mask' }))
+  const canvas = screen.getByLabelText('Site plan mask canvas')
   fireEvent.pointerDown(canvas.querySelector('svg')!, { button: 0, clientX: 20, clientY: 20 })
   fireEvent.contextMenu(canvas); expect(save).not.toHaveBeenCalled()
   fireEvent.keyDown(canvas, { key: 'Escape' })
@@ -68,8 +68,20 @@ it('does not close incomplete masks, cancels drawing, and exposes image errors',
 })
 it('has no editing controls in read-only mode', () => {
   render(<Harness editable={false} />)
-  expect(screen.queryByRole('button')).toBeNull()
-  expect(screen.getByLabelText('Floorplan mask canvas').querySelector('svg')).toBeNull()
+  expect(screen.queryByRole('button', { name: /mask/ })).toBeNull()
+  expect(screen.getByLabelText('Site plan mask canvas').querySelector('svg')).toBeNull()
+})
+
+it('zooms with the wheel and buttons without saving, and fits back to the whole image', () => {
+  render(<Harness />)
+  const canvas = screen.getByLabelText('Site plan mask canvas')
+  fireEvent.wheel(canvas.parentElement!, { deltaY: -500, clientX: 50, clientY: 50 })
+  expect(canvas.style.transform).not.toContain('scale(1)')
+  fireEvent.click(screen.getByRole('button', { name: 'Zoom in' }))
+  fireEvent.click(screen.getByRole('button', { name: 'Fit image' }))
+  expect(canvas.style.transform).toBe('translate(0px, 0px) scale(1)')
+  expect(screen.getByRole('button', { name: 'Zoom out' })).toBeDisabled()
+  expect(save).not.toHaveBeenCalled()
 })
 
 it('inserts and drags a new vertex in one gesture, saving only on release', () => {

@@ -38,7 +38,7 @@ it('restarts an interrupted cloud download under StrictMode and releases its pri
   const id = crypto.randomUUID()
   const image: ImageOverlay = { id: 'overlay', name: 'Plan', source: { kind: 'local-file', fileId: id, fileName: 'plan.png' }, position: { lat: 0, lng: 0 }, widthMeters: 100, heightMeters: 80, rotationDegrees: 30, opacity: 0.5 }
   const load = vi.fn(async (_id: string, signal: AbortSignal) => { await Promise.resolve(); signal.throwIfAborted(); return new Blob(['optimized']) })
-  const transport: ImageTransport = { version: () => 'asset-1', description: 'Cloud floorplan', load }
+  const transport: ImageTransport = { version: () => 'asset-1', description: 'Cloud site plan', load }
   const { result, unmount } = renderHook(() => useLocalImages([image], transport), { wrapper: StrictMode })
   await waitFor(() => expect(result.current.sourceUrl(image)).toBe('blob:optimized'))
   expect(load).toHaveBeenCalledTimes(2)

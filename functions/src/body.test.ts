@@ -29,7 +29,7 @@ it('preserves both drone scan circles across cloud body save and reload', () => 
   expect(decodeBody(encodeBody(restored)).brief.droneScan).toBeNull()
 })
 
-it('preserves floorplan masks through cloud validation, saving, editing and reloading', () => {
+it('preserves site plan masks through cloud validation, saving, editing and reloading', () => {
   const brief = createBrief({ name: 'Mask persistence', clientName: 'Test' })
   brief.imageOverlays = [{ id: 'plan', name: 'Plan', source: 'data:image/png;base64,AAAA', position: brief.coordinates,
     widthMeters: 10, heightMeters: 10, rotationDegrees: 0, opacity: 1,

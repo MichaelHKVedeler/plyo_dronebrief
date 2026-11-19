@@ -21,7 +21,7 @@ export async function uploadFloorplan(projectId: string, fileId: string, file: F
   signal.addEventListener('abort', cancel, { once: true })
   try {
     await new Promise<void>((resolve, reject) => task.on('state_changed', (state) => progress(`Uploading ${Math.round(100 * state.bytesTransferred / state.totalBytes)}%`), reject, resolve))
-    signal.throwIfAborted(); progress('Optimizing floorplan…')
+    signal.throwIfAborted(); progress('Optimizing site plan…')
     const asset = assetSchema.parse(await callCloud('finalizeUpload', { projectId, assetId }))
     signal.throwIfAborted()
     return asset

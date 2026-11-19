@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState, type PointerEvent } from 'react'
-import { CircleCheck, PenTool, Trash2 } from 'lucide-react'
+import { CircleCheck, Maximize, PenTool, Trash2, ZoomIn, ZoomOut } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 import type { ImageMask, ImageOverlay } from '../model/brief'
 import { maskClipPath, moveMaskPoints, pointOnSegment } from '../model/image-mask'
 
@@ -9,6 +10,27 @@ const insertCursor = `url("data:image/svg+xml,${encodeURIComponent('<svg xmlns="
 
 const removeCursor = `url("data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32"><path d="M12 10v20M2 20h20M22 6h8" fill="none" stroke="white" stroke-width="4"/><path d="M12 10v20M2 20h20M22 6h8" fill="none" stroke="black" stroke-width="2"/></svg>')}") 12 20, crosshair`
 type SelectionBox = { start: ImageMask[number]; end: ImageMask[number] }
+type View = { zoom: number; x: number; y: number }
+const maxZoom = 8
+
+/** Zooms around a point in surface layout pixels and keeps the image covering the viewport. */
+function zoomView(view: View, zoom: number, at: { x: number; y: number }, size: { width: number; height: number }): View {
+  const next = Math.max(1, Math.min(maxZoom, zoom))
+  return clampView({ zoom: next, x: at.x - (at.x - view.x) * next / view.zoom, y: at.y - (at.y - view.y) * next / view.zoom }, size)
+}
+function clampView(view: View, size: { width: number; height: number }): View {
+  return { zoom: view.zoom, x: Math.max(size.width * (1 - view.zoom), Math.min(0, view.x)), y: Math.max(size.height * (1 - view.zoom), Math.min(0, view.y)) }
+}
+function surfaceSize(surface: HTMLElement) { return { width: surface.offsetWidth, height: surface.offsetHeight } }
+/** Zooms by a factor around a client point, or around the viewport centre without one. Offsets ignore the transform. */
+function zoomAt(viewport: HTMLElement, surface: HTMLElement, client: { clientX: number; clientY: number } | null, factor: number) {
+  const box = viewport.getBoundingClientRect()
+  const at = client
+    ? { x: client.clientX - box.left - surface.offsetLeft, y: client.clientY - box.top - surface.offsetTop }
+    : { x: box.width / 2 - surface.offsetLeft, y: box.height / 2 - surface.offsetTop }
+  const size = surfaceSize(surface)
+  return (view: View) => zoomView(view, view.zoom * factor, at, size)
+}
 function verticesInBox(points: ImageMask, box: SelectionBox) {
   return points.flatMap((point, index) => point.x >= Math.min(box.start.x, box.end.x) && point.x <= Math.max(box.start.x, box.end.x)
     && point.y >= Math.min(box.start.y, box.end.y) && point.y <= Math.max(box.start.y, box.end.y) ? [index] : [])
@@ -31,6 +53,13 @@ export function FloorplanMaskViewer({ overlay, url, editable, onChange }: {
   const [selected, setSelected] = useState<number[]>([])
   const [failed, setFailed] = useState(false)
   const [created, setCreated] = useState(false)
+  const viewport = useRef<HTMLDivElement>(null)
+  const pan = useRef<{ x: number; y: number; view: View } | null>(null)
+  const [spaceHeld, setSpaceHeld] = useState(false)
+  const [panning, setPanning] = useState(false)
+  const [view, setView] = useState<View>({ zoom: 1, x: 0, y: 0 })
+  // Hit targets and strokes keep their on-screen size while the canvas is scaled.
+  const px = (size: number) => size / view.zoom
   const points = drawing ? draft : preview ?? overlay.mask ?? []
   const highlighted = selectionBox ? verticesInBox(points, selectionBox) : selected
   const editCursor = ctrlHeld && !drawing && points.length < 1000 ? insertCursor : 'crosshair'
@@ -42,15 +71,28 @@ export function FloorplanMaskViewer({ overlay, url, editable, onChange }: {
       const down = event.type === 'keydown'
       setCtrlHeld(event.key === 'Control' ? down : event.ctrlKey)
       setAltHeld(event.key === 'Alt' ? down : event.altKey)
-      // Keep bare Alt from moving focus into the browser menu while editing.
-      if (event.key === 'Alt' && pointerInside.current) event.preventDefault()
+      if (event.key === ' ') setSpaceHeld(down)
+      // Keep bare Alt from moving focus into the browser menu, and Space from scrolling or pressing buttons, while editing.
+      if ((event.key === 'Alt' || event.key === ' ') && pointerInside.current) event.preventDefault()
     }
-    const blur = () => { boxDrag.current = null; setSelectionBox(null); setCtrlHeld(false); setAltHeld(false); drag.current = null; setDragCursor(undefined); setPreview(null); setSelected([]) }
+    const blur = () => { boxDrag.current = null; setSelectionBox(null); setCtrlHeld(false); setAltHeld(false); setSpaceHeld(false); drag.current = null; setDragCursor(undefined); setPreview(null); setSelected([]) }
     window.addEventListener('keydown', modifier, true)
     window.addEventListener('keyup', modifier, true)
     window.addEventListener('blur', blur)
     return () => { window.removeEventListener('keydown', modifier, true); window.removeEventListener('keyup', modifier, true); window.removeEventListener('blur', blur) }
   }, [editable])
+  useEffect(() => {
+    const element = viewport.current
+    if (!element) return
+    // Native, non-passive listener so the wheel zooms the image instead of scrolling the dialog.
+    const wheel = (event: WheelEvent) => {
+      event.preventDefault()
+      if (surface.current) setView(zoomAt(element, surface.current, event, Math.exp(-event.deltaY * 0.002)))
+    }
+    element.addEventListener('wheel', wheel, { passive: false })
+    return () => element.removeEventListener('wheel', wheel)
+  }, [])
+  function zoomButton(factor: number) { if (viewport.current && surface.current) setView(zoomAt(viewport.current, surface.current, null, factor)) }
   function position(event: { clientX: number; clientY: number }) {
     const box = surface.current!.getBoundingClientRect()
     return { x: Math.max(0, Math.min(1, (event.clientX - box.left) / box.width)), y: Math.max(0, Math.min(1, (event.clientY - box.top) / box.height)) }
@@ -94,21 +136,44 @@ export function FloorplanMaskViewer({ overlay, url, editable, onChange }: {
     surface.current?.setPointerCapture(event.pointerId)
   }
   return <div className="grid min-w-0 gap-3" data-mask-busy={drawing || selectionBox !== null || preview !== null || selected.length > 0}>
-    {editable && <div className="flex flex-wrap items-center gap-2">
-      <Button size="icon" variant={drawing ? 'default' : 'outline'} aria-label="Draw floorplan mask" title="Draw floorplan mask" aria-pressed={drawing} disabled={failed}
-        onClick={() => { cancel(); setCreated(false); setDrawing(!drawing); surface.current?.focus() }}><PenTool /></Button>
-      <Button size="icon" variant="outline" aria-label="Remove floorplan mask" title="Remove floorplan mask" disabled={!overlay.mask || drawing}
-        onClick={() => { cancel(); setCreated(false); onChange(undefined) }}><Trash2 /></Button>
-      <p id="mask-help" className="min-w-0 flex-1 text-xs text-muted-foreground">{drawing
-        ? 'Click to add points. Right-click or click the first point to close (at least 3 points). Escape cancels.'
-        : 'Ctrl+click to add points. Alt+click to delete points.'}</p>
-    </div>}
-    <div role="status">{created && <Alert><CircleCheck /><AlertDescription>Mask created. The floorplan is now cropped to it on the map.</AlertDescription></Alert>}</div>
-    {failed && <p role="alert">Floorplan could not be loaded. Close this window and reconnect or retry the image.</p>}
-    <div className="flex min-w-0 justify-center overflow-hidden rounded-md bg-muted">
-      <div ref={surface} tabIndex={editable ? 0 : undefined} aria-label="Floorplan mask canvas" aria-describedby={editable ? 'mask-help' : undefined}
-        className="relative max-w-full touch-none outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        style={{ cursor: dragCursor ? editCursor : undefined }}
+    <div className="flex flex-wrap items-center gap-2">
+      {editable && <>
+        <Button size="icon" variant={drawing ? 'default' : 'outline'} aria-label="Draw site plan mask" title="Draw site plan mask" aria-pressed={drawing} disabled={failed}
+          onClick={() => { cancel(); setCreated(false); setDrawing(!drawing); surface.current?.focus() }}><PenTool /></Button>
+        <Button size="icon" variant="outline" aria-label="Remove site plan mask" title="Remove site plan mask" disabled={!overlay.mask || drawing}
+          onClick={() => { cancel(); setCreated(false); onChange(undefined) }}><Trash2 /></Button>
+      </>}
+      <Button size="icon" variant="outline" aria-label="Zoom in" title="Zoom in" disabled={failed || view.zoom >= maxZoom} onClick={() => zoomButton(1.5)}><ZoomIn /></Button>
+      <Button size="icon" variant="outline" aria-label="Zoom out" title="Zoom out" disabled={failed || view.zoom <= 1} onClick={() => zoomButton(1 / 1.5)}><ZoomOut /></Button>
+      <Button size="icon" variant="outline" aria-label="Fit image" title="Fit image" disabled={failed || view.zoom <= 1} onClick={() => setView({ zoom: 1, x: 0, y: 0 })}><Maximize /></Button>
+      <p id="mask-help" className="min-w-0 flex-1 text-xs text-muted-foreground">{!editable
+        ? 'Scroll to zoom. Drag to pan.'
+        : drawing
+          ? 'Click to add points. Right-click or click the first point to close (at least 3 points). Escape cancels.'
+          : 'Ctrl+click to add points. Alt+click to delete points.'}{editable && ' Scroll to zoom. Space+drag or middle-drag to pan.'}</p>
+    </div>
+    <div role="status">{created && <Alert><CircleCheck /><AlertDescription>Mask created. The site plan is now cropped to it on the map.</AlertDescription></Alert>}</div>
+    {failed && <p role="alert">Site plan could not be loaded. Close this window and reconnect or retry the image.</p>}
+    <div ref={viewport} className={cn('relative flex min-w-0 justify-center overflow-hidden rounded-md bg-muted',
+      panning ? 'cursor-grabbing [&_*]:cursor-grabbing!' : (spaceHeld || (!editable && view.zoom > 1)) && 'cursor-grab [&_*]:cursor-grab!')}
+      onMouseDown={(event) => { if (event.button === 1) event.preventDefault() }}
+      onPointerDownCapture={(event) => {
+        if (!(event.button === 1 || (event.button === 0 && (spaceHeld || !editable)))) return
+        event.preventDefault(); event.stopPropagation()
+        pan.current = { x: event.clientX, y: event.clientY, view }
+        setPanning(true)
+        event.currentTarget.setPointerCapture(event.pointerId)
+      }}
+      onPointerMove={(event) => {
+        const start = pan.current; if (!start || !surface.current) return
+        setView(clampView({ zoom: start.view.zoom, x: start.view.x + event.clientX - start.x, y: start.view.y + event.clientY - start.y }, surfaceSize(surface.current)))
+      }}
+      onPointerUp={() => { pan.current = null; setPanning(false) }}
+      onPointerCancel={() => { pan.current = null; setPanning(false) }}
+      onLostPointerCapture={() => { pan.current = null; setPanning(false) }}>
+      <div ref={surface} tabIndex={editable ? 0 : undefined} aria-label="Site plan mask canvas" aria-describedby="mask-help"
+        className="relative max-w-full origin-top-left touch-none outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        style={{ cursor: dragCursor ? editCursor : undefined, transform: `translate(${view.x}px, ${view.y}px) scale(${view.zoom})` }}
         onPointerEnter={(event) => { pointerInside.current = true; setCtrlHeld(event.ctrlKey); setAltHeld(event.altKey) }}
         onPointerLeave={() => { pointerInside.current = false }}
         onBlur={() => { boxDrag.current = null; setSelectionBox(null); if (drag.current) { drag.current = null; setDragCursor(undefined); setPreview(null); setSelected([]) } }}
@@ -148,18 +213,18 @@ export function FloorplanMaskViewer({ overlay, url, editable, onChange }: {
             const next = points[(index + 1) % points.length]
             if (drawing && index === points.length - 1) return null
             return <g key={`edge-${index}`}>
-              <line x1={`${p.x * 100}%`} y1={`${p.y * 100}%`} x2={`${next.x * 100}%`} y2={`${next.y * 100}%`} stroke="#0284c7" strokeWidth="2" pointerEvents="none" />
-              <line data-mask-edge={index} x1={`${p.x * 100}%`} y1={`${p.y * 100}%`} x2={`${next.x * 100}%`} y2={`${next.y * 100}%`} stroke="transparent" strokeWidth="16" style={{ cursor: editCursor }} onPointerDown={(event) => begin(event, [index, (index + 1) % points.length])} />
+              <line x1={`${p.x * 100}%`} y1={`${p.y * 100}%`} x2={`${next.x * 100}%`} y2={`${next.y * 100}%`} stroke="#0284c7" strokeWidth={px(2)} pointerEvents="none" />
+              <line data-mask-edge={index} x1={`${p.x * 100}%`} y1={`${p.y * 100}%`} x2={`${next.x * 100}%`} y2={`${next.y * 100}%`} stroke="transparent" strokeWidth={px(16)} style={{ cursor: editCursor }} onPointerDown={(event) => begin(event, [index, (index + 1) % points.length])} />
             </g>
           })}
           {points.map((p, index) => <g key={index}>
-            <circle cx={`${p.x * 100}%`} cy={`${p.y * 100}%`} r="5" fill={highlighted.includes(index) ? '#0284c7' : '#ffffff'} stroke="#0284c7" strokeWidth="2" pointerEvents="none" />
-            <circle data-mask-vertex={index} cx={`${p.x * 100}%`} cy={`${p.y * 100}%`} r="11" fill="transparent" style={{ cursor: altHeld && !drawing ? removeCursor : editCursor }}
+            <circle cx={`${p.x * 100}%`} cy={`${p.y * 100}%`} r={px(5)} fill={highlighted.includes(index) ? '#0284c7' : '#ffffff'} stroke="#0284c7" strokeWidth={px(2)} pointerEvents="none" />
+            <circle data-mask-vertex={index} cx={`${p.x * 100}%`} cy={`${p.y * 100}%`} r={px(11)} fill="transparent" style={{ cursor: altHeld && !drawing ? removeCursor : editCursor }}
               onPointerDown={(event) => { if (drawing && index === 0 && event.button === 0) { event.stopPropagation(); close() } else begin(event, [index]) }} />
           </g>)}
           {selectionBox && <rect data-mask-selection="" x={`${Math.min(selectionBox.start.x, selectionBox.end.x) * 100}%`} y={`${Math.min(selectionBox.start.y, selectionBox.end.y) * 100}%`}
             width={`${Math.abs(selectionBox.end.x - selectionBox.start.x) * 100}%`} height={`${Math.abs(selectionBox.end.y - selectionBox.start.y) * 100}%`}
-            fill="#0284c7" fillOpacity="0.12" stroke="#0284c7" strokeWidth="1" strokeDasharray="4 3" pointerEvents="none" />}
+            fill="#0284c7" fillOpacity="0.12" stroke="#0284c7" strokeWidth={px(1)} strokeDasharray={`${px(4)} ${px(3)}`} pointerEvents="none" />}
         </svg>}
       </div>
     </div>

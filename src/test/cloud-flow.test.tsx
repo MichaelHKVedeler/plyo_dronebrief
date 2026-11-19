@@ -305,7 +305,7 @@ it('reloads a clean editor once when a colleague saves, and leaves unsaved work 
   expect(cloudProjects.load).toHaveBeenCalledTimes(2)
   expect(screen.getByRole('heading', { name: 'Still mine' })).toBeVisible()
 })
-it('saves a replacement floorplan even when its file name, and so the brief, is unchanged', async () => {
+it('saves a replacement site plan even when its file name, and so the brief, is unchanged', async () => {
   vi.stubGlobal('URL', class extends URL { static createObjectURL = vi.fn(() => 'blob:stored'); static revokeObjectURL = vi.fn() })
   const fileId = crypto.randomUUID(); const data = project()
   const stored = (id: string) => ({ id, fileId }) as CloudAsset
@@ -319,7 +319,7 @@ it('saves a replacement floorplan even when its file name, and so the brief, is 
   vi.mocked(uploadFloorplan).mockResolvedValue(stored('new-copy'))
   render(<CloudApp />)
   await userEvent.click(await screen.findByRole('tab', { name: 'Contents' }))
-  await userEvent.click(await screen.findByRole('button', { name: 'Replace floorplan' }))
+  await userEvent.click(await screen.findByRole('button', { name: 'Replace site plan' }))
   await userEvent.upload(screen.getByLabelText('Local image file'), new File(['new'], 'plan.png', { type: 'image/png' }))
   await waitFor(() => expect(cloudProjects.save).toHaveBeenCalledWith('project', 1, expect.any(String), expect.anything(), { [fileId]: stored('new-copy') }))
   vi.unstubAllGlobals()

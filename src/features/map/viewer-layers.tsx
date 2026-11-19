@@ -24,7 +24,7 @@ export function ViewerLayers({ session, dispatch }: { session: BriefSession; dis
       </Button>
     })}
     <Separator />
-    <LayerToggleButton icon={FloorplanIcon} visible={session.visibility.imageOverlays} showLabel="Show Floor plan" hideLabel="Hide Floor plan"
+    <LayerToggleButton icon={FloorplanIcon} visible={session.visibility.imageOverlays} showLabel="Show Site plan" hideLabel="Hide Site plan"
       onToggle={() => dispatch({ type: 'visibility', layer: 'imageOverlays', visible: !session.visibility.imageOverlays })} />
     <LayerToggleButton icon={ShieldBan} visible={session.visibility.droneZones} showLabel="Show no-fly zones" hideLabel="Hide no-fly zones"
       onToggle={() => dispatch({ type: 'visibility', layer: 'droneZones', visible: !session.visibility.droneZones })} />

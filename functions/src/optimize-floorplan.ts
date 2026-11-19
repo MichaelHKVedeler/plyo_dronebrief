@@ -24,5 +24,5 @@ export async function optimizeFloorplan(input: Buffer) {
     }
     if (output.data.length <= floorplanLimits.maxBytes) return { bytes: output.data, width: output.info.width, height: output.info.height, originalWidth, originalHeight }
   }
-  throw new Error('This floorplan cannot fit within 4 MB without reducing detail further. Choose a simpler image or export a smaller drawing.')
+  throw new Error('This site plan cannot fit within 4 MB without reducing detail further. Choose a simpler image or export a smaller drawing.')
 }
