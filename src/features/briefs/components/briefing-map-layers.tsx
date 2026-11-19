@@ -60,9 +60,12 @@ export function BriefingMapLayers({ brief, language, sliders, hiddenKinds, onHid
   if (!sliders && !rows.length && !hasFloorplan && !hasScan && !splitKinds.length && !onZonesVisible) return null
   const collapseLabel = collapsed ? copy.showLayerButtons : copy.hideLayerButtons
   // A full-height bar on the left edge; buttons keep their size and the sliders shrink so it fits any height.
-  // Collapsed, only a small show button remains in the top-left corner.
-  return <div data-layer-sidebar={collapsed ? 'closed' : 'open'} className={collapsed ? 'pointer-events-auto mt-3 ml-3 self-start rounded-lg border bg-card p-1 shadow-sm'
-    : 'pointer-events-auto flex h-full w-fit flex-col items-center gap-2.5 overflow-y-auto border-r bg-card p-2 shadow-sm [&>*]:shrink-0'}>
+  // Collapsed, only the arrow remains, in the same spot, out of the layout flow.
+  // Every button's hit area reaches 1.5rem past the bar so a left thumb can reach it too.
+  // shortcut: no scrolling, so a very short screen could cut off the lowest buttons; add overflow handling if that shows up.
+  return <div data-layer-sidebar={collapsed ? 'closed' : 'open'} className={(collapsed ? 'absolute top-0 left-0 rounded-br-lg border-r border-b bg-card p-2 shadow-sm'
+    : 'flex h-full w-fit flex-col items-center gap-2.5 border-r bg-card p-2 shadow-sm [&>*]:shrink-0')
+    + ' pointer-events-auto [&_button]:relative [&_button]:after:absolute [&_button]:after:-inset-y-1 [&_button]:after:left-0 [&_button]:after:-right-6'}>
     <Button type="button" variant="ghost" size="icon-lg" className="[&_svg]:size-6" aria-expanded={!collapsed} aria-label={collapseLabel} title={collapseLabel}
       onClick={() => setCollapsed(!collapsed)}>
       {collapsed ? <ChevronRight /> : <ChevronLeft />}

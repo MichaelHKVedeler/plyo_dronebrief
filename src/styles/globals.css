@@ -91,3 +91,10 @@ gmp-advanced-marker:focus-visible :is([data-camera-marker], [data-map-handle]) >
   body { @apply m-0 bg-background font-sans text-base text-foreground antialiased; }
   button:not(:disabled), [role="switch"]:not(:disabled) { cursor: pointer; }
 }
+/* Public-link Instructions button: pulses in brightness rather than fading. */
+@theme {
+  --animate-glow: glow 2s ease-in-out infinite;
+  @keyframes glow {
+    50% { filter: brightness(1.45); }
+  }
+}

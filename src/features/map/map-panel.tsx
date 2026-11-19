@@ -300,7 +300,7 @@ function MapWorkspace(props: Props) {
       </div>
     </div>
     {/* Public links: a full-height layer menu on the left edge, with the Instructions button beside it. */}
-    {briefing && <div className="pointer-events-none absolute inset-y-0 left-0 z-20 flex items-end gap-3">
+    {briefing && <div className="pointer-events-none absolute inset-y-0 left-0 z-20 flex items-end gap-3 has-[[data-layer-sidebar=closed]]:pl-3">
       {props.layerControls?.(<>
         <MapObjectSizeControl value={objectSizePercent} onChange={setObjectSize} upright />
         <MapDimmerControl value={dimOpacity} onChange={setDimOpacity} upright />
