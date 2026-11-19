@@ -1,5 +1,5 @@
 import { useState, type ComponentType, type ReactNode } from 'react'
-import { ChevronDown, ChevronUp, ShieldBan } from 'lucide-react'
+import { ChevronLeft, ChevronRight, ShieldBan } from 'lucide-react'
 import { FloorplanIcon } from '@/features/map/floorplan-icon'
 import type { DroneBrief } from '../model/brief'
 import type { PdfLanguage } from '../export/pdf-copy'
@@ -60,10 +60,12 @@ export function BriefingMapLayers({ brief, language, sliders, hiddenKinds, onHid
   if (!sliders && !rows.length && !hasFloorplan && !hasScan && !splitKinds.length && !onZonesVisible) return null
   const collapseLabel = collapsed ? copy.showLayerButtons : copy.hideLayerButtons
   // A full-height bar on the left edge; buttons keep their size and the sliders shrink so it fits any height.
-  return <div className="pointer-events-auto flex h-full w-fit flex-col items-center gap-2.5 overflow-y-auto border-r bg-card p-2 shadow-sm [&>*]:shrink-0">
-    <Button type="button" variant="ghost" size="icon-sm" className="rounded-full" aria-expanded={!collapsed} aria-label={collapseLabel} title={collapseLabel}
+  // Collapsed, only a small show button remains in the top-left corner.
+  return <div className={collapsed ? 'pointer-events-auto mt-3 ml-3 self-start rounded-lg border bg-card p-1 shadow-sm'
+    : 'pointer-events-auto flex h-full w-fit flex-col items-center gap-2.5 overflow-y-auto border-r bg-card p-2 shadow-sm [&>*]:shrink-0'}>
+    <Button type="button" variant="ghost" size="icon-lg" className="[&_svg]:size-6" aria-expanded={!collapsed} aria-label={collapseLabel} title={collapseLabel}
       onClick={() => setCollapsed(!collapsed)}>
-      {collapsed ? <ChevronDown /> : <ChevronUp />}
+      {collapsed ? <ChevronRight /> : <ChevronLeft />}
     </Button>
     {!collapsed && <>
     {rows.length > 0 && <Separator />}

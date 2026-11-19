@@ -97,7 +97,7 @@ function ConnectedMap({ droneZones, imageLayer, selectedCameraIds, onSelectCamer
   if (status !== APILoadingStatus.LOADED) return <MapMessage title="Loading Google Maps…" description="Your brief is ready while the map connects." />
   return <>
     <Map defaultCenter={view.current.center} defaultZoom={view.current.zoom} colorScheme={dark ? 'DARK' : 'LIGHT'} reuseMaps
-      mapId={import.meta.env.VITE_GOOGLE_MAPS_MAP_ID || 'DEMO_MAP_ID'} disableDefaultUI
+      mapId={import.meta.env.VITE_GOOGLE_MAPS_MAP_ID || 'DEMO_MAP_ID'} disableDefaultUI keyboardShortcuts={presentation !== 'briefing'}
       tilt={0} heading={0} gestureHandling={middlePanning ? 'none' : 'greedy'} isFractionalZoomEnabled
       draggableCursor={middlePanning ? 'move' : editing && !interactive ? 'crosshair' : 'default'} draggingCursor="move"
       onCameraChanged={(event) => {
