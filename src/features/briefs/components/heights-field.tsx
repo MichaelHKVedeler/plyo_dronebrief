@@ -1,5 +1,7 @@
 import { useState } from 'react'
 import { Input } from '@/components/ui/input'
+import { blurOnEnter } from '@/lib/blur-on-enter'
+import { cn } from '@/lib/utils'
 import { formatHeightsMeters, parseHeightsMeters } from '../model/brief'
 
 function sameHeights(left: number[], right: number[]) {
@@ -32,7 +34,11 @@ export function HeightsField({ id, value, onChange, allowEmpty = false, placehol
     setDraft({ source: formatHeightsMeters(parsed), text: blur ? formatHeightsMeters(parsed) : text })
     if (!sameHeights(parsed, value)) onChange(parsed)
   }
-  return <Input id={id} aria-label={label} placeholder={placeholder} className={className ?? 'min-w-0 flex-1'} value={draft.text}
-    onChange={(event) => commit(event.currentTarget.value, false)}
-    onBlur={(event) => commit(event.currentTarget.value, true)} />
+  return <div className="relative flex min-w-0 flex-1">
+    <Input id={id} aria-label={label} placeholder={placeholder} className={cn('w-full', className, 'pr-7')} value={draft.text}
+      onChange={(event) => commit(event.currentTarget.value, false)}
+      onKeyDown={blurOnEnter}
+      onBlur={(event) => commit(event.currentTarget.value, true)} />
+    <span aria-hidden="true" className="pointer-events-none absolute inset-y-0 right-2.5 flex items-center text-sm text-muted-foreground">m</span>
+  </div>
 }

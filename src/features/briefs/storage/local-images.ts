@@ -32,7 +32,7 @@ export async function readImageHandle(id: string): Promise<LocalImageHandle | un
 }
 export async function readLocalImage(file: File) {
   if (!/\.(jpe?g|png)$/i.test(file.name) || (file.type && !['image/jpeg', 'image/png'].includes(file.type))) {
-    throw new Error('Choose a JPG or PNG image.')
+    throw new Error('Choose a JPG or PNG image, or a PDF.')
   }
   if (file.size > 30 * 1024 * 1024) throw new Error('Choose an image smaller than 30 MB.')
   const bytes = new Uint8Array(await file.slice(0, 8).arrayBuffer())

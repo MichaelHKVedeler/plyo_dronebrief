@@ -27,10 +27,12 @@ import { shadeScene } from './shade-scene'
 import { removeShadeEngine } from './remove-shade-engine'
 import { shadowTime, timeMinutes } from './shadow-time'
 import { useDarkMode } from '@/lib/use-dark-mode'
+import type { DroneZones } from './drone-zones'
+import { ShadeDroneZones } from './drone-zone-layers'
 import 'maplibre-gl/dist/maplibre-gl.css'
 
-type Props = { imageLayer: ImageLayerState; dimOpacity: number; objectSizePercent: number; dispatch: (action: BriefAction) => void; selectedId: string | null; selectedCameraIds: string[]; onSelect: (id: string | null) => void; onSelectCamera: (id: string, additive: boolean) => void; session: BriefSession; initialView: MapView; onViewChange: (view: MapView) => void; slot: ShootSlot; onNavigation: (navigation: MapNavigation | null) => void; tool: MapTool; onMapClick: (point: Position) => void; onToolChange: (tool: MapTool) => void; onCameraPlace: (tool: MapTool, point: Position) => void; onCameraDuplicate: (source: CameraAngle, position: Position) => void; isolatedKind?: IsolatedCapture }
-export function ShadeMapPanel({ imageLayer, dimOpacity, objectSizePercent, dispatch, selectedId, selectedCameraIds, onSelect, onSelectCamera, session, initialView, onViewChange, slot, onNavigation, tool, onMapClick, onToolChange, onCameraPlace, onCameraDuplicate, isolatedKind = null }: Props) {
+type Props = { droneZones: DroneZones | null; imageLayer: ImageLayerState; dimOpacity: number; objectSizePercent: number; dispatch: (action: BriefAction) => void; selectedId: string | null; selectedCameraIds: string[]; onSelect: (id: string | null) => void; onSelectCamera: (id: string, additive: boolean) => void; session: BriefSession; initialView: MapView; onViewChange: (view: MapView) => void; slot: ShootSlot; onNavigation: (navigation: MapNavigation | null) => void; tool: MapTool; onMapClick: (point: Position) => void; onToolChange: (tool: MapTool) => void; onCameraPlace: (tool: MapTool, point: Position) => void; onCameraDuplicate: (source: CameraAngle, position: Position) => void; isolatedKind?: IsolatedCapture }
+export function ShadeMapPanel({ droneZones, imageLayer, dimOpacity, objectSizePercent, dispatch, selectedId, selectedCameraIds, onSelect, onSelectCamera, session, initialView, onViewChange, slot, onNavigation, tool, onMapClick, onToolChange, onCameraPlace, onCameraDuplicate, isolatedKind = null }: Props) {
   const dark = useDarkMode()
   const host = useRef<HTMLDivElement>(null)
   const shade = useRef<ShadeMap | null>(null)
@@ -220,6 +222,7 @@ export function ShadeMapPanel({ imageLayer, dimOpacity, objectSizePercent, dispa
     <div aria-hidden="true" className="pointer-events-none absolute inset-0" style={{ background: '#282828', opacity: dimOpacity / 100 }} />
     <div data-image-host className="pointer-events-none absolute inset-0" />
     {ready && map && <ShadeProjection value={map}><ObjectRenderer value={{ Marker: ShadeMarker, Polygon: ShadePolygon }}><MapObjectScale value={objectScale}>
+      {droneZones && <ShadeDroneZones zones={droneZones} />}
       <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden" aria-label="Brief objects">
         {capture.droneScan && hasDroneScan(session.brief.droneScan) && <DroneScanObject scan={session.brief.droneScan} zoom={view.zoom} editable={editable} interactive={interactive}
           onSelect={onSelect}

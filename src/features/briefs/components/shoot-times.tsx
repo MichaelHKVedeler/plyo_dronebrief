@@ -15,9 +15,9 @@ export function formatBriefingDate(date: string, language: PdfLanguage) {
   return `${Number(day)}. ${month} ${year}`
 }
 
-export function ShootTimes({ brief, labels = { shootTimes: 'Shoot times', totalImages: 'Total images' }, layout = 'inline', language = 'en' }: {
+export function ShootTimes({ brief, labels = { shootTimes: 'Shoot times', totalImages: 'Total images', images: 'images' }, layout = 'inline', language = 'en' }: {
   brief: DroneBrief
-  labels?: { shootTimes: string; totalImages: string }
+  labels?: { shootTimes: string; totalImages: string; images: string }
   layout?: 'inline' | 'stack'
   language?: PdfLanguage
 }) {
@@ -26,6 +26,8 @@ export function ShootTimes({ brief, labels = { shootTimes: 'Shoot times', totalI
   const times = slots.map(formatShootTime).join(', ')
   const total = countBriefImages(brief).total
   if (layout === 'stack') {
+    // Every time slot is a full shoot of all points, so the total covers each slot.
+    const perSlot = total
     const groups: { date: string; times: string[] }[] = []
     for (const slot of slots) {
       const time = formatShootTime(slot)
@@ -39,13 +41,15 @@ export function ShootTimes({ brief, labels = { shootTimes: 'Shoot times', totalI
         {groups.map((group) => <div key={group.date} className="grid gap-1">
           <time className="text-sm" dateTime={group.date}>{formatBriefingDate(group.date, language)}</time>
           <ul className="list-disc pl-5 text-sm">
-            {group.times.map((time, index) => <li key={`${group.date}-${time}-${index}`}>{time}</li>)}
+            {group.times.map((time, index) => <li key={`${group.date}-${time}-${index}`}>
+              <span className="flex flex-wrap justify-between gap-x-3"><span>{time}</span><span className="tabular-nums text-muted-foreground">{perSlot} {labels.images}</span></span>
+            </li>)}
           </ul>
         </div>)}
       </div>
       <div className="grid gap-1">
         <p className="text-sm font-medium">{labels.totalImages}</p>
-        <p className="text-sm tabular-nums" aria-label={labels.totalImages}>{total}</p>
+        <p className="text-sm tabular-nums" aria-label={labels.totalImages}>{perSlot * Math.max(1, slots.length)}</p>
       </div>
     </div>
   }

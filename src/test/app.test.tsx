@@ -28,15 +28,15 @@ it('creates without a schedule step, saves stacked shadow times, exports, and re
   const today = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}-${String(new Date().getDate()).padStart(2, '0')}`
   expect(briefRepository.latest()?.project.times).toEqual(['07:00'])
   expect(briefRepository.latest()?.project.date).toBe(today)
-  expect(briefRepository.latest()?.project.shoots).toEqual([{ date: today, time: '07:00', endTime: '17:00' }])
+  expect(briefRepository.latest()?.project.shoots).toEqual([{ date: today, time: '07:00', endTime: '09:00' }])
   expect(screen.getByRole('slider', { name: 'Shadow time start' })).toBeInTheDocument()
-  expect(screen.getByRole('slider', { name: 'Shadow time end' })).toHaveAttribute('aria-valuetext', expect.stringContaining('17:00'))
+  expect(screen.getByRole('slider', { name: 'Shadow time end' })).toHaveAttribute('aria-valuetext', expect.stringContaining('09:00'))
   fireEvent.change(screen.getByLabelText('Shadow date'), { target: { value: '2026-09-11' } })
   await user.click(screen.getByRole('button', { name: 'Add time' }))
   expect(briefRepository.latest()?.project.times).toEqual(['07:00', '07:00'])
   expect(briefRepository.latest()?.project.shoots).toEqual([
-    { date: '2026-09-11', time: '07:00', endTime: '17:00' },
-    { date: '2026-09-11', time: '07:00', endTime: '17:00' },
+    { date: '2026-09-11', time: '07:00', endTime: '09:00' },
+    { date: '2026-09-11', time: '07:00', endTime: '09:00' },
   ])
   expect(briefRepository.latest()?.coordinates).toEqual({ lat: 59.9139, lng: 10.7522 })
   expect(screen.getByText('Map setup pending')).toBeInTheDocument()
@@ -143,7 +143,7 @@ it('loads a viewer and toggles layers without writing or replacing the local dra
   expect(screen.getByRole('button', { name: 'Floor plan' })).toBeVisible()
   expect(screen.getByRole('button', { name: 'Calculate images' })).toBeVisible()
   expect(screen.queryByText(/50 m radius/)).not.toBeInTheDocument()
-  const overlaySize = screen.getByRole('slider', { name: 'Overlay size' })
+  const overlaySize = screen.getByRole('slider', { name: 'Icon size' })
   expect(overlaySize).toHaveAttribute('aria-valuenow', '50')
   overlaySize.focus()
   await user.keyboard('{End}')
@@ -151,7 +151,7 @@ it('loads a viewer and toggles layers without writing or replacing the local dra
   await user.keyboard('{Home}{ArrowRight}')
   expect(overlaySize).toHaveAttribute('aria-valuenow', '5')
   expect(screen.getByRole('slider', { name: 'Shadow time start' })).toHaveAttribute('aria-valuetext', expect.stringContaining('10:00'))
-  expect(screen.getByRole('slider', { name: 'Shadow time end' })).toHaveAttribute('aria-valuetext', expect.stringContaining('17:00'))
+  expect(screen.getByRole('slider', { name: 'Shadow time end' })).toHaveAttribute('aria-valuetext', expect.stringContaining('12:00'))
   await user.click(screen.getByRole('button', { name: 'Add time' }))
   expect(screen.getByRole('slider', { name: 'Shadow time 2 start' })).toBeInTheDocument()
   expect(writes).not.toHaveBeenCalled()

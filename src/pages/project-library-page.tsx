@@ -7,6 +7,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Input } from '@/components/ui/input'
+import { blurOnEnter } from '@/lib/blur-on-enter'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
@@ -132,7 +133,7 @@ export function ProjectLibraryPage({ organization, uid, onOpen, onCreate, header
       <div className="flex flex-wrap items-center gap-2 py-7">
         <div className="relative min-w-48 flex-1">
           <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input id="library-search" aria-label="Search projects" className="pl-9" value={search} maxLength={200} onChange={(event) => setSearch(event.target.value)} placeholder="Search projects or clients…" />
+          <Input id="library-search" onKeyDown={blurOnEnter} aria-label="Search projects" className="pl-9" value={search} maxLength={200} onChange={(event) => setSearch(event.target.value)} placeholder="Search projects or clients…" />
         </div>
         <ToolbarSelect label="Creator" value={query.creatorId ?? ''} onChange={(value) => change({ creatorId: value || null })} options={[{ value: '', label: 'All creators' }, ...creators.map((item) => ({ value: item.uid, label: item.name }))]} />
         <ToolbarSelect label="Sort projects" value={query.sort} onChange={(value) => change({ sort: value as LibraryQuery['sort'] })} options={[{ value: 'updated', label: 'Last updated' }, { value: 'name', label: 'Project name' }, { value: 'creator', label: 'Creator' }]} />

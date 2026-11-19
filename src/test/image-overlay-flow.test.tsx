@@ -6,6 +6,7 @@ import { createBrief } from '@/features/briefs/model/brief'
 import { briefRepository } from '@/features/briefs/storage/brief-repository'
 import { exportBriefKey } from '@/features/briefs/storage/share-key'
 import { readImageHandle, readLocalImage, rememberImageHandle, imagePicker } from '@/features/briefs/storage/local-images'
+import { pdfToJpeg } from '@/features/briefs/storage/pdf-to-jpeg'
 
 vi.mock('@/features/cloud/auth/config', () => ({ cloudConfigured: false }))
 
@@ -14,6 +15,10 @@ beforeAll(async () => { await import('@/pages/local-app') })
 vi.mock('@/features/briefs/storage/local-images', () => ({
   imagePicker: vi.fn(() => undefined), readImageHandle: vi.fn(async () => undefined),
   rememberImageHandle: vi.fn(async () => {}), readLocalImage: vi.fn(async () => ({ url: 'blob:local-only', width: 640, height: 360 })),
+}))
+vi.mock('@/features/briefs/storage/pdf-to-jpeg', async (original) => ({
+  ...await original<typeof import('@/features/briefs/storage/pdf-to-jpeg')>(),
+  pdfToJpeg: vi.fn(async () => new File(['jpg'], 'plan.jpg', { type: 'image/jpeg' })),
 }))
 beforeEach(() => {
   localStorage.clear(); vi.clearAllMocks(); vi.stubEnv('VITE_GOOGLE_MAPS_API_KEY', '')
@@ -170,4 +175,14 @@ it('locks saved floorplans on every reopen even when previously left unlocked', 
     expect(JSON.stringify(briefRepository.latest())).toBe(saved)
     reopened.unmount()
   }
+})
+
+it('converts a PDF floorplan to JPG before adding it, without remembering the PDF file', async () => {
+  const { user } = await resume()
+  await user.upload(screen.getByLabelText('Local image file'), new File(['%PDF'], 'plan.pdf', { type: 'application/pdf' }))
+  await waitFor(() => expect(briefRepository.latest()?.imageOverlays).toHaveLength(1))
+  expect(pdfToJpeg).toHaveBeenCalledOnce()
+  expect(vi.mocked(readLocalImage).mock.lastCall?.[0].name).toBe('plan.jpg')
+  expect(briefRepository.latest()!.imageOverlays[0].source).toMatchObject({ kind: 'local-file', fileName: 'plan.jpg' })
+  expect(rememberImageHandle).not.toHaveBeenCalled()
 })

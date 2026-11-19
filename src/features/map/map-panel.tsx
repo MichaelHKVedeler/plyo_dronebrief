@@ -40,6 +40,8 @@ import { idleTool, placeCamera, type MapTool } from './placement'
 import { isolatedCaptureAngles, isolatedCaptureVisibility, type IsolatedCapture } from './isolated-capture'
 import { ResponsiveShadowTimeControl } from './shadow-time-control'
 import { previewShootSlot, type ShootEndpoint } from './shoot-time-range'
+import { droneZoneAttribution, useDroneZones, type DroneZones } from './drone-zones'
+import { GoogleDroneZones } from './drone-zone-layers'
 
 type Props = {
   pdfMapRef?: RefObject<PdfMapCapture | null>
@@ -64,8 +66,8 @@ type Props = {
   pointCallout?: ReactNode
 }
 const ShadeMapPanel = lazy(() => import('./shade-map').then((module) => ({ default: module.ShadeMapPanel })))
-type GoogleProps = Props & { imageLayer: ImageLayerState; active: boolean; selectable?: boolean; dimOpacity: number; objectSizePercent: number; zoom: number; view: RefObject<MapView>; onViewChange: (view: MapView) => void; satellite: boolean; onMapClick: (point: Position) => void; onCameraPlace: (tool: MapTool, point: Position) => void; onCameraDuplicate: (source: CameraAngle, position: Position) => void }
-function ConnectedMap({ imageLayer, selectedCameraIds, onSelectCamera, session, dispatch, tool, onToolChange, selectedId, onSelect, active, selectable = false, dimOpacity, objectSizePercent, zoom, view, onViewChange, satellite, onMapClick, onCameraPlace, onCameraDuplicate, isolatedKind = null, pointCallout, presentation }: GoogleProps) {
+type GoogleProps = Props & { droneZones: DroneZones | null; imageLayer: ImageLayerState; active: boolean; selectable?: boolean; dimOpacity: number; objectSizePercent: number; zoom: number; view: RefObject<MapView>; onViewChange: (view: MapView) => void; satellite: boolean; onMapClick: (point: Position) => void; onCameraPlace: (tool: MapTool, point: Position) => void; onCameraDuplicate: (source: CameraAngle, position: Position) => void }
+function ConnectedMap({ droneZones, imageLayer, selectedCameraIds, onSelectCamera, session, dispatch, tool, onToolChange, selectedId, onSelect, active, selectable = false, dimOpacity, objectSizePercent, zoom, view, onViewChange, satellite, onMapClick, onCameraPlace, onCameraDuplicate, isolatedKind = null, pointCallout, presentation }: GoogleProps) {
   const status = useApiLoadingStatus()
   const dark = useDarkMode()
   const googleRestore = useRef({ holding: false, baseline: null as number | null })
@@ -130,6 +132,7 @@ function ConnectedMap({ imageLayer, selectedCameraIds, onSelectCamera, session, 
       }}</GoogleOverlayFrame>}
       {active && <MiddleMousePan allowShiftPan={editing && tool.kind === 'camera'} onActiveChange={setMiddlePanning} />}
       {active && editing && <CameraPlacementGesture tool={tool} onToolChange={onToolChange} onPlace={onCameraPlace} />}
+      {active && droneZones && <GoogleDroneZones zones={droneZones} />}
       {active && <ImageLayer {...imageLayer} interactive={imageLayer.interactive && !middlePanning} />}
       <GoogleMapView active={active} satellite={satellite} view={view} />
       <BasemapDimmer opacity={dimOpacity} />
@@ -211,12 +214,14 @@ function MapWorkspace(props: Props) {
     view, brief, sourceUrl: props.images.sourceUrl, setCapturing: setCapturePass,
   })
   const renderedSession = capturePass === 'drone-scan'
-    ? { ...session, mode: 'view' as const, visibility: { circleRig: false, angles: true, polygons: false, imageOverlays: false, droneScan: true } }
+    ? { ...session, mode: 'view' as const, visibility: { circleRig: false, angles: true, polygons: false, imageOverlays: false, droneScan: true, droneZones: false } }
     : capturePass === 'full'
-      ? { ...session, mode: 'view' as const, visibility: { circleRig: true, angles: true, polygons: true, imageOverlays: true, droneScan: true } }
+      ? { ...session, mode: 'view' as const, visibility: { circleRig: true, angles: true, polygons: true, imageOverlays: true, droneScan: true, droneZones: false } }
       : session
   const mapProps = capturePass ? { ...props, presentation: 'briefing' as const, session: renderedSession, selectedId: null, selectedCameraIds: [], tool: idleTool, isolatedKind: capturePass === 'drone-scan' ? 'droneScan' as const : null } : props
   const renderedObjectSize = capturing ? 100 / 2 ** (zoom - 17) : objectSizePercent
+  const zoneState = useDroneZones(renderedSession.visibility.droneZones)
+  const droneZones = renderedSession.visibility.droneZones ? zoneState.zones : null
   useImperativeHandle(props.rigPlacementRef, () => () => ({
     position: { ...view.current.center },
     radiusMeters: initialRigRadius(view.current, viewport.current?.clientWidth ?? 0, viewport.current?.clientHeight ?? 0),
@@ -255,10 +260,10 @@ function MapWorkspace(props: Props) {
 
   return <CardContent ref={viewport} className="@container relative h-full min-h-0 p-0">
     <div data-pdf-map-surface className="absolute inset-0" style={{ visibility: showGoogle ? 'visible' : 'hidden' }} aria-hidden={!showGoogle} inert={!showGoogle}>
-      {apiKey ? <ConnectedMap {...mapProps} selectable={briefing} imageLayer={imageLayer} dimOpacity={dimOpacity} objectSizePercent={renderedObjectSize} zoom={zoom} active={showGoogle} view={view} satellite={satellite} onViewChange={onViewChange} onMapClick={handleMapClick} onCameraPlace={handleCameraPlace} onCameraDuplicate={handleCameraDuplicate} /> : <MapMessage title="Map setup pending" description="Google Maps will appear once connected. Your brief is still available." />}
+      {apiKey ? <ConnectedMap {...mapProps} droneZones={droneZones} selectable={briefing} imageLayer={imageLayer} dimOpacity={dimOpacity} objectSizePercent={renderedObjectSize} zoom={zoom} active={showGoogle} view={view} satellite={satellite} onViewChange={onViewChange} onMapClick={handleMapClick} onCameraPlace={handleCameraPlace} onCameraDuplicate={handleCameraDuplicate} /> : <MapMessage title="Map setup pending" description="Google Maps will appear once connected. Your brief is still available." />}
     </div>
     {!briefing && shadeActive && <div className={capturing ? 'hidden' : 'contents'}><Suspense fallback={<MapMessage title="Loading ShadeMap…" description="Preparing the shadow preview." />}>
-      <ShadeMapPanel imageLayer={imageLayer} dimOpacity={dimOpacity} objectSizePercent={renderedObjectSize} dispatch={dispatch} selectedId={mapProps.selectedId} selectedCameraIds={mapProps.selectedCameraIds} onSelect={onSelect} onSelectCamera={props.onSelectCamera} session={renderedSession} initialView={shadeStart} onViewChange={onViewChange} slot={shownSlot}
+      <ShadeMapPanel droneZones={droneZones} imageLayer={imageLayer} dimOpacity={dimOpacity} objectSizePercent={renderedObjectSize} dispatch={dispatch} selectedId={mapProps.selectedId} selectedCameraIds={mapProps.selectedCameraIds} onSelect={onSelect} onSelectCamera={props.onSelectCamera} session={renderedSession} initialView={shadeStart} onViewChange={onViewChange} slot={shownSlot}
         onNavigation={setShadeNavigation} tool={mapProps.tool} onMapClick={handleMapClick} isolatedKind={mapProps.isolatedKind ?? null}
         onToolChange={onToolChange} onCameraPlace={handleCameraPlace} onCameraDuplicate={handleCameraDuplicate} />
     </Suspense></div>}
@@ -280,6 +285,9 @@ function MapWorkspace(props: Props) {
       <div className={'col-start-1 grid justify-items-start gap-2 ' + (briefing ? 'row-start-1' : 'row-start-2 @max-[400px]:col-span-2 @max-[400px]:row-start-3')}>
         {editing && !interactive && <Button className="pointer-events-auto shadow-sm" onClick={() => onToolChange(idleTool)}><X />Cancel placement</Button>}
         {briefing ? props.layerControls : <ViewerLayers session={session} dispatch={dispatch} />}
+        {renderedSession.visibility.droneZones && (droneZones || zoneState.error) && <p role="status" className="pointer-events-auto max-w-56 rounded-md bg-card/90 px-2 py-1 text-[11px] text-muted-foreground shadow-sm">
+          {droneZones ? <a href="https://dronesoner.no/" target="_blank" rel="noreferrer" className="underline-offset-2 hover:underline">{droneZoneAttribution}</a> : zoneState.error}
+        </p>}
       </div>
     </div>
     {!briefing && <div className="pointer-events-auto absolute right-3 bottom-[5.5rem] z-20 grid max-h-[calc(100%-7rem)] w-[calc(100%-196px)] max-w-lg gap-1 overflow-y-auto rounded-lg border bg-card p-2 shadow-sm @min-[750px]:right-auto @min-[750px]:bottom-8 @min-[750px]:left-1/2 @min-[750px]:w-[calc(100%-384px)] @min-[750px]:-translate-x-1/2 @min-[750px]:p-3">

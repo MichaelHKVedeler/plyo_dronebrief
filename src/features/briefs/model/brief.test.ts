@@ -21,12 +21,12 @@ it.each([
   expect(briefSchema.safeParse({ ...brief, typeSettings: { ...brief.typeSettings, dslr: { ...brief.typeSettings.dslr, ...settings } } }).success).toBe(false)
 })
 
-it('creates a brief with today and 07:00–17:00 when the wizard omits a schedule', () => {
+it('creates a brief with today and 07:00–09:00 when the wizard omits a schedule', () => {
   const created = createBrief({ name: 'Riverside', clientName: 'Client A' })
   const date = todayIsoDate()
   expect(created.project).toMatchObject({
     name: 'Riverside', clientName: 'Client A', description: '', instructions: '', date, times: ['07:00'],
-    shoots: [{ date, time: '07:00', endTime: '17:00' }],
+    shoots: [{ date, time: '07:00', endTime: '09:00' }],
   })
   expect(created.typeSettings['drone-image'].heightsMeters).toEqual([40, 60])
   expect(created.typeSettings['360'].heightsMeters).toEqual([2, 5, 8])
@@ -82,17 +82,19 @@ it('defaults missing project notes and round-trips authored description and inst
 })
 
 it('fills a missing end so every time is a range', () => {
-  expect(ensureShootRange({ date: '2026-09-12', time: '09:00' })).toEqual({ date: '2026-09-12', time: '09:00', endTime: '17:00' })
-  expect(ensureShootRange({ date: '2026-09-12', time: '09:00', endTime: '12:00' })).toEqual({ date: '2026-09-12', time: '09:00', endTime: '12:00' })
-  expect(ensureShootRange({ date: '2026-09-12', time: '18:00' })).toEqual({ date: '2026-09-12', time: '18:00', endTime: '23:59' })
+  expect(ensureShootRange({ date: '2026-09-12', time: '09:00' })).toEqual({ date: '2026-09-12', time: '09:00', endTime: '11:00' })
+  expect(ensureShootRange({ date: '2026-09-12', time: '09:00', endTime: '12:00' })).toEqual({ date: '2026-09-12', time: '09:00', endTime: '11:00' })
+  expect(ensureShootRange({ date: '2026-09-12', time: '18:00' })).toEqual({ date: '2026-09-12', time: '18:00', endTime: '20:00' })
+  expect(ensureShootRange({ date: '2026-09-12', time: '23:00' })).toEqual({ date: '2026-09-12', time: '23:00', endTime: '23:59' })
+  expect(ensureShootRange({ date: '2026-09-12', time: '10:00', endTime: '17:00' })).toEqual({ date: '2026-09-12', time: '10:00', endTime: '12:00' })
   expect(ensureShootRange({ date: '2026-09-12', time: '23:59' })).toEqual({ date: '2026-09-12', time: '23:44', endTime: '23:59' })
 })
 
-it('adds another 07:00–17:00 range on the latest slot date', () => {
-  expect(nextShootSlot([{ date: '2026-09-12', time: '09:00' }])).toEqual({ date: '2026-09-12', time: '07:00', endTime: '17:00' })
-  expect(nextShootSlot([{ date: '2026-09-12', time: '09:00' }, { date: '2026-09-13', time: '12:00' }])).toEqual({ date: '2026-09-13', time: '07:00', endTime: '17:00' })
-  expect(nextShootSlot([{ date: '2026-09-12', time: '23:50' }])).toEqual({ date: '2026-09-12', time: '07:00', endTime: '17:00' })
-  expect(nextShootSlot([])).toEqual({ date: todayIsoDate(), time: '07:00', endTime: '17:00' })
+it('adds another 07:00–09:00 range on the latest slot date', () => {
+  expect(nextShootSlot([{ date: '2026-09-12', time: '09:00' }])).toEqual({ date: '2026-09-12', time: '07:00', endTime: '09:00' })
+  expect(nextShootSlot([{ date: '2026-09-12', time: '09:00' }, { date: '2026-09-13', time: '12:00' }])).toEqual({ date: '2026-09-13', time: '07:00', endTime: '09:00' })
+  expect(nextShootSlot([{ date: '2026-09-12', time: '23:50' }])).toEqual({ date: '2026-09-12', time: '07:00', endTime: '09:00' })
+  expect(nextShootSlot([])).toEqual({ date: todayIsoDate(), time: '07:00', endTime: '09:00' })
 })
 
 it('defaults a missing drone scan to null and round-trips a saved scan', () => {

@@ -28,7 +28,8 @@ function createImageCanvas(getState: () => ImageLayerState, projection: ImagePro
   const disc = document.createElementNS(ns, 'circle')
   // Stroke is centered on the radius, so the disc's outer edge matches an icon-sm handle.
   disc.setAttribute('r', String(imageAnchorRadius - 1))
-  disc.setAttribute('fill', 'var(--card)')
+  // See-through so the floorplan stays visible under it; grabbing is a distance test, not a fill hit.
+  disc.setAttribute('fill', 'none')
   disc.setAttribute('stroke', 'var(--primary)')
   disc.setAttribute('stroke-width', '2')
   const mark = document.createElementNS(ns, 'path')

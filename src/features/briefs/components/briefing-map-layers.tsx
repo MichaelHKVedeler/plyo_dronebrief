@@ -1,4 +1,6 @@
-import { ImageOff, LayoutGrid } from 'lucide-react'
+import type { ComponentType } from 'react'
+import { ShieldBan } from 'lucide-react'
+import { FloorplanIcon } from '@/features/map/floorplan-icon'
 import type { DroneBrief } from '../model/brief'
 import type { PdfLanguage } from '../export/pdf-copy'
 import { toggleIsolatedCapture, type IsolatedCapture } from '@/features/map/isolated-capture'
@@ -8,13 +10,13 @@ import { briefingCopy } from './briefing-copy'
 import { captureInstructions } from './capture-instructions'
 import { CaptureKindIsolateButton } from './capture-kind-glyph'
 
-function FloorplanToggleButton({ visible, showLabel, hideLabel, onToggle }: {
+export function LayerToggleButton({ visible, showLabel, hideLabel, onToggle, icon: Icon }: {
   visible: boolean
   showLabel: string
   hideLabel: string
   onToggle: () => void
+  icon: ComponentType<{ className?: string }>
 }) {
-  const Icon = visible ? LayoutGrid : ImageOff
   return <Button type="button" variant="ghost" size="icon-sm"
     className={`rounded-full p-0 hover:bg-transparent ${visible ? '' : 'opacity-50'}`}
     aria-pressed={visible} aria-label={visible ? hideLabel : showLabel} title={visible ? hideLabel : showLabel} onClick={onToggle}>
@@ -25,7 +27,7 @@ function FloorplanToggleButton({ visible, showLabel, hideLabel, onToggle }: {
   </Button>
 }
 
-export function BriefingMapLayers({ brief, language, isolatedKind, onIsolate, scanSplit = false, floorplanVisible = true, onFloorplanVisible }: {
+export function BriefingMapLayers({ brief, language, isolatedKind, onIsolate, scanSplit = false, floorplanVisible = true, onFloorplanVisible, zonesVisible = true, onZonesVisible }: {
   brief: DroneBrief
   language: PdfLanguage
   isolatedKind: IsolatedCapture
@@ -34,6 +36,8 @@ export function BriefingMapLayers({ brief, language, isolatedKind, onIsolate, sc
   scanSplit?: boolean
   floorplanVisible?: boolean
   onFloorplanVisible?: (visible: boolean) => void
+  zonesVisible?: boolean
+  onZonesVisible?: (visible: boolean) => void
 }) {
   const rows = captureInstructions(brief, language).filter((row) => row.key !== 'extra-coverage')
   const copy = briefingCopy[language]
@@ -42,7 +46,7 @@ export function BriefingMapLayers({ brief, language, isolatedKind, onIsolate, sc
   const hasExtra = brief.angles.some((angle) => angle.type === 'extra-coverage')
   const hasScan = !scanSplit && (hasCircles || hasExtra)
   const splitKinds = scanSplit ? ([hasCircles && 'droneScan', hasExtra && 'extra-coverage'] as const).filter((kind) => kind !== false) : []
-  if (!rows.length && !hasFloorplan && !hasScan && !splitKinds.length) return null
+  if (!rows.length && !hasFloorplan && !hasScan && !splitKinds.length && !onZonesVisible) return null
   return <div className="pointer-events-auto grid w-fit justify-items-center gap-2.5 rounded-lg border bg-card p-2 shadow-sm">
     {rows.map((row) => <CaptureKindIsolateButton key={row.key} kind={row.key} label={row.label} pressed={isolatedKind === row.key}
       dimmed={isolatedKind !== null && isolatedKind !== row.key}
@@ -55,8 +59,13 @@ export function BriefingMapLayers({ brief, language, isolatedKind, onIsolate, sc
       onClick={() => onIsolate(toggleIsolatedCapture(isolatedKind, kind))} />)}
     {hasFloorplan && onFloorplanVisible && <>
       {rows.length > 0 && <Separator />}
-      <FloorplanToggleButton visible={floorplanVisible} showLabel={copy.showFloorplan} hideLabel={copy.hideFloorplan}
+      <LayerToggleButton icon={FloorplanIcon} visible={floorplanVisible} showLabel={copy.showFloorplan} hideLabel={copy.hideFloorplan}
         onToggle={() => onFloorplanVisible(!floorplanVisible)} />
+    </>}
+    {onZonesVisible && <>
+      {(rows.length > 0 || hasFloorplan) && <Separator />}
+      <LayerToggleButton icon={ShieldBan} visible={zonesVisible} showLabel={copy.showZones} hideLabel={copy.hideZones}
+        onToggle={() => onZonesVisible(!zonesVisible)} />
     </>}
   </div>
 }

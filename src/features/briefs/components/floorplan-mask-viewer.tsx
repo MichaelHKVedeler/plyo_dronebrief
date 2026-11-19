@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type PointerEvent } from 'react'
-import { PenTool, Trash2 } from 'lucide-react'
+import { CircleCheck, PenTool, Trash2 } from 'lucide-react'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import type { ImageMask, ImageOverlay } from '../model/brief'
 import { maskClipPath, moveMaskPoints, pointOnSegment } from '../model/image-mask'
@@ -29,6 +30,7 @@ export function FloorplanMaskViewer({ overlay, url, editable, onChange }: {
   const [preview, setPreview] = useState<ImageMask | null>(null)
   const [selected, setSelected] = useState<number[]>([])
   const [failed, setFailed] = useState(false)
+  const [created, setCreated] = useState(false)
   const points = drawing ? draft : preview ?? overlay.mask ?? []
   const highlighted = selectionBox ? verticesInBox(points, selectionBox) : selected
   const editCursor = ctrlHeld && !drawing && points.length < 1000 ? insertCursor : 'crosshair'
@@ -65,7 +67,7 @@ export function FloorplanMaskViewer({ overlay, url, editable, onChange }: {
     boxDrag.current = { start, end: start }; setSelectionBox(boxDrag.current)
     surface.current?.setPointerCapture(event.pointerId)
   }
-  function close() { if (draft.length >= 3) { onChange(draft); setDrawing(false); setDraft([]) } }
+  function close() { if (draft.length >= 3) { onChange(draft); setDrawing(false); setDraft([]); setCreated(true) } }
   function begin(event: PointerEvent<SVGElement>, indices: number[]) {
     if (!editable || drawing || event.button !== 0) return
     if (event.altKey && indices.length === 1) {
@@ -94,13 +96,14 @@ export function FloorplanMaskViewer({ overlay, url, editable, onChange }: {
   return <div className="grid min-w-0 gap-3" data-mask-busy={drawing || selectionBox !== null || preview !== null || selected.length > 0}>
     {editable && <div className="flex flex-wrap items-center gap-2">
       <Button size="icon" variant={drawing ? 'default' : 'outline'} aria-label="Draw floorplan mask" title="Draw floorplan mask" aria-pressed={drawing} disabled={failed}
-        onClick={() => { cancel(); setDrawing(!drawing); surface.current?.focus() }}><PenTool /></Button>
+        onClick={() => { cancel(); setCreated(false); setDrawing(!drawing); surface.current?.focus() }}><PenTool /></Button>
       <Button size="icon" variant="outline" aria-label="Remove floorplan mask" title="Remove floorplan mask" disabled={!overlay.mask || drawing}
-        onClick={() => { cancel(); onChange(undefined) }}><Trash2 /></Button>
+        onClick={() => { cancel(); setCreated(false); onChange(undefined) }}><Trash2 /></Button>
       <p id="mask-help" className="min-w-0 flex-1 text-xs text-muted-foreground">{drawing
         ? 'Click to add points. Right-click or click the first point to close (at least 3 points). Escape cancels.'
         : 'Ctrl+click to add points. Alt+click to delete points.'}</p>
     </div>}
+    <div role="status">{created && <Alert><CircleCheck /><AlertDescription>Mask created. The floorplan is now cropped to it on the map.</AlertDescription></Alert>}</div>
     {failed && <p role="alert">Floorplan could not be loaded. Close this window and reconnect or retry the image.</p>}
     <div className="flex min-w-0 justify-center overflow-hidden rounded-md bg-muted">
       <div ref={surface} tabIndex={editable ? 0 : undefined} aria-label="Floorplan mask canvas" aria-describedby={editable ? 'mask-help' : undefined}

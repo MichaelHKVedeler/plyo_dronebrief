@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type RefObject } from 'react'
 import { ArrowLeft, ArrowRight, Check, Copy, Download, FileText } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { blurOnEnter } from '@/lib/blur-on-enter'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
@@ -173,7 +174,7 @@ export function PdfExportDialog({ brief, editable, captureRef, onSaveNotes, onCl
         <p className="text-sm text-muted-foreground">Headings and standard instructions use this language, also in the links. Your project name and written notes are included as entered.</p>
         <div className="grid gap-2 border-t pt-4">
           <Label htmlFor="pdf-address">Street address: Area</Label>
-          <Input id="pdf-address" value={address.address} maxLength={200} onChange={(event) => address.change(event.target.value)} placeholder="Street address: Area" />
+          <Input id="pdf-address" onKeyDown={blurOnEnter} value={address.address} maxLength={200} onChange={(event) => address.change(event.target.value)} placeholder="Street address: Area" />
           <p role="status" className="text-sm text-muted-foreground">{address.message}</p>
           <p className="text-xs text-muted-foreground">{brief.circleRig ? 'Based on the circle rig location.' : brief.angles.length ? 'No circle rig: using the first camera point.' : 'No circle rig or camera points: using the project location.'} This name is used on the PDF cover and the shared links.</p>
           {address.suggestion && address.address !== address.suggestion && <Button variant="outline" className="h-auto whitespace-normal" onClick={address.useSuggestion}>Use suggested address: {address.suggestion}</Button>}

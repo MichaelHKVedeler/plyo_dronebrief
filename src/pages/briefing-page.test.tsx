@@ -135,6 +135,7 @@ it('shows only photo content in a photo brief link', () => {
   expect(screen.getByTestId('map-content')).toHaveTextContent(/^rig d1 isolated:none$/)
   expect(screen.queryByRole('button', { name: 'Show only Drone scan' })).not.toBeInTheDocument()
   expect(within(screen.getByLabelText('Brief details')).queryByText('Extra coverage', { exact: false })).not.toBeInTheDocument()
+  expect(within(screen.getByLabelText('General information')).getByText('RAW + JPG')).toBeInTheDocument()
 })
 
 it('shows only the drone scan in a scan link with separate circle and extra coverage isolation, without shoot times or heights', async () => {

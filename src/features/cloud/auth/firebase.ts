@@ -27,8 +27,11 @@ export async function callCloud<T>(operation: string, data: unknown = {}): Promi
 }
 export function signInGoogle() { const provider = new GoogleAuthProvider(); provider.setCustomParameters({ prompt: 'select_account' }); return signInWithPopup(firebase().auth, provider) }
 export function signOutGoogle() { return signOut(firebase().auth) }
-export function publicEndpoint() {
+function functionUrl(name: string) {
   if (!cloudConfigured) throw new Error('Cloud projects are not configured.')
-  return emulated ? `http://127.0.0.1:5001/${env.VITE_FIREBASE_PROJECT_ID}/europe-west1/publicView` : `https://europe-west1-${env.VITE_FIREBASE_PROJECT_ID}.cloudfunctions.net/publicView`
+  return emulated ? `http://127.0.0.1:5001/${env.VITE_FIREBASE_PROJECT_ID}/europe-west1/${name}` : `https://europe-west1-${env.VITE_FIREBASE_PROJECT_ID}.cloudfunctions.net/${name}`
 }
+export function publicEndpoint() { return functionUrl('publicView') }
+/** Unset without a cloud backend: the local-only app has no source for drone zones. */
+export function droneZonesEndpoint() { return cloudConfigured ? functionUrl('droneZones') : undefined }
 export function cloudError(error: unknown) { return error instanceof Error ? error.message.replace(/^Firebase:\s*/, '') : 'The request failed. Please retry.' }

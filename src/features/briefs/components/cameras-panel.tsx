@@ -56,7 +56,7 @@ export function CamerasPanel({ onCenterCamera, selectedCameraIds, onSelectCamera
         <Button variant={selectedCameraIds.includes(angle.id) ? 'secondary' : 'ghost'} className={(angle.type === '360' ? 'shrink-0' : 'min-w-0 flex-1') + ' justify-start'}
           aria-label={name} aria-pressed={selectedCameraIds.includes(angle.id)} onClick={(event) => onSelectCamera(angle.id, event.shiftKey || event.ctrlKey)}><Icon /><Badge variant="secondary" className="size-5 shrink-0 justify-center rounded-full p-0" aria-hidden="true">{index + 1}</Badge></Button>
         {angle.type === '360' && <HeightsField id={'point-heights-' + angle.id} label={'Heights for ' + name + ' (m)'}
-          className="h-8 w-auto min-w-16 flex-1 px-2" allowEmpty placeholder={formatHeightsMeters(brief.typeSettings['360'].heightsMeters)}
+          className="h-8 min-w-16 px-2" allowEmpty placeholder={formatHeightsMeters(brief.typeSettings['360'].heightsMeters)}
           value={angle.heightsMeters ?? []} onChange={(heightsMeters) => updateAngle(angle.id, (current) => {
             if (current.type !== '360') return current
             if (!heightsMeters.length) {

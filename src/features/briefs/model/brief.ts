@@ -124,8 +124,9 @@ export type ShootSlot = z.infer<typeof shootSchema>
 export type Position = z.infer<typeof positionSchema>
 export type CameraAngle = z.infer<typeof angleSchema>
 export type BriefMode = 'edit' | 'view'
-export type LayerVisibility = { circleRig: boolean; angles: boolean; polygons: boolean; imageOverlays: boolean; droneScan: boolean }
-export const defaultVisibility: LayerVisibility = { circleRig: true, angles: true, polygons: true, imageOverlays: true, droneScan: true }
+/** Session-only display state; never saved in a brief. droneZones is the dronesoner.no reference overlay. */
+export type LayerVisibility = { circleRig: boolean; angles: boolean; polygons: boolean; imageOverlays: boolean; droneScan: boolean; droneZones: boolean }
+export const defaultVisibility: LayerVisibility = { circleRig: true, angles: true, polygons: true, imageOverlays: true, droneScan: true, droneZones: true }
 export const cameraTypes = ['drone-image', '360', 'dslr', 'extra-coverage'] as const
 export const cameraLabels = { 'drone-image': 'Drone image', '360': '360', dslr: 'DSLR', 'extra-coverage': 'Extra coverage' }
 
@@ -152,7 +153,11 @@ export const floorHeightMeters = 3
 export const defaultDroneHeights = [40, 60]
 export const default360Heights = [2, 5, 8]
 export const defaultShootTime = '07:00'
-export const defaultShootEndTime = '17:00'
+export const defaultShootEndTime = '09:00'
+/** A shoot time is a light window, at most two hours long. */
+export const maxShootRangeMinutes = 120
+const clockMinutes = (time: string) => Number(time.slice(0, 2)) * 60 + Number(time.slice(3, 5))
+const clockLabel = (minutes: number) => `${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`
 
 export function effectivePanoramaHeights(shared: number[], angle: { heightsMeters?: number[] }) {
   return angle.heightsMeters ?? shared
@@ -184,11 +189,12 @@ export function nextShootSlot(slots: ShootSlot[]): ShootSlot {
   }
 }
 
-/** Every slider is a range. A stored instant keeps its start and gains 17:00 when that is later. */
+/** Every slider is a range of at most two hours. A stored instant, or a longer
+ * stored range, keeps its start and ends two hours later (or at 23:59). */
 export function ensureShootRange(slot: ShootSlot): ShootSlot {
-  if (slot.endTime && slot.endTime > slot.time) return slot
-  if (slot.time < defaultShootEndTime) return { ...slot, endTime: defaultShootEndTime }
-  if (slot.time < '23:59') return { ...slot, endTime: '23:59' }
+  const start = clockMinutes(slot.time)
+  if (slot.endTime && slot.endTime > slot.time && clockMinutes(slot.endTime) - start <= maxShootRangeMinutes) return slot
+  if (slot.time < '23:59') return { ...slot, endTime: clockLabel(Math.min(start + maxShootRangeMinutes, 23 * 60 + 59)) }
   return { date: slot.date, time: '23:44', endTime: '23:59' }
 }
 

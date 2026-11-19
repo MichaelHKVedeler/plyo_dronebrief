@@ -115,7 +115,7 @@ export function CloudBrief({ initial, publicToken, presentation = defaultBriefin
   }
   const transport = useMemo<ImageTransport>(() => ({
     version: (fileId) => project.assets[fileId]?.id,
-    description: 'JPG or PNG, up to 30 MB. Cloud copies are resized and compressed. Original files remain on your device and are not archived online.',
+    description: 'JPG, PNG or PDF (first page is converted to JPG), up to 30 MB. Cloud copies are resized and compressed. Original files remain on your device and are not archived online.',
     async load(fileId, signal) { const asset = assets.current[fileId]; if (!asset) throw new Error('Image unavailable.'); return downloadFloorplan(asset, publicToken, signal) },
     upload: publicToken ? undefined : async (fileId, file, signal) => {
       try {

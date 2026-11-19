@@ -10,11 +10,16 @@ it('adds an endpoint on either side without changing the previewed instant', () 
   expect(addShootRange({ ...single, time: '23:59' }).slot).toMatchObject({ time: '23:44', endTime: '23:59' })
 })
 it('moves only the selected endpoint and prevents crossed or zero-length ranges', () => {
-  const slot = { ...single, endTime: '14:00' }
+  const slot = { ...single, endTime: '11:00' }
   expect(moveShootEndpoint(slot, 0, 600)).toEqual({ ...slot, time: '10:00' })
   expect(moveShootEndpoint(slot, 1, 600)).toEqual({ ...slot, endTime: '10:00' })
-  expect(moveShootEndpoint(slot, 0, 900)).toEqual({ ...slot, time: '13:59' })
+  expect(moveShootEndpoint(slot, 0, 900)).toEqual({ ...slot, time: '10:59' })
   expect(moveShootEndpoint(slot, 1, 400)).toEqual({ ...slot, endTime: '09:01' })
-  expect(previewShootSlot(slot, 1)).toEqual({ date: single.date, time: '14:00' })
+  expect(previewShootSlot(slot, 1)).toEqual({ date: single.date, time: '11:00' })
+})
+it('keeps a range at most two hours by dragging the other endpoint along', () => {
+  const slot = { ...single, endTime: '11:00' }
+  expect(moveShootEndpoint(slot, 1, 780)).toEqual({ ...slot, time: '11:00', endTime: '13:00' })
+  expect(moveShootEndpoint(slot, 0, 420)).toEqual({ ...slot, time: '07:00', endTime: '09:00' })
   expect(moveShootEndpoint(single, 0, 2000).time).toBe('23:59')
 })

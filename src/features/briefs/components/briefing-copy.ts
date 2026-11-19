@@ -6,6 +6,7 @@ export const briefingCopy = {
   en: {
     shootTimes: 'Shoot times',
     totalImages: 'Total images',
+    images: 'images',
     projectSizes: { mini: 'Mini project', small: 'Small project', medium: 'Medium project', large: 'Large project' },
     projectSizeNote: "Automatically matched to the template's point counts and height levels. Rig arrows count as aerial positions.",
     property: 'Property information',
@@ -39,10 +40,19 @@ export const briefingCopy = {
     arrows: 'Arrows',
     showFloorplan: 'Show floorplan',
     hideFloorplan: 'Hide floorplan',
+    showZones: 'Show no-fly zones',
+    hideZones: 'Hide no-fly zones',
+    generalNotes: 'General information',
+    notes: [
+      { title: 'Time slots', lines: ['Time slots are indicative of correct light conditions.', 'The photographer can judge when the conditions are best.'] },
+      { title: 'Points', lines: ['All points are indicative. Move the point of view if anything is blocking the drone or camera.'] },
+      { title: 'Files', lines: ['RAW + JPG', 'Organized in folders: Time slot, Type, Point, Height'] },
+    ],
   },
   nb: {
     shootTimes: 'Fototidspunkt',
     totalImages: 'Antall foto',
+    images: 'foto',
     projectSizes: { mini: 'Miniprosjekt', small: 'Lite prosjekt', medium: 'Mellomstort prosjekt', large: 'Stort prosjekt' },
     projectSizeNote: 'Automatisk tilpasset malens punktantall og høydenivåer. Rigg-piler telles som luftposisjoner.',
     property: 'Eiendom / tomt',
@@ -76,5 +86,13 @@ export const briefingCopy = {
     arrows: 'Piler',
     showFloorplan: 'Vis plantegning',
     hideFloorplan: 'Skjul plantegning',
+    showZones: 'Vis droneforbudssoner',
+    hideZones: 'Skjul droneforbudssoner',
+    generalNotes: 'Generell informasjon',
+    notes: [
+      { title: 'Tidspunkt', lines: ['Tidspunktene er veiledende for riktige lysforhold.', 'Fotografen kan selv vurdere når forholdene er best.'] },
+      { title: 'Punkter', lines: ['Alle punkter er veiledende. Flytt fotopunktet hvis noe blokkerer dronen eller kameraet.'] },
+      { title: 'Filer', lines: ['RAW + JPG', 'Organisert i mapper: Tidspunkt, Type, Punkt, Høyde'] },
+    ],
   },
 } as const

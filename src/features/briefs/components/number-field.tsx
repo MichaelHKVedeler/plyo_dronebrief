@@ -1,6 +1,7 @@
 import { useId, useState } from 'react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { blurOnEnter } from '@/lib/blur-on-enter'
 
 export function NumberField({ label, value, min, max, onChange, live = false, step = 'any', resetValue, resetKey = label }: { label: string; value: number; min: number; max: number; onChange: (value: number) => void; live?: boolean; step?: number | 'any'; resetValue?: number; resetKey?: string }) {
   const id = useId()
@@ -13,7 +14,7 @@ export function NumberField({ label, value, min, max, onChange, live = false, st
   }
   return <div className="grid min-w-0 gap-2">
     <Label htmlFor={id}>{label}</Label>
-    <Input id={id} type="number" step={step} min={min} max={max} value={draft.text} onContextMenu={(event) => {
+    <Input id={id} type="number" step={step} min={min} max={max} value={draft.text} onKeyDown={blurOnEnter} onContextMenu={(event) => {
       const bounds = event.currentTarget.getBoundingClientRect()
       const overSpinnerArrows = bounds.width > 0 && event.clientX >= bounds.right - 24 && event.clientX <= bounds.right && event.clientY >= bounds.top && event.clientY <= bounds.bottom
       if (!overSpinnerArrows) return

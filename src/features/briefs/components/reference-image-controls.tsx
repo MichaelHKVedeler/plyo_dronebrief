@@ -8,6 +8,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import type { BriefReference, DroneBrief } from '../model/brief'
 import type { LocalImages } from '../state/use-local-images'
 import { imagePicker, type LocalImageHandle } from '../storage/local-images'
+import { isPdf, pdfToJpeg } from '../storage/pdf-to-jpeg'
+import { UploadProgress } from './upload-progress'
 
 export function ReferenceImageControls({ references, editable, images, onUpdate }: {
   references: BriefReference[]
@@ -18,11 +20,18 @@ export function ReferenceImageControls({ references, editable, images, onUpdate 
   const input = useRef<HTMLInputElement>(null)
   const reconnect = useRef<BriefReference | null>(null)
   const [busy, setBusy] = useState(false)
+  const [progress, setProgress] = useState('')
   const [error, setError] = useState('')
   const [preview, setPreview] = useState<{ url: string; caption: string } | null>(null)
-  async function accept(file: File, handle?: LocalImageHandle) {
+  async function accept(picked: File, pickedHandle?: LocalImageHandle) {
     setBusy(true); setError('')
+    const opening = images.cloud ? 'Uploading %s…' : 'Opening %s…'
     try {
+      setProgress(isPdf(picked) ? 'Converting PDF to JPG…' : opening.replace('%s', 'reference image'))
+      const file = isPdf(picked) ? await pdfToJpeg(picked) : picked
+      // A converted PDF has no file on disk to reopen, so it is not remembered locally.
+      const handle = file === picked ? pickedHandle : undefined
+      setProgress(opening.replace('%s', 'reference image'))
       const existing = reconnect.current
       if (!existing && !editable) return
       const source = existing?.source
@@ -37,7 +46,7 @@ export function ReferenceImageControls({ references, editable, images, onUpdate 
         onUpdate((brief) => ({ ...brief, references: brief.references.map((item) => item.id === existingId ? { ...item, source: { kind: 'local-file', fileId, fileName: file.name } } : item) }))
       }
     } catch (reason) { setError(reason instanceof Error ? reason.message : 'The image could not be opened.') }
-    finally { setBusy(false); reconnect.current = null }
+    finally { setBusy(false); setProgress(''); reconnect.current = null }
   }
   async function choose(existing: BriefReference | null = null) {
     reconnect.current = existing; setError('')
@@ -45,7 +54,7 @@ export function ReferenceImageControls({ references, editable, images, onUpdate 
     if (!picker) { input.current?.click(); return }
     setBusy(true)
     try {
-      const [handle] = await picker({ multiple: false, types: [{ description: 'JPG or PNG image', accept: { 'image/jpeg': ['.jpg', '.jpeg'], 'image/png': ['.png'] } }] })
+      const [handle] = await picker({ multiple: false, types: [{ description: 'JPG, PNG or PDF', accept: { 'image/jpeg': ['.jpg', '.jpeg'], 'image/png': ['.png'], 'application/pdf': ['.pdf'] } }] })
       if (handle) await accept(await handle.getFile(), handle)
     } catch (reason) {
       if (!(reason instanceof DOMException && reason.name === 'AbortError')) input.current?.click()
@@ -57,12 +66,12 @@ export function ReferenceImageControls({ references, editable, images, onUpdate 
     onUpdate((brief) => ({ ...brief, references: brief.references.map((item) => item.id === reference.id ? { ...item, caption } : item) }))
   }
   return <div className="grid min-w-0 gap-3">
-    <Input ref={input} type="file" accept="image/jpeg,image/png,.jpg,.jpeg,.png" className="hidden" aria-label="Reference image file" onChange={(event) => {
+    <Input ref={input} type="file" accept="image/jpeg,image/png,application/pdf,.jpg,.jpeg,.png,.pdf" className="hidden" aria-label="Reference image file" onChange={(event) => {
       const file = event.target.files?.[0]; event.target.value = ''; if (file) void accept(file)
     }} />
-    {editable && references.length < 4 && <Button variant="outline" disabled={busy} onClick={() => void choose()}><ImagePlus />{busy ? 'Opening image…' : 'Upload reference'}</Button>}
+    {editable && references.length < 4 && <Button variant="outline" disabled={busy} onClick={() => void choose()}><ImagePlus />{'Upload reference'}</Button>}
     {editable && references.length >= 4 && <p className="text-xs text-muted-foreground">Maximum 4 reference images per brief.</p>}
-    {busy && images.cloud && <Button variant="outline" onClick={() => images.cancel()}>Cancel upload</Button>}
+    {progress && <UploadProgress label={progress} onCancel={images.cloud ? () => images.cancel() : undefined} />}
     {error && <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>}
     {references.length === 0 && !editable && <p className="text-sm text-muted-foreground">No reference images.</p>}
     {references.map((reference) => {

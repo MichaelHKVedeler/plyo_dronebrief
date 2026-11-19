@@ -15,6 +15,7 @@ import { cleanup } from './cleanup.js'
 import { enforceApiBudget, enforcePublicBudget, enforcePublicTransferBudget } from './request-budget.js'
 import { requestNetworkKey } from './network-key.js'
 import { projectNeedsIndex } from './project-index.js'
+import { droneZones as loadDroneZones } from './drone-zones.js'
 
 setGlobalOptions({ region: 'europe-west1', maxInstances: 20 })
 const handle = async (request: CallableRequest) => {
@@ -75,6 +76,20 @@ export const publicView = onRequest({ cors: true, timeoutSeconds: 60, memory: '5
       return
     }
     response.status(404).json({ message: 'This project or floorplan is unavailable, or its public link has been revoked.' })
+  }
+})
+// Public and identical for everyone, so browsers and CDNs may cache it. It holds no project data.
+export const droneZones = onRequest({ cors: true, timeoutSeconds: 60, memory: '512MiB', concurrency: 40 }, async (request, response) => {
+  response.set({ 'X-Content-Type-Options': 'nosniff', Vary: 'Accept-Encoding' })
+  if (request.method !== 'GET') { response.status(405).end(); return }
+  try {
+    const zones = await loadDroneZones()
+    response.set('Cache-Control', 'public, max-age=21600').type('application/json')
+    if (request.acceptsEncodings('gzip')) response.set('Content-Encoding', 'gzip').send(zones.gzip)
+    else response.send(zones.json)
+  } catch (error) {
+    console.error('Drone zones unavailable', error)
+    response.set('Cache-Control', 'no-store').status(503).json({ message: 'Drone zones are unavailable right now.' })
   }
 })
 // Plyo Toolkits sends the members of the Plyo organization here whenever its own list changes (Manage Users there).

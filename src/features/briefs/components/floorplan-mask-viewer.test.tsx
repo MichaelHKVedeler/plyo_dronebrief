@@ -28,6 +28,7 @@ it('closes by right-click, inserts a point, deletes a vertex, and clears the mas
   expect(save).not.toHaveBeenCalled()
   fireEvent.contextMenu(canvas)
   expect(save.mock.lastCall?.[0]).toHaveLength(4)
+  expect(screen.getByRole('status')).toHaveTextContent('Mask created')
   expect(screen.getByRole('img').style.clipPath).toContain('polygon(')
   fireEvent.pointerDown(canvas.querySelector('[data-mask-edge="0"]')!, { button: 0, ctrlKey: true, clientX: 50, clientY: 20 })
   fireEvent.pointerUp(canvas)

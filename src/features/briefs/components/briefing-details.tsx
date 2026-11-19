@@ -51,7 +51,7 @@ export function BriefingDetails({ session, presentation, copy, isolatedKind, ref
             {presentation.address ? <p className="min-w-0 text-sm text-muted-foreground" title={presentation.address}>{presentation.address}</p> : null}
           </div>}
           <div className="grid gap-4">
-            {!scanOnly && <ShootTimes brief={session.brief} layout="stack" language={presentation.language} labels={{ shootTimes: copy.shootTimes, totalImages: copy.totalImages }} />}
+            {!scanOnly && <ShootTimes brief={session.brief} layout="stack" language={presentation.language} labels={{ shootTimes: copy.shootTimes, totalImages: copy.totalImages, images: copy.images }} />}
             {scanOnly ? (scan?.highRes || scan?.lowRes) && <div className="grid gap-1" aria-label={copy.droneScan}>
               <p className="text-sm font-medium">{copy.droneScan}</p>
               {scan.highRes && <p className="text-sm text-muted-foreground">{copy.highDetail}: {formatScanDiameter(scan.highRes.radiusMeters)} m {copy.diameter}</p>}
@@ -84,6 +84,12 @@ export function BriefingDetails({ session, presentation, copy, isolatedKind, ref
               </figure>
             })}
           </section>}
+          <section className="grid gap-3 border-t pt-4" aria-label={copy.generalNotes}>
+            {copy.notes.map((note) => <div key={note.title} className="grid gap-1">
+              <p className="text-sm font-medium">{note.title}</p>
+              {note.lines.map((line) => <p key={line} className="text-sm text-muted-foreground">{line}</p>)}
+            </div>)}
+          </section>
         </div>
       </ScrollArea>
     </CardContent>

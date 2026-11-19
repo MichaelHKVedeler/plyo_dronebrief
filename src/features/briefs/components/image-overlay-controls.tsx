@@ -11,6 +11,8 @@ import { maskClipPath } from '../model/image-mask'
 import type { DroneBrief, ImageOverlay, Position } from '../model/brief'
 import type { LocalImages } from '../state/use-local-images'
 import { imagePicker, type LocalImageHandle } from '../storage/local-images'
+import { isPdf, pdfToJpeg } from '../storage/pdf-to-jpeg'
+import { UploadProgress } from './upload-progress'
 
 export type ImageControlsProps = {
   images: LocalImages; onUpdate: (update: (brief: DroneBrief) => DroneBrief) => void
@@ -23,13 +25,20 @@ export function ImageOverlayControls({ overlays, editable, images, onUpdate, pla
   const input = useRef<HTMLInputElement>(null)
   const reconnect = useRef<ImageOverlay | null>(null)
   const [busy, setBusy] = useState(false)
+  const [progress, setProgress] = useState('')
   const [error, setError] = useState('')
   const [preview, setPreview] = useState<string | null>(null)
   const previewOverlay = overlays.find((overlay) => overlay.id === preview)
   const previewUrl = previewOverlay ? images.sourceUrl(previewOverlay) : undefined
-  async function accept(file: File, handle?: LocalImageHandle) {
+  async function accept(picked: File, pickedHandle?: LocalImageHandle) {
     setBusy(true); setError('')
+    const opening = images.cloud ? 'Uploading %s…' : 'Opening %s…'
     try {
+      setProgress(isPdf(picked) ? 'Converting PDF to JPG…' : opening.replace('%s', 'floorplan'))
+      const file = isPdf(picked) ? await pdfToJpeg(picked) : picked
+      // A converted PDF has no file on disk to reopen, so it is not remembered locally.
+      const handle = file === picked ? pickedHandle : undefined
+      setProgress(opening.replace('%s', 'floorplan'))
       const existing = reconnect.current
       if (!existing && !editable) return
       const source = existing?.source
@@ -49,7 +58,7 @@ export function ImageOverlayControls({ overlays, editable, images, onUpdate, pla
         onUpdate((brief) => ({ ...brief, imageOverlays: brief.imageOverlays.map((overlay) => overlay.id === existingId ? { ...overlay, name: file.name.slice(0, 200), heightMeters: overlay.widthMeters * image.height / image.width, source: { kind: 'local-file', fileId, fileName: file.name } } : overlay) }))
       }
     } catch (reason) { setError(reason instanceof Error ? reason.message : 'The image could not be opened.') }
-    finally { setBusy(false); reconnect.current = null }
+    finally { setBusy(false); setProgress(''); reconnect.current = null }
   }
   async function choose(existing: ImageOverlay | null = null) {
     reconnect.current = existing; setError('')
@@ -57,7 +66,7 @@ export function ImageOverlayControls({ overlays, editable, images, onUpdate, pla
     if (!picker) { input.current?.click(); return }
     setBusy(true)
     try {
-      const [handle] = await picker({ multiple: false, types: [{ description: 'JPG or PNG image', accept: { 'image/jpeg': ['.jpg', '.jpeg'], 'image/png': ['.png'] } }] })
+      const [handle] = await picker({ multiple: false, types: [{ description: 'JPG, PNG or PDF', accept: { 'image/jpeg': ['.jpg', '.jpeg'], 'image/png': ['.png'], 'application/pdf': ['.pdf'] } }] })
       if (handle) await accept(await handle.getFile(), handle)
     } catch (reason) {
       if (!(reason instanceof DOMException && reason.name === 'AbortError')) {
@@ -67,11 +76,11 @@ export function ImageOverlayControls({ overlays, editable, images, onUpdate, pla
     } finally { setBusy(false) }
   }
   return <div className="grid min-w-0 gap-3">
-    <Input ref={input} type="file" accept="image/jpeg,image/png,.jpg,.jpeg,.png" className="hidden" aria-label="Local image file" onChange={(event) => {
+    <Input ref={input} type="file" accept="image/jpeg,image/png,application/pdf,.jpg,.jpeg,.png,.pdf" className="hidden" aria-label="Local image file" onChange={(event) => {
       const file = event.target.files?.[0]; event.target.value = ''; if (file) void accept(file)
     }} />
-    {editable && overlays.length === 0 && <Button variant="outline" disabled={busy} onClick={() => void choose()}><ImagePlus />{busy ? 'Opening image…' : 'Upload image'}</Button>}
-    {busy && images.cloud && <Button variant="outline" onClick={() => images.cancel()}>Cancel upload</Button>}
+    {editable && overlays.length === 0 && <Button variant="outline" disabled={busy} onClick={() => void choose()}><ImagePlus />{'Upload image'}</Button>}
+    {progress && <UploadProgress label={progress} onCancel={images.cloud ? () => images.cancel() : undefined} />}
     {error && <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>}
     {overlays.map((overlay) => {
       const resource = typeof overlay.source === 'string' ? undefined : images.resources[overlay.source.fileId]

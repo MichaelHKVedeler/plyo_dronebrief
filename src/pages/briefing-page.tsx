@@ -55,7 +55,9 @@ export function BriefingPage({ session, dispatch, error, imageTransport, present
         pointCallout={selectedId && brief.angles.some((angle) => angle.id === selectedId && angle.type !== 'extra-coverage') ? <PointHeightsCallout brief={brief} angleId={selectedId} language={presentation.language} onClose={() => select(null)} /> : null}
         layerControls={<BriefingMapLayers brief={brief} language={presentation.language} isolatedKind={chosenKind} onIsolate={setChosenKind} scanSplit={scanOnly}
           floorplanVisible={session.visibility.imageOverlays}
-          onFloorplanVisible={(visible) => dispatch({ type: 'visibility', layer: 'imageOverlays', visible })} />} />
+          onFloorplanVisible={(visible) => dispatch({ type: 'visibility', layer: 'imageOverlays', visible })}
+          zonesVisible={session.visibility.droneZones}
+          onZonesVisible={(visible) => dispatch({ type: 'visibility', layer: 'droneZones', visible })} />} />
       {!infoOpen && <Button type="button" variant="ghost" size="icon" className="pointer-events-auto absolute bottom-8 left-3 z-20 border bg-card shadow-sm lg:hidden" aria-label={copy.info} aria-expanded={false} aria-controls="briefing-details" onClick={() => setInfoOpen(true)}>
         <Info />
       </Button>}

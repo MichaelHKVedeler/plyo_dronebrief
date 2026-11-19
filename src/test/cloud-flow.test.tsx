@@ -23,7 +23,7 @@ vi.mock('@/features/map/preview-capture', () => ({ captureMapPreview: vi.fn(asyn
 
 let account: { user: { uid: string; displayName: string; email: string } | null; organizations: Organization[]; loading: boolean; error: null; refresh: () => Promise<void> }
 vi.mock('@/features/cloud/auth/use-account', () => ({ useAccount: () => account }))
-vi.mock('@/features/cloud/auth/firebase', () => ({ callCloud: vi.fn(), cloudError: (error: Error) => error.message, signInGoogle: vi.fn(), signOutGoogle: vi.fn() }))
+vi.mock('@/features/cloud/auth/firebase', () => ({ droneZonesEndpoint: () => undefined, callCloud: vi.fn(), cloudError: (error: Error) => error.message, signInGoogle: vi.fn(), signOutGoogle: vi.fn() }))
 vi.mock('@/features/cloud/storage/project-repository', () => ({ cloudProjects: { load: vi.fn(), watch: vi.fn(() => () => {}), save: vi.fn(), create: vi.fn(), list: vi.fn(), trash: vi.fn(), purge: vi.fn(), rename: vi.fn(), savePreview: vi.fn(), previews: vi.fn(async () => ({})) }, loadPublic: vi.fn(), PublicLinkGone: class extends Error {} }))
 vi.mock('@/features/cloud/storage/library-repository', () => ({ cloudLibrary: { search: vi.fn(), collections: vi.fn(async () => ({ collections: [], creators: [] })) } }))
 vi.mock('@/features/cloud/storage/uploads', () => ({ downloadFloorplan: vi.fn(), uploadFloorplan: vi.fn() }))
@@ -176,7 +176,7 @@ it('opens public briefing links without sign-in and never writes drafts or cloud
   expect(screen.queryByRole('button', { name: 'Dronebrief home' })).not.toBeInTheDocument()
   expect(screen.queryByRole('search')).not.toBeInTheDocument()
   expect(screen.queryByRole('button', { name: 'ShadeMap' })).not.toBeInTheDocument()
-  expect(screen.queryByRole('slider', { name: 'Overlay size' })).not.toBeInTheDocument()
+  expect(screen.queryByRole('slider', { name: 'Icon size' })).not.toBeInTheDocument()
   expect(screen.queryByRole('slider', { name: 'Map dimming' })).not.toBeInTheDocument()
   expect(screen.queryByLabelText('Project name')).not.toBeInTheDocument()
   await userEvent.click(screen.getByRole('switch', { name: 'Satellite' }))
@@ -212,7 +212,7 @@ it('clears another account’s project immediately while the new account is load
 
 it('keeps the cloud project title in the header and saves PDF notes through cloud autosave', async () => {
   const data = project(); history.replaceState(null, '', '/#/projects/project')
-  data.brief.project.shoots = [{ date: '2026-09-19', time: '09:00', endTime: '14:00' }]
+  data.brief.project.shoots = [{ date: '2026-09-19', time: '09:00', endTime: '11:00' }]
   vi.mocked(cloudProjects.load).mockResolvedValue(data)
   vi.mocked(cloudProjects.save).mockResolvedValue({ ...data.summary, revision: 2 })
   const writes = vi.spyOn(briefRepository, 'save')
