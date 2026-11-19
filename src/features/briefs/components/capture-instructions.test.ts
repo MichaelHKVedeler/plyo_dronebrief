@@ -30,7 +30,7 @@ it('describes existing capture types with counts in English', () => {
   expect(rows).toEqual([
     { key: 'circleRig', toggleKey: 'circleRig:rig', label: 'Circle rig', rule: '1 photo per arrow and height', range: 'Arrows 1-10', heights: '40m, 60m', images: 20 },
     { key: 'drone-image', toggleKey: 'drone-image', label: 'Aerial photo', rule: 'Maximum height of 120m', range: 'Point 1-8', heights: '40m, 60m', images: 16 },
-    { key: '360', toggleKey: '360', label: '360°', rule: 'Not stitched panorama, individual photos', range: 'Point 1-4', heights: '2m, 5m, 8m', images: 120 },
+    { key: '360', toggleKey: '360', label: '360°', rule: 'Not stitched panorama, individual photos. Click on each point to see height', range: 'Point 1-4', heights: '2m, 5m, 8m', images: 120 },
     { key: 'dslr', toggleKey: 'dslr', label: 'DSLR', rule: '180°, minimum 6 photos per point', range: 'Point 1-3', heights: 'Ground-level', images: 18 },
   ])
 })
