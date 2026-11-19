@@ -26,8 +26,8 @@ export function ShootTimes({ brief, labels = { shootTimes: 'Shoot times', totalI
   const times = slots.map(formatShootTime).join(', ')
   const total = countBriefImages(brief).total
   if (layout === 'stack') {
-    // Every time slot is a full shoot of all points, so the total covers each slot.
-    const perSlot = total
+    // The total already counts every time slot as a full shoot, so one slot is an equal share.
+    const perSlot = total / Math.max(1, slots.length)
     const groups: { date: string; times: string[] }[] = []
     for (const slot of slots) {
       const time = formatShootTime(slot)
@@ -49,7 +49,7 @@ export function ShootTimes({ brief, labels = { shootTimes: 'Shoot times', totalI
       </div>
       <div className="grid gap-1">
         <p className="text-sm font-medium">{labels.totalImages}</p>
-        <p className="text-sm tabular-nums" aria-label={labels.totalImages}>{perSlot * Math.max(1, slots.length)}</p>
+        <p className="text-sm tabular-nums" aria-label={labels.totalImages}>{total}</p>
       </div>
     </div>
   }
