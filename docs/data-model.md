@@ -36,7 +36,7 @@ Map geometry uses spherical distances and bearings with longitude wrapping. The 
 
 ### Two circle rigs
 
-A brief holds up to two rigs: `circleRig` is rig 1 and `extraCircleRigs` holds rig 2. Writes go through `withCircleRigs`, which keeps rig 2 empty while rig 1 is null, so removing rig 1 renumbers rig 2 as rig 1. Each rig has its own arrows, heights and image count. With two rigs the editor and map show the rig number at the centre, the PDF labels points `R1.3` / `R2.3`, and public links show one numbered hide/show button per rig (hidden state is ephemeral).
+A brief holds up to two rigs: `circleRig` is rig 1 and `extraCircleRigs` holds rig 2. Writes go through `withCircleRigs`, which keeps rig 2 empty while rig 1 is null, so removing rig 1 renumbers rig 2 as rig 1. Each rig has its own arrows, heights and image count. With two rigs the editor shows the rig number in the sidebar and the map shows it above the scale/rotate handle, the PDF labels points `R1.3` / `R2.3`, and public links show one numbered hide/show button per rig (hidden state is ephemeral).
 
 **Version decision:** additive schema v1 field; DB1/DB2 transport versions are unchanged. Older snapshots omit it and parse as []. Older app builds and an undeployed `api`/`publicView` ignore and drop rig 2, so deploy the updated shared schema to the backend before releasing the frontend.
 

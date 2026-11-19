@@ -74,10 +74,11 @@ export function RigObject({ rig, number, pixelsToMeters, dark = false, editable,
         <Badge data-rig-hover variant="outline" style={{ borderColor: color, borderWidth: baseStroke, color, scale: numberScale }} className="bg-white absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 size-10 justify-center rounded-full p-0 text-lg font-semibold leading-none tabular-nums">{arrow.number}</Badge>
       </div>
     </AdvancedMarker>)}
-    {/* Rig number at the centre, filled so it reads apart from the white arrow numbers. The cross replaces it while dragging. */}
-    {number !== undefined && !(canEdit && (rigHovered || draft !== null)) && <AdvancedMarker position={visible.position} anchorLeft="-50%" anchorTop="-50%"
+    {/* Rig number just above the scale/rotate handle, filled so it reads apart from the white arrow numbers. */}
+    {number !== undefined && <AdvancedMarker position={radiusPoint} anchorLeft="-50%" anchorTop="-100%"
       title={'Circle rig ' + number} zIndex={10} clickable={false} style={{ pointerEvents: 'none' }}>
-      <div className="size-10" style={{ scale: scale * numberScale }}>
+      {/* The bottom padding clears the 40 px handle centred on this point. */}
+      <div className="pb-7" style={{ scale: scale * numberScale, transformOrigin: 'bottom center' }}>
         <Badge data-rig-number={rig.id} role="img" aria-label={'Circle rig ' + number} style={{ backgroundColor: color, borderColor: color }}
           className="size-10 justify-center rounded-full p-0 text-lg font-semibold leading-none text-white tabular-nums">{number}</Badge>
       </div>
