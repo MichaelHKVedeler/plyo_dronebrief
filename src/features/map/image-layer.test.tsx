@@ -81,7 +81,7 @@ it('draws the selected anchor as a round primary control', () => {
   render(<ShadeProjection value={map as unknown as LibreMap}><ImageLayer {...state} editable interactive selectedId="image" /></ShadeProjection>)
   const anchor = surface.querySelector('[data-image-anchor]')!
   const disc = anchor.querySelector('circle')!
-  expect(disc.getAttribute('fill')).toBe('none')
+  expect(disc.getAttribute('fill')).toBe('var(--card)')
   expect(disc.getAttribute('stroke')).toBe('var(--primary)')
   expect(disc.getAttribute('r')).toBe(String(imageAnchorRadius - 1))
   expect(anchor.querySelector('path')!.getAttribute('stroke')).toBe('var(--primary)')

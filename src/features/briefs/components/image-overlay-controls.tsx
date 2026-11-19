@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { ImagePlus, Lock, LockOpen, RefreshCw, X } from 'lucide-react'
+import { ImagePlus, Lock, LockOpen, PenTool, RefreshCw, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -30,6 +30,7 @@ export function ImageOverlayControls({ overlays, editable, images, onUpdate, pla
   const [preview, setPreview] = useState<string | null>(null)
   const previewOverlay = overlays.find((overlay) => overlay.id === preview)
   const previewUrl = previewOverlay ? images.sourceUrl(previewOverlay) : undefined
+  function open(id: string, url: string | undefined) { onSelect(id); onShow(); if (url) setPreview(id) }
   async function accept(picked: File, pickedHandle?: LocalImageHandle) {
     setBusy(true); setError('')
     const opening = images.cloud ? 'Uploading %s…' : 'Opening %s…'
@@ -89,10 +90,12 @@ export function ImageOverlayControls({ overlays, editable, images, onUpdate, pla
       return <div key={overlay.id} className="grid min-w-0 gap-2 rounded-md border p-3">
         <div className="relative overflow-hidden rounded-md border bg-white">
           <Button variant="ghost" className="h-auto min-h-40 w-full rounded-none p-0 hover:bg-transparent" aria-label="View floorplan" disabled={!url}
-            onClick={() => { onSelect(overlay.id); onShow(); if (url) setPreview(overlay.id) }}>
+            onClick={() => open(overlay.id, url)}>
             {url ? <img src={url} alt="" className="w-full" style={{ clipPath: maskClipPath(overlay.mask) }} /> : <span className="p-8 text-sm text-muted-foreground">Floorplan unavailable</span>}
           </Button>
           {editable && <>
+            <Button size="icon-sm" variant="outline" className="absolute top-2 left-2 border-zinc-700 bg-zinc-900 text-white shadow-sm hover:bg-zinc-800 hover:text-white dark:border-zinc-700 dark:bg-zinc-900 dark:hover:bg-zinc-800" disabled={!url} aria-label={`Mask floorplan ${overlay.name}`} title="Mask floorplan"
+              onClick={() => open(overlay.id, url)}><PenTool /></Button>
             <Button size="icon-sm" variant="outline" className="absolute top-2 right-2 border-zinc-700 bg-zinc-900 text-white shadow-sm hover:bg-zinc-800 hover:text-white dark:border-zinc-700 dark:bg-zinc-900 dark:hover:bg-zinc-800" disabled={busy} aria-label={`Remove ${overlay.name}`} title="Remove floorplan"
               onClick={() => { onUpdate((brief) => ({ ...brief, imageOverlays: brief.imageOverlays.filter((image) => image.id !== overlay.id) })); if (selectedId === overlay.id) onSelect(null) }}><X /></Button>
             <Button size="icon-sm" variant="outline" className="absolute bottom-2 left-2 border-zinc-700 bg-zinc-900 text-white shadow-sm hover:bg-zinc-800 hover:text-white dark:border-zinc-700 dark:bg-zinc-900 dark:hover:bg-zinc-800" aria-pressed={lockedIds.has(overlay.id)} aria-label={`${lockedIds.has(overlay.id) ? 'Unlock' : 'Lock'} floorplan ${overlay.name}`} title={lockedIds.has(overlay.id) ? 'Unlock floorplan' : 'Lock floorplan'} onClick={() => onToggleLock(overlay.id)}>
