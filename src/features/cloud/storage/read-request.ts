@@ -9,6 +9,7 @@ const pending = new WeakMap<User, Map<string, Promise<unknown>>>()
 export function readCloud<T>(operation: 'account'): Promise<T>
 export function readCloud<T>(operation: 'library', data: LibraryQuery): Promise<T>
 export function readCloud<T>(operation: 'collections', data: { orgId: string; action: 'list' }): Promise<T>
+export function readCloud<T>(operation: 'previews', data: { orgId: string; projectIds: string[] }): Promise<T>
 export function readCloud<T>(operation: string, data: unknown = {}): Promise<T> {
   const user = firebase().auth.currentUser
   if (!user) return callCloud<T>(operation, data)

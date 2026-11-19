@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import { localFileSources } from '../../src/features/briefs/model/brief.js'
 import { HttpsError } from 'firebase-functions/v2/https'
-import { cloudId, cloudName, summarySchema, type Actor, type CloudProject, type AssetManifest } from '../../src/features/cloud/model/cloud.js'
+import { cloudId, cloudName, previewImage, summarySchema, type Actor, type CloudProject, type AssetManifest } from '../../src/features/cloud/model/cloud.js'
 import { editorMapView } from '../../src/features/cloud/model/map-view.js'
 import { eraseProject } from './cleanup.js'
 import { db, hash, projectRef, requireMember, requireActive, canManage, now, actorOnly, denied } from './context.js'
@@ -81,6 +81,37 @@ export async function saveProject(user: Actor, input: unknown) {
     // A receipt only makes a retried save safe; the database removes it after 30 days (TTL in firestore.indexes.json).
     tx.create(receipt, { fingerprint, summary, createdAt: now(), expiresAt: Timestamp.fromMillis(Date.now() + 30 * 86400_000) })
     return summary
+  })
+}
+const previewRef = (projectId: string) => projectRef(projectId).collection('preview').doc('card')
+/** The editor sends a small picture of its map after a save. Project cards show it instead of loading a map. */
+export async function savePreview(user: Actor, input: unknown) {
+  const data = z.object({ projectId: cloudId, revision: z.number().int().positive(), image: previewImage }).parse(input)
+  return db.runTransaction(async (tx) => {
+    const ref = projectRef(data.projectId)
+    const doc = await tx.get(ref)
+    if (!doc.exists) throw new HttpsError('not-found', 'Project unavailable.')
+    const project = summarySchema.parse(doc.data())
+    await requireMember(tx, project.orgId, user.uid)
+    requireActive(project)
+    if (doc.get('purging') || data.revision > project.revision) throw new HttpsError('failed-precondition', 'This project has changed.')
+    // A late picture of an older revision never replaces a newer one.
+    if ((project.previewRevision ?? 0) > data.revision) return { ok: true }
+    // Beside the project, not in it: open editors watch the project document, and a write there re-indexes the library.
+    tx.set(previewRef(data.projectId), { image: data.image, revision: data.revision, updatedAt: now() })
+    tx.update(ref, { previewRevision: data.revision })
+    return { ok: true }
+  })
+}
+export async function loadPreviews(user: Actor, input: unknown) {
+  const data = z.object({ orgId: cloudId, projectIds: z.array(cloudId).min(1).max(50) }).parse(input)
+  return db.runTransaction(async (tx) => {
+    const member = await requireMember(tx, data.orgId, user.uid)
+    const projects = await tx.getAll(...[...new Set(data.projectIds)].map(projectRef))
+    // Whoever may list a project may see its picture: members of its organization, and for a deleted project only admins.
+    const shown = projects.filter((doc) => doc.exists && doc.get('orgId') === data.orgId && doc.get('previewRevision') && (!doc.get('deletedAt') || member.role === 'admin'))
+    const cards = shown.length ? await tx.getAll(...shown.map((doc) => previewRef(doc.id))) : []
+    return { previews: Object.fromEntries(cards.flatMap((card, index) => previewImage.safeParse(card.get('image')).success ? [[shown[index].id, card.get('image') as string]] : [])) }
   })
 }
 export async function trashProject(user: Actor, input: unknown) {

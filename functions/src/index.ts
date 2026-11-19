@@ -7,7 +7,7 @@ import { db, now, principal } from './context.js'
 import { initializeAccount, syncOrganization } from './organizations.js'
 import { requireAccounts } from './accounts-sync.js'
 import { roleSchema } from '../../src/features/cloud/model/cloud.js'
-import { createProject, loadProject, purgeProject, renameProject, saveProject, trashProject } from './projects.js'
+import { createProject, loadPreviews, loadProject, purgeProject, renameProject, savePreview, saveProject, trashProject } from './projects.js'
 import { prepareUpload, finalizeUpload, copyAsset } from './assets.js'
 import { collections, listLibrary, processIndexJob } from './library.js'
 import { loadPublicProject, publicAsset, shareProject } from './sharing.js'
@@ -30,6 +30,8 @@ const handle = async (request: CallableRequest) => {
       case 'trashProject': return await trashProject(user, data)
       case 'purgeProject': return await purgeProject(user, data)
       case 'renameProject': return await renameProject(user, data)
+      case 'savePreview': return await savePreview(user, data)
+      case 'previews': return await loadPreviews(user, data)
       case 'prepareUpload': return await prepareUpload(user, data)
       case 'finalizeUpload': return await finalizeUpload(user, data)
       case 'copyAsset': return await copyAsset(user, data)

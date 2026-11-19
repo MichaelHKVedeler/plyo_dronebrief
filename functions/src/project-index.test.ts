@@ -8,6 +8,7 @@ it('does not fan out library updates for upload reservation changes alone', () =
   expect(projectNeedsIndex(project, uploading)).toBe(false)
   expect(projectNeedsIndex(uploading, project)).toBe(false)
   expect(projectNeedsIndex(uploading, { ...uploading, pendingUploads: {} })).toBe(false)
+  expect(projectNeedsIndex(project, { ...project, previewRevision: 4 }), 'A new card picture is not a library change').toBe(false)
 })
 it('still indexes creation, deletion, and mixed project changes', () => {
   const project = { orgId: 'org', revision: 4, assetIds: [], pendingUploads: {} }

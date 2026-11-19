@@ -13,16 +13,18 @@ import { briefRepository } from '@/features/briefs/storage/brief-repository'
 import { exportBriefKey } from '@/features/briefs/storage/share-key'
 import { exportCloudSnapshot } from '@/features/cloud/components/cloud-brief'
 import type { PdfExportInput } from '@/features/briefs/export/pdf-types'
+import { captureMapPreview } from '@/features/map/preview-capture'
 
 const pdf = vi.hoisted(() => ({ create: vi.fn(async (_input: PdfExportInput) => new Uint8Array([1])), download: vi.fn() }))
 vi.mock('@/features/briefs/export/create-brief-pdf', () => ({ createBriefPdf: pdf.create }))
 vi.mock('@/features/briefs/export/pdf-browser', () => ({ loadPdfAssets: vi.fn(async () => ({})), downloadPdf: pdf.download, pdfReference: vi.fn(), pdfReferenceFromUrl: vi.fn() }))
 vi.mock('@/features/map/pdf-address', () => ({ lookupPdfAddress: vi.fn(async () => 'Oslo') }))
+vi.mock('@/features/map/preview-capture', () => ({ captureMapPreview: vi.fn(async () => null) }))
 
 let account: { user: { uid: string; displayName: string; email: string } | null; organizations: Organization[]; loading: boolean; error: null; refresh: () => Promise<void> }
 vi.mock('@/features/cloud/auth/use-account', () => ({ useAccount: () => account }))
 vi.mock('@/features/cloud/auth/firebase', () => ({ callCloud: vi.fn(), cloudError: (error: Error) => error.message, signInGoogle: vi.fn(), signOutGoogle: vi.fn() }))
-vi.mock('@/features/cloud/storage/project-repository', () => ({ cloudProjects: { load: vi.fn(), watch: vi.fn(() => () => {}), save: vi.fn(), create: vi.fn(), list: vi.fn(), trash: vi.fn(), purge: vi.fn(), rename: vi.fn() }, loadPublic: vi.fn(), PublicLinkGone: class extends Error {} }))
+vi.mock('@/features/cloud/storage/project-repository', () => ({ cloudProjects: { load: vi.fn(), watch: vi.fn(() => () => {}), save: vi.fn(), create: vi.fn(), list: vi.fn(), trash: vi.fn(), purge: vi.fn(), rename: vi.fn(), savePreview: vi.fn(), previews: vi.fn(async () => ({})) }, loadPublic: vi.fn(), PublicLinkGone: class extends Error {} }))
 vi.mock('@/features/cloud/storage/library-repository', () => ({ cloudLibrary: { search: vi.fn(), collections: vi.fn(async () => ({ collections: [], creators: [] })) } }))
 vi.mock('@/features/cloud/storage/uploads', () => ({ downloadFloorplan: vi.fn(), uploadFloorplan: vi.fn() }))
 vi.mock('@/features/briefs/storage/local-images', () => ({ imagePicker: () => undefined, readImageHandle: async () => undefined, rememberImageHandle: async () => {}, readLocalImage: async () => ({ url: 'blob:chosen', width: 640, height: 360 }) }))
@@ -67,24 +69,35 @@ it('retains an authenticated deep link while presenting Google sign-in', async (
   expect(signInGoogle).toHaveBeenCalledOnce(); expect(location.hash).toBe('#/projects/project')
   expect(cloudProjects.load).not.toHaveBeenCalled()
 })
-it('shows a satellite thumbnail of the editor map on each project card', async () => {
+const picture = 'data:image/jpeg;base64,/9j/AAAA'
+it('shows the stored picture of the map on a project card, fetched once for the page, and a placeholder without one', async () => {
   vi.stubEnv('VITE_GOOGLE_MAPS_API_KEY', 'test-key')
-  const summary = { ...project().summary, map: { lat: 59.9139, lng: 10.7522, zoom: 10 } }
-  vi.mocked(cloudLibrary.search).mockResolvedValue({ projects: [summary], cursor: null, indexing: false })
+  const pictured = { ...project().summary, previewRevision: 3 }
+  vi.mocked(cloudLibrary.search).mockResolvedValue({ projects: [pictured, { ...project().summary, id: 'plain', name: 'Plain project' }], cursor: null, indexing: false })
+  vi.mocked(cloudProjects.previews).mockResolvedValue({ project: picture })
   render(<CloudApp />)
-  expect(await screen.findByRole('img', { name: 'Cloud project map' })).toHaveAttribute('data-zoom', '10')
+  expect(await screen.findByRole('img', { name: 'Cloud project map' })).toHaveAttribute('src', picture)
+  expect(cloudProjects.previews).toHaveBeenCalledTimes(1)
+  expect(cloudProjects.previews).toHaveBeenCalledWith('org', ['project'])
+  expect(screen.getByText('Project preview')).toBeVisible()
+  expect(screen.queryByRole('img', { name: 'Plain project map' })).not.toBeInTheDocument()
   expect(cloudProjects.load).not.toHaveBeenCalled()
   vi.unstubAllEnvs()
 })
-it('loads a saved project to frame its map when the library summary has no location', async () => {
-  vi.stubEnv('VITE_GOOGLE_MAPS_API_KEY', 'test-key')
-  const saved = project()
-  vi.mocked(cloudProjects.load).mockResolvedValue(saved)
-  vi.mocked(cloudLibrary.search).mockResolvedValue({ projects: [saved.summary], cursor: null, indexing: false })
-  render(<CloudApp />)
-  expect(await screen.findByRole('img', { name: 'Cloud project map' })).toHaveAttribute('data-zoom', '10')
-  expect(cloudProjects.load).toHaveBeenCalledWith('project')
-  vi.unstubAllEnvs()
+it('takes one picture of the map for the project card when the saved project has been still for a moment', async () => {
+  vi.useFakeTimers({ shouldAdvanceTime: true })
+  try {
+    history.replaceState(null, '', '/#/projects/project')
+    vi.mocked(cloudProjects.load).mockResolvedValue(project())
+    vi.mocked(captureMapPreview).mockResolvedValue(picture)
+    render(<CloudApp />)
+    expect(await screen.findByText('Saved', { exact: true })).toBeVisible()
+    expect(cloudProjects.savePreview).not.toHaveBeenCalled()
+    await act(() => vi.advanceTimersByTimeAsync(3000))
+    await waitFor(() => expect(cloudProjects.savePreview).toHaveBeenCalledWith('project', 1, picture))
+    await act(() => vi.advanceTimersByTimeAsync(10_000))
+    expect(cloudProjects.savePreview, 'The picture now belongs to this revision').toHaveBeenCalledTimes(1)
+  } finally { vi.mocked(captureMapPreview).mockResolvedValue(null); vi.useRealTimers() }
 })
 it('opens the project library on the home screen and handles its empty state', async () => {
   render(<CloudApp />)

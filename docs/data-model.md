@@ -114,7 +114,7 @@ ShadeMap consumes the same WGS84 positions and rig outline geometry without chan
 
 ### Cloud project envelope
 
-Firebase persistence uses a separate envelope version 1 containing the unchanged brief, an asset manifest and cloud project metadata. Cloud project IDs are independent of portable brief IDs. Organization membership, roles, creator/latest editor, revision and server timestamps are never inserted into portable JSON. Large bodies are serialized in bounded Firestore chunks and loaded/written transactionally.
+Firebase persistence uses a separate envelope version 1 containing the unchanged brief, an asset manifest and cloud project metadata. Cloud project IDs are independent of portable brief IDs. Organization membership, roles, creator/latest editor, revision and server timestamps are never inserted into portable JSON. Large bodies are serialized in bounded Firestore chunks and loaded/written transactionally. The picture on a project card is a small JPEG (512×288) that the editor takes of its map after a save. It is stored in `projects/{id}/preview/card`, the project document holds only `previewRevision`, and the library fetches the pictures of one page in a single `previews` request.
 
 The manifest maps a `local-file.fileId` to an immutable, project-scoped optimized Storage asset. The live project resolves the manifest; exporting the portable brief intentionally omits it and retains existing local-reference/reconnect semantics. There is no reinterpretation of DB1/DB2 snapshots or new remote source variant. Legacy embedded sources remain unchanged.
 

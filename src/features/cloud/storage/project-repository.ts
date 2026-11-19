@@ -1,7 +1,8 @@
-import { projectSchema, summarySchema, type AssetManifest, type CloudProject } from '../model/cloud'
+import { z } from 'zod'
+import { cloudId, previewImage, projectSchema, summarySchema, type AssetManifest, type CloudProject } from '../model/cloud'
 import type { DroneBrief } from '@/features/briefs/model/brief'
 import { callCloud, publicEndpoint } from '../auth/firebase'
-import { writeCloud } from './read-request'
+import { readCloud, writeCloud } from './read-request'
 
 export const cloudProjects = {
   async create(orgId: string, brief: DroneBrief, operationId: string) { return projectSchema.parse(await writeCloud('createProject', { orgId, brief, assets: {}, operationId })) },
@@ -10,6 +11,9 @@ export const cloudProjects = {
   async trash(projectId: string, restore = false) { await writeCloud('trashProject', { projectId, restore }) },
   async purge(projectId: string) { await writeCloud('purgeProject', { projectId }) },
   async rename(projectId: string, name: string) { return summarySchema.parse(await writeCloud('renameProject', { projectId, name })) },
+  async savePreview(projectId: string, revision: number, image: string) { await writeCloud('savePreview', { projectId, revision, image }) },
+  /** The stored card pictures of these projects, by project ID. Projects without one are left out. */
+  async previews(orgId: string, projectIds: string[]) { return z.object({ previews: z.record(cloudId, previewImage) }).parse(await readCloud('previews', { orgId, projectIds })).previews },
   watch(projectId: string, onRevision: (revision: number) => void, onError: (error: Error) => void) {
     // Firestore is fetched when a project opens: signing in and the library never need it.
     let stop = () => {}; let stopped = false

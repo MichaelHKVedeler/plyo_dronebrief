@@ -14,6 +14,7 @@ import { openSession, reduceSession, type BriefAction } from '@/features/briefs/
 import { exportBriefKey } from '@/features/briefs/storage/share-key'
 import type { ImageTransport } from '@/features/briefs/storage/image-transport'
 import { localFileSources } from '@/features/briefs/model/brief'
+import { captureMapPreview } from '@/features/map/preview-capture'
 import type { AssetManifest, CloudProject, Organization } from '../model/cloud'
 import { callCloud, cloudError } from '../auth/firebase'
 import { cloudProjects, loadPublic, PublicLinkGone } from '../storage/project-repository'
@@ -90,6 +91,21 @@ export function CloudBrief({ initial, publicToken, presentation = defaultBriefin
   useEffect(() => {
     if (!publicToken && status === 'Saved' && !busy.current && observedRevision.current > coordinator.currentRevision) onOpen(initial.summary.id)
   }, [status, coordinator, publicToken, onOpen, initial.summary.id])
+  const { id: projectId, revision, previewRevision } = project.summary
+  useEffect(() => {
+    // Project cards show a stored picture of this map instead of loading a map of their own.
+    // Take it once the latest change is saved and nothing has changed for a moment.
+    if (publicToken || accessLost || pdfOpen || uploading || copying || status !== 'Saved' || session.mode !== 'edit' || previewRevision === revision) return
+    const timer = setTimeout(() => {
+      void captureMapPreview().then(async (image) => {
+        if (!image || !alive.current) return
+        await cloudProjects.savePreview(projectId, revision, image)
+        if (alive.current) setProject((previous) => ({ ...previous, summary: { ...previous.summary, previewRevision: revision } }))
+      // The picture is optional: on any failure the card keeps the one it has.
+      }).catch(() => undefined)
+    }, 3000)
+    return () => clearTimeout(timer)
+  }, [publicToken, accessLost, pdfOpen, uploading, copying, status, session.mode, projectId, revision, previewRevision])
   const dispatch = (action: BriefAction) => {
     if (!alive.current) return
     const previous = current.current

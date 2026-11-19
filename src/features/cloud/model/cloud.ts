@@ -20,6 +20,8 @@ export const assetSchema = z.object({
   originalWidth: z.number().int().positive(), originalHeight: z.number().int().positive(),
   optimizerVersion: z.literal(1), createdAt: z.iso.datetime(),
 })
+// A small JPEG of the editor map for the project card. It is only ever shown as an image.
+export const previewImage = z.string().max(150_000).regex(/^data:image\/jpeg;base64,\/9j\/[A-Za-z0-9+/]+={0,2}$/)
 export const assetsSchema = z.record(z.uuid(), assetSchema).refine((assets) => Object.keys(assets).length <= 10, 'Maximum ten floorplans.')
 export const summarySchema = z.object({
   id: cloudId, orgId: cloudId, name: cloudName, clientName: cloudName,
@@ -27,6 +29,8 @@ export const summarySchema = z.object({
   revision: z.number().int().nonnegative(), deletedAt: z.iso.datetime().nullable(),
   collectionId: cloudId.nullable().default(null), collectionName: z.string().max(200).default(''),
   map: mapViewSchema.optional(),
+  // The revision the card picture was taken at. The picture itself is in projects/{id}/preview/card.
+  previewRevision: z.number().int().positive().optional(),
 })
 export const projectSchema = z.object({ envelopeVersion: z.literal(1), summary: summarySchema, brief: briefSchema, assets: assetsSchema })
 export const libraryQuerySchema = z.object({

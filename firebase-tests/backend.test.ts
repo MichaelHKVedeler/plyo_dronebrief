@@ -6,7 +6,7 @@ import { ref, uploadBytes, getBytes } from 'firebase/storage'
 import sharp from 'sharp'
 import { db, bucket, emailKey, principal } from '../functions/src/context'
 import { initializeAccount, manageOrganization, createOrganization } from '../functions/src/organizations'
-import { createProject, loadProject, purgeProject, renameProject, saveProject, trashProject } from '../functions/src/projects'
+import { createProject, loadPreviews, loadProject, purgeProject, renameProject, savePreview, saveProject, trashProject } from '../functions/src/projects'
 import { prepareUpload, finalizeUpload, copyAsset } from '../functions/src/assets'
 import { cleanup as cleanExpired } from '../functions/src/cleanup'
 import { shareProject, loadPublicProject, publicAsset } from '../functions/src/sharing'
@@ -213,6 +213,21 @@ describe('library and personal collections', () => {
     const page = await listLibrary(owner, { orgId: 'org', view: 'mine' })
     expect(page.projects[0].map).toEqual({ lat: 59.9139, lng: 10.7522, zoom: 10 })
     expect((await db.doc(`projects/${project.summary.id}`).get()).get('map')).toEqual({ lat: 59.9139, lng: 10.7522, zoom: 10 })
+  })
+  it('keeps a card picture beside the project and shows it only to those who may list the project', async () => {
+    const id = (await create()).summary.id
+    const image = 'data:image/jpeg;base64,/9j/AAAA'
+    await expect(savePreview(outsider, { projectId: id, revision: 1, image })).rejects.toMatchObject({ code: 'permission-denied' })
+    await expect(savePreview(member, { projectId: id, revision: 2, image })).rejects.toMatchObject({ code: 'failed-precondition' })
+    await expect(savePreview(member, { projectId: id, revision: 1, image: 'data:image/svg+xml;base64,AAAA' })).rejects.toThrow()
+    await savePreview(member, { projectId: id, revision: 1, image })
+    await updateProjection(owner.uid, id)
+    expect((await listLibrary(owner, { orgId: 'org', view: 'mine' })).projects[0].previewRevision).toBe(1)
+    expect(await loadPreviews(member, { orgId: 'org', projectIds: [id, 'missing'] })).toEqual({ previews: { [id]: image } })
+    await expect(loadPreviews(outsider, { orgId: 'org', projectIds: [id] })).rejects.toMatchObject({ code: 'permission-denied' })
+    await trashProject(owner, { projectId: id })
+    expect(await loadPreviews(member, { orgId: 'org', projectIds: [id] })).toEqual({ previews: {} })
+    expect(await loadPreviews(owner, { orgId: 'org', projectIds: [id] })).toEqual({ previews: { [id]: image } })
   })
   it('keeps collection assignments personal and refreshes projections from current source data', async () => {
     const project = await create(); const id = crypto.randomUUID()

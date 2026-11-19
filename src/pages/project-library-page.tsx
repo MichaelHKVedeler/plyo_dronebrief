@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
-import { ArrowUpRight, FolderOpen, LayoutGrid, List, MoreHorizontal, Pencil, Plus, Search, Trash2, User } from 'lucide-react'
+import { ArrowUpRight, Box, FolderOpen, LayoutGrid, List, MoreHorizontal, Pencil, Plus, Search, Trash2, User } from 'lucide-react'
 import { AppBrand } from '@/components/layout/app-header'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
 import { ActorAvatar } from '@/features/cloud/components/actor-avatar'
-import { ProjectMapProvider, ProjectMapThumbnail } from '@/features/cloud/components/project-map-thumbnail'
+import { useProjectPreviews } from '@/features/cloud/state/use-project-previews'
 import { CollectionPicker } from '@/features/cloud/components/collection-picker'
 import { Problem } from '@/features/cloud/components/problem'
 import { cloudError } from '@/features/cloud/auth/firebase'
@@ -20,6 +20,7 @@ import { cloudProjects } from '@/features/cloud/storage/project-repository'
 import type { DroneBrief } from '@/features/briefs/model/brief'
 import type { Actor, LibraryPage, LibraryQuery, Organization, PersonalCollection, ProjectSummary } from '@/features/cloud/model/cloud'
 
+const noProjects: ProjectSummary[] = []
 const viewLabels = { mine: 'My projects', organization: 'Organization projects', trash: 'Deleted projects' } as const
 
 export function ProjectLibraryPage({ organization, uid, onOpen, onCreate, header, drafts = [], onSaveDraft }: {
@@ -49,6 +50,7 @@ export function ProjectLibraryPage({ organization, uid, onOpen, onCreate, header
   const [collectionName, setCollectionName] = useState('')
   const [layout, setLayout] = useState<'grid' | 'list'>('grid')
   const [busy, setBusy] = useState(false)
+  const picture = useProjectPreviews(organization.id, page?.projects ?? noProjects)
   useEffect(() => {
     const timer = setTimeout(() => setQuery((previous) => previous.search === search ? previous : { ...previous, search, cursor: null }), 300)
     return () => clearTimeout(timer)
@@ -142,9 +144,9 @@ export function ProjectLibraryPage({ organization, uid, onOpen, onCreate, header
       </div>
       <Problem message={error ?? (!loading ? result?.error ?? null : null)} />
       {page?.indexing && <p role="status" className="mb-4">Preparing your project library. Refresh shortly to see the remaining projects.</p>}
-      {!loading && page && page.projects.length > 0 && <ProjectMapProvider><div className={projectGrid}>
-        {page.projects.map((project) => <ProjectCard key={project.id} project={project} layout={layout} owner={project.createdBy.uid === uid} busy={busy} onOpen={() => onOpen(project.id)} onMove={() => { setMoveProject(project); setMoveCollection(project.collectionId ?? '') }} onDelete={() => setConfirm(project)} onRestore={() => void mutate(() => cloudProjects.trash(project.id, true))} onPurge={() => setPurge(project)} onRename={(name) => void mutate(() => cloudProjects.rename(project.id, name))} canDelete={organization.role === 'admin' || project.createdBy.uid === uid} />)}
-      </div></ProjectMapProvider>}
+      {!loading && page && page.projects.length > 0 && <div className={projectGrid}>
+        {page.projects.map((project) => <ProjectCard key={project.id} project={project} picture={picture(project)} layout={layout} owner={project.createdBy.uid === uid} busy={busy} onOpen={() => onOpen(project.id)} onMove={() => { setMoveProject(project); setMoveCollection(project.collectionId ?? '') }} onDelete={() => setConfirm(project)} onRestore={() => void mutate(() => cloudProjects.trash(project.id, true))} onPurge={() => setPurge(project)} onRename={(name) => void mutate(() => cloudProjects.rename(project.id, name))} canDelete={organization.role === 'admin' || project.createdBy.uid === uid} />)}
+      </div>}
       {!loading && !page?.projects.length && <p>No projects match this view.</p>}
       <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
         {!loading && page && <p className="text-sm text-muted-foreground">{shown ? (query.cursor ? `${shown} projects on this page` : `1–${shown}${page.cursor ? '' : ` of ${shown}`}`) : '0 projects'}</p>}
@@ -246,8 +248,9 @@ function ProjectName({ name, deleted, busy, onOpen, onRename }: {
   </div>
 }
 
-function ProjectCard({ project, layout, owner, busy, canDelete, onOpen, onMove, onDelete, onRestore, onPurge, onRename }: {
+function ProjectCard({ project, picture, layout, owner, busy, canDelete, onOpen, onMove, onDelete, onRestore, onPurge, onRename }: {
   project: ProjectSummary
+  picture?: string
   layout: 'grid' | 'list'
   owner: boolean
   busy: boolean
@@ -262,7 +265,10 @@ function ProjectCard({ project, layout, owner, busy, canDelete, onOpen, onMove, 
   const deleted = Boolean(project.deletedAt)
   return <Card className={'min-w-0 gap-0 overflow-hidden py-0 ' + (layout === 'list' ? 'flex-row' : deleted ? '' : 'aspect-square')}>
     <div className={'relative overflow-hidden bg-background ' + (layout === 'list' ? 'min-h-36 w-40 shrink-0' : 'min-h-32 w-full flex-1')}>
-      <ProjectMapThumbnail project={project} />
+      {/* A picture of the map stored with the project (taken in the editor), so the library never loads a map. */}
+      {picture
+        ? <img src={picture} alt={`${project.name} map`} className="absolute inset-0 size-full object-cover" />
+        : <span className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-sm text-muted-foreground"><Box className="size-8" /> Project preview</span>}
       <Button variant="ghost" className="absolute inset-0 size-full rounded-none bg-transparent p-0 hover:bg-foreground/5" disabled={deleted} onClick={onOpen} aria-label={`Open ${project.name}`}>
         <Badge variant="secondary" className="absolute top-3.5 left-3.5 z-10 bg-card">{owner ? 'Owner' : 'Can edit'}</Badge>
         <span className="absolute right-3.5 bottom-3.5 z-10 grid size-7 place-items-center rounded-full bg-card text-foreground"><ArrowUpRight className="size-4" /></span>
