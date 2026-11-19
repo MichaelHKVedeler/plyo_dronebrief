@@ -1,5 +1,5 @@
 import { useEffect, useRef, type CSSProperties, type PointerEvent } from 'react'
-import { Sun, Sunrise, Sunset } from 'lucide-react'
+import { Moon, Sun, Sunrise, Sunset } from 'lucide-react'
 import { Slider } from '@/components/ui/slider'
 import { cn } from '@/lib/utils'
 import { ensureShootRange, type ShootSlot } from '@/features/briefs/model/brief'
@@ -62,6 +62,9 @@ export function ShootTimeSlider({ slot: stored, name, zone, active, endpoint, da
   const shownAt = percent(timeMinutes(shown))
   const shownFraction = timeMinutes(shown) / shadowSliderMax
   const shownShift = shownFraction < 0.04 ? '0' : shownFraction > 0.96 ? '-100%' : '-50%'
+  // Match the band under the handle: golden hour, daytime, or night outside both.
+  const band = daylight?.segments.find(({ start, end }) => timeMinutes(shown) >= start && timeMinutes(shown) < end)?.kind
+  const ShownIcon = band === 'golden' ? Sunset : band === 'day' || !daylight ? Sun : Moon
   return <div className="grid gap-0.5">
     <div className="relative h-4 text-xs font-semibold tabular-nums" aria-hidden="true">
       {active && <span className="absolute" style={{ left: shownAt, transform: `translateX(${shownShift})` }}>{shown}</span>}
@@ -130,7 +133,7 @@ export function ShootTimeSlider({ slot: stored, name, zone, active, endpoint, da
         onFocus: () => onSelect(index === 1 ? 1 : 0),
       })} />
     <div className="relative h-4" aria-hidden="true">
-      {active && <Sun className="absolute size-4 -translate-x-1/2 text-amber-500" style={{ left: shownAt }} />}
+      {active && <ShownIcon className={cn('absolute size-4 -translate-x-1/2', ShownIcon === Moon ? 'text-sky-200' : 'text-amber-500')} style={{ left: shownAt }} />}
     </div>
     {daylight && <div className="relative h-4 text-xs text-muted-foreground tabular-nums" aria-hidden="true">
       <span className="absolute left-0">00</span>
