@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useObjectRenderer } from './object-renderer'
-import { Circle, Navigation } from 'lucide-react'
+import { Circle, Navigation, Plus } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { MapHandle } from './map-handle'
 import { RigLineDragController } from './rig-line-drag-controller'
@@ -74,6 +74,11 @@ export function RigObject({ rig, pixelsToMeters, dark = false, editable, interac
         <Badge data-rig-hover variant="outline" style={{ borderColor: color, borderWidth: baseStroke, color, scale: numberScale }} className="bg-white absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 size-10 justify-center rounded-full p-0 text-lg font-semibold leading-none tabular-nums">{arrow.number}</Badge>
       </div>
     </AdvancedMarker>)}
+    {/* Centre cross only while the rig outline is hovered or being dragged. */}
+    {canEdit && (rigHovered || draft !== null) && <AdvancedMarker position={visible.position} anchorLeft="-50%" anchorTop="-50%"
+      zIndex={10} clickable={false} style={{ pointerEvents: 'none' }}>
+      <Plus data-rig-center={rig.id} aria-hidden="true" className="size-5" strokeWidth={2.5} style={{ color }} />
+    </AdvancedMarker>}
     <RigLineDragController rig={visible} interactive={canEdit} strokeWidth={outlineStroke}
       onHoverChange={(hovered) => { if (hovered) hover.enter(); else hover.leave() }}
       onStart={start} onCancel={() => { setDraft(null); hover.leave() }}
