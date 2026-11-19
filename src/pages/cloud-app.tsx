@@ -1,7 +1,7 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import { AppHeader } from '@/components/layout/app-header'
 import { ThemeToggle } from '@/components/layout/theme-toggle'
-import { FileDown } from 'lucide-react'
+import { ArrowLeft, FileDown } from 'lucide-react'
 import { BriefHeaderTitle } from '@/features/briefs/components/brief-header-title'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -119,9 +119,9 @@ export function CloudApp() {
       : !organization ? <main className="mx-auto grid max-w-xl gap-4 p-6"><h1 className="text-2xl font-semibold">Organization access required</h1><p>Ask an administrator to give you Dronebrief in Plyo Toolkits, under Manage Users.</p><Button onClick={() => void account.refresh()}>Refresh access</Button><Button variant="outline" onClick={() => setImportOpen(true)}>Open portable snapshot</Button></main>
       : route === '/create' ? <>{busy && <p role="status" className="px-6">Creating your project…</p>}<CreateBriefPage onCreate={(brief) => void create(brief)} onCancel={() => goNow('/')} /></>
       : route === '/' || route === '/library' ? <ProjectLibraryPage key={organization.id} organization={organization} uid={account.user.uid} onOpen={openProject} onCreate={() => goNow('/create')} drafts={drafts} onSaveDraft={setMigrate} header={<div className="flex w-full min-w-0 flex-wrap items-center justify-end gap-6">
+        <Button asChild variant="ghost" className="-ml-2 mr-auto px-2"><a href={toolkitsUrl}><ArrowLeft /> Toolkits</a></Button>
         <ThemeToggle className="-mx-2.5" />
         {account.organizations.length > 1 && <Choice label="Organization" value={organization.id} onChange={(id) => { setOrgId(id); goNow('/') }} options={account.organizations.map((org) => ({ value: org.id, label: org.name }))} />}
-        <Button asChild variant="ghost" className="-mx-2 px-2"><a href={toolkitsUrl}>Toolkits</a></Button>
         <span className="max-w-48 truncate text-sm leading-9" title={account.user.displayName ?? account.user.email ?? undefined}>{account.user.displayName ?? account.user.email}</span>
         <Button variant="outline" onClick={() => guard(() => { void signOutGoogle().catch((error) => setError(cloudError(error))) })}>Sign out</Button>
       </div>} />

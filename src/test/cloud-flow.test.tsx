@@ -110,6 +110,7 @@ it('opens the project library on the home screen and handles its empty state', a
   const toolkits = screen.getByRole('link', { name: 'Toolkits' })
   const accountName = screen.getByTitle('Owner')
   const signOut = screen.getByRole('button', { name: 'Sign out' })
+  expect(toolkits.compareDocumentPosition(screen.getByRole('button', { name: /^Theme/ })) & Node.DOCUMENT_POSITION_FOLLOWING, 'The way back to Toolkits comes first, top left').toBeTruthy()
   expect(toolkits.compareDocumentPosition(accountName) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   expect(accountName.compareDocumentPosition(signOut) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   expect(screen.getByRole('button', { name: 'New project' })).toBeVisible()
