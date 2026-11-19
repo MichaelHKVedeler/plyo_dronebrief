@@ -1,6 +1,5 @@
 import { idleTool } from '@/features/map/placement'
 import { useMemo, useState } from 'react'
-import { Info } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { MapPanel } from '@/features/map/map-panel'
@@ -50,14 +49,15 @@ export function BriefingPage({ session, dispatch, error, imageTransport, present
     <div className="relative min-h-0 min-w-0 flex-1">
       <MapPanel presentation="briefing" objectSizePercent={presentation.overlaySize} images={images} selectedCameraIds={selectedCameraIds} onSelectCamera={selectCamera} session={shown} dispatch={dispatch} tool={idleTool} onToolChange={() => {}} selectedId={selectedId} onSelect={select} hiddenKinds={hiddenKinds}
         pointCallout={selectedId && brief.angles.some((angle) => angle.id === selectedId && angle.type !== 'extra-coverage') ? <PointHeightsCallout brief={brief} angleId={selectedId} language={presentation.language} onClose={() => select(null)} /> : null}
+        bottomLeading={!infoOpen && <Button type="button" variant="outline" aria-expanded={false} aria-controls="briefing-details" onClick={() => setInfoOpen(true)}
+          className="pointer-events-auto bg-card shadow-sm animate-[pulse_3s_ease-in-out_infinite] motion-reduce:animate-none lg:hidden">
+          {copy.instructions}
+        </Button>}
         layerControls={<BriefingMapLayers brief={brief} language={presentation.language} hiddenKinds={hiddenKinds} onHiddenKinds={setHiddenKinds} scanSplit={scanOnly}
           floorplanVisible={session.visibility.imageOverlays}
           onFloorplanVisible={(visible) => dispatch({ type: 'visibility', layer: 'imageOverlays', visible })}
           zonesVisible={session.visibility.droneZones}
           onZonesVisible={(visible) => dispatch({ type: 'visibility', layer: 'droneZones', visible })} />} />
-      {!infoOpen && <Button type="button" variant="ghost" size="icon" className="pointer-events-auto absolute bottom-8 left-3 z-20 border bg-card shadow-sm lg:hidden" aria-label={copy.info} aria-expanded={false} aria-controls="briefing-details" onClick={() => setInfoOpen(true)}>
-        <Info />
-      </Button>}
       {error && <Alert variant="destructive" className="pointer-events-auto absolute inset-x-3 top-3 z-50 max-h-28 overflow-y-auto sm:left-auto sm:max-w-sm"><AlertDescription>{error}</AlertDescription></Alert>}
     </div>
     <aside id="briefing-details" aria-label="Brief details" className={infoOpen

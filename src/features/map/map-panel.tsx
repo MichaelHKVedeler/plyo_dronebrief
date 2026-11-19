@@ -66,6 +66,8 @@ type Props = {
   /** Shared links: capture kinds the viewer has hidden. Takes the place of isolatedKind. */
   hiddenKinds?: ReadonlySet<CaptureToggleKey>
   layerControls?: ReactNode
+  /** Shown above the icon size and dimming sliders, such as the public link's Instructions button. */
+  bottomLeading?: ReactNode
   pointCallout?: ReactNode
 }
 const ShadeMapPanel = lazy(() => import('./shade-map').then((module) => ({ default: module.ShadeMapPanel })))
@@ -166,8 +168,8 @@ function MapWorkspace(props: Props) {
   const googleMap = useMap()
   const [anchors, setAnchors] = useState<Record<string, Position>>({})
   const [dimOpacity, setDimOpacity] = useState(briefing ? 0 : 15)
-  const [internalObjectSize, setInternalObjectSize] = useState(defaultOverlaySize)
-  const objectSizePercent = props.objectSizePercent ?? internalObjectSize
+  // A public link starts at its shared icon size; the viewer can then adjust it locally.
+  const [objectSizePercent, setObjectSize] = useState(props.objectSizePercent ?? defaultOverlaySize)
   if (props.overlaySizeRef) props.overlaySizeRef.current = objectSizePercent
   const [satellite, setSatellite] = useState(editing || briefing)
   const satelliteId = useId()
@@ -300,10 +302,13 @@ function MapWorkspace(props: Props) {
         onActivate={(index, endpoint = 0) => { setActiveSlot(index); setActiveEndpoint(endpoint) }} onChange={setSlots} onCommit={commitSlots} position={view.current.center} />
     </div>}
     <div className="pointer-events-none absolute inset-x-3 bottom-8 z-20 flex items-end gap-2">
-      {!briefing && <div className="pointer-events-auto grid min-w-0 max-w-40 flex-1 gap-2">
-        <MapObjectSizeControl value={objectSizePercent} onChange={setInternalObjectSize} />
-        <MapDimmerControl value={dimOpacity} onChange={setDimOpacity} />
-      </div>}
+      <div className="grid min-w-0 max-w-40 flex-1 justify-items-start gap-2">
+        {props.bottomLeading}
+        <div className="pointer-events-auto grid w-full gap-2">
+          <MapObjectSizeControl value={objectSizePercent} onChange={setObjectSize} />
+          <MapDimmerControl value={dimOpacity} onChange={setDimOpacity} />
+        </div>
+      </div>
       <MapControls brief={brief} navigation={shadeActive ? shadeNavigation : googleMap} />
     </div>
   </CardContent>

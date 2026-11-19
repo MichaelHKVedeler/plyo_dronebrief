@@ -14,7 +14,6 @@ export const briefingCopy = {
     emptyProperty: 'No property information.',
     emptyInstructions: 'No instructions.',
     references: 'Reference images',
-    info: 'Project information',
     closeInfo: 'Close project information',
     addressNotSet: 'Address not specified',
     drone: 'Aerial photo',
@@ -43,6 +42,8 @@ export const briefingCopy = {
     hideFloorplan: 'Hide site plan',
     showZones: 'Show no-fly zones',
     hideZones: 'Hide no-fly zones',
+    showLayerButtons: 'Show map buttons',
+    hideLayerButtons: 'Hide map buttons',
     generalNotes: 'General information',
     notes: [
       { title: 'Time slots', lines: ['Time slots are indicative of correct light conditions.', 'The photographer can judge when the conditions are best.'] },
@@ -61,7 +62,6 @@ export const briefingCopy = {
     emptyProperty: 'Ingen eiendomsinformasjon.',
     emptyInstructions: 'Ingen instruksjoner.',
     references: 'Referansebilder',
-    info: 'Prosjektinformasjon',
     closeInfo: 'Lukk prosjektinformasjon',
     addressNotSet: 'Adresse ikke angitt',
     drone: 'Oversiktsfoto',
@@ -90,6 +90,8 @@ export const briefingCopy = {
     hideFloorplan: 'Skjul situasjonsplan',
     showZones: 'Vis droneforbudssoner',
     hideZones: 'Skjul droneforbudssoner',
+    showLayerButtons: 'Vis kartknapper',
+    hideLayerButtons: 'Skjul kartknapper',
     generalNotes: 'Generell informasjon',
     notes: [
       { title: 'Tidspunkt', lines: ['Tidspunktene er veiledende for riktige lysforhold.', 'Fotografen kan selv vurdere når forholdene er best.'] },

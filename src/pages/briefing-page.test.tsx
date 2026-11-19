@@ -11,12 +11,13 @@ import { BriefingPage } from './briefing-page'
 afterEach(cleanup)
 vi.mock('@/features/map/pdf-address', () => ({ lookupPdfAddress: vi.fn(async () => 'Auto street 1: Area') }))
 vi.mock('@/features/map/map-panel', () => ({
-  MapPanel: ({ layerControls, onSelectCamera, pointCallout, session, hiddenKinds }: { layerControls?: ReactNode; onSelectCamera?: (id: string, additive: boolean) => void; pointCallout?: ReactNode; session: BriefSession; hiddenKinds?: ReadonlySet<string> }) => <div role="region" aria-label="Brief map">
+  MapPanel: ({ bottomLeading, layerControls, onSelectCamera, pointCallout, session, hiddenKinds }: { bottomLeading?: ReactNode; layerControls?: ReactNode; onSelectCamera?: (id: string, additive: boolean) => void; pointCallout?: ReactNode; session: BriefSession; hiddenKinds?: ReadonlySet<string> }) => <div role="region" aria-label="Brief map">
     <button type="button" onClick={() => onSelectCamera?.('p1', false)}>Select 360 point</button>
     <button type="button" onClick={() => onSelectCamera?.('d1', false)}>Select drone point</button>
     <button type="button" onClick={() => onSelectCamera?.('extra', false)}>Select extra coverage</button>
     <p data-testid="map-content">{[session.brief.circleRig ? 'rig' : '', session.brief.droneScan ? 'scan' : '', ...session.brief.angles.map((angle) => angle.id), `hidden:${[...hiddenKinds ?? []].sort().join(',') || 'none'}`].filter(Boolean).join(' ')}</p>
     {layerControls}
+    {bottomLeading}
     {pointCallout}
   </div>,
 }))
@@ -29,10 +30,14 @@ it('keeps the map in place and scrolls project details inside the information ov
   render(<BriefingPage session={openSession(brief, 'view')} dispatch={() => {}} error={null} presentation={{ ...defaultBriefingPresentation, address: 'Karl Johans gate: Oslo' }} />)
   expect(screen.getByRole('region', { name: 'Brief map' })).toBeInTheDocument()
   expect(screen.getByRole('button', { name: 'Hide Aerial photo' })).toBeVisible()
+  await user.click(screen.getByRole('button', { name: 'Hide map buttons' }))
+  expect(screen.queryByRole('button', { name: 'Hide Aerial photo' })).not.toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: 'Show map buttons' }))
+  expect(screen.getByRole('button', { name: 'Hide Aerial photo' })).toBeVisible()
   expect(screen.queryByRole('banner')).not.toBeInTheDocument()
   expect(screen.queryByLabelText('Map layers')).not.toBeInTheDocument()
-  const info = screen.getByRole('button', { name: 'Project information' })
-  expect(info).toHaveClass('absolute', 'bottom-8', 'left-3', 'lg:hidden')
+  const info = screen.getByRole('button', { name: 'Instructions' })
+  expect(info).toHaveClass('lg:hidden', 'motion-reduce:animate-none')
   await user.click(info)
   const details = screen.getByLabelText('Brief details')
   expect(details).toBeVisible()
@@ -45,9 +50,9 @@ it('keeps the map in place and scrolls project details inside the information ov
   expect(within(details).getByText('14:00')).toBeVisible()
   expect(screen.getByRole('region', { name: 'Brief map' })).toBeInTheDocument()
   expect(details.querySelector('[data-slot=scroll-area-viewport]')).toBeTruthy()
-  expect(screen.queryByRole('button', { name: 'Project information' })).not.toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: 'Instructions' })).not.toBeInTheDocument()
   await user.click(screen.getByRole('button', { name: 'Close project information' }))
-  expect(screen.getByRole('button', { name: 'Project information' })).toBeVisible()
+  expect(screen.getByRole('button', { name: 'Instructions' })).toBeVisible()
 })
 
 it('shows the clicked point heights, including a 360 override', async () => {

@@ -1,5 +1,5 @@
-import type { ComponentType } from 'react'
-import { ShieldBan } from 'lucide-react'
+import { useState, type ComponentType } from 'react'
+import { ChevronDown, ChevronUp, ShieldBan } from 'lucide-react'
 import { FloorplanIcon } from '@/features/map/floorplan-icon'
 import type { DroneBrief } from '../model/brief'
 import type { PdfLanguage } from '../export/pdf-copy'
@@ -40,6 +40,7 @@ export function BriefingMapLayers({ brief, language, hiddenKinds, onHiddenKinds,
 }) {
   const rows = captureInstructions(brief, language).filter((row) => row.key !== 'extra-coverage')
   const copy = briefingCopy[language]
+  const [collapsed, setCollapsed] = useState(false)
   const hasFloorplan = brief.imageOverlays.length > 0
   const hasCircles = !!(brief.droneScan?.highRes || brief.droneScan?.lowRes)
   const hasExtra = brief.angles.some((angle) => angle.type === 'extra-coverage')
@@ -55,7 +56,14 @@ export function BriefingMapLayers({ brief, language, hiddenKinds, onHiddenKinds,
       }} />
   }
   if (!rows.length && !hasFloorplan && !hasScan && !splitKinds.length && !onZonesVisible) return null
+  const collapseLabel = collapsed ? copy.showLayerButtons : copy.hideLayerButtons
   return <div className="pointer-events-auto grid w-fit justify-items-center gap-2.5 rounded-lg border bg-card p-2 shadow-sm">
+    <Button type="button" variant="ghost" size="icon-sm" className="rounded-full" aria-expanded={!collapsed} aria-label={collapseLabel} title={collapseLabel}
+      onClick={() => setCollapsed(!collapsed)}>
+      {collapsed ? <ChevronDown /> : <ChevronUp />}
+    </Button>
+    {!collapsed && <>
+    {rows.length > 0 && <Separator />}
     {rows.map((row) => toggle(row.label, row.key, row.toggleKey, undefined, row.number))}
     {hasScan && toggle(copy.droneScan, 'droneScan', 'droneScan', ['droneScan', 'extra-coverage'])}
     {splitKinds.map((kind) => toggle(kind === 'droneScan' ? copy.droneScan : copy.extraCoverage, kind))}
@@ -68,6 +76,7 @@ export function BriefingMapLayers({ brief, language, hiddenKinds, onHiddenKinds,
       {(rows.length > 0 || hasFloorplan) && <Separator />}
       <LayerToggleButton icon={ShieldBan} visible={zonesVisible} showLabel={copy.showZones} hideLabel={copy.hideZones}
         onToggle={() => onZonesVisible(!zonesVisible)} />
+    </>}
     </>}
   </div>
 }

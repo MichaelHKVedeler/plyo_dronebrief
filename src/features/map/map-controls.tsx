@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { useMap } from '@vis.gl/react-google-maps'
-import { Maximize, Minus, Plus } from 'lucide-react'
+import { Minus, Plus, Target } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import type { DroneBrief } from '@/features/briefs/model/brief'
 import { fitScene } from './scene-bounds'
@@ -26,7 +26,7 @@ export function MapControls({ brief, navigation }: { brief: DroneBrief; navigati
   return <div className="pointer-events-auto ml-auto flex shrink-0 gap-1 rounded-lg border bg-card p-1 shadow-sm">
     <Button variant="ghost" size="icon" aria-label="Zoom in" disabled={!activeMap} onClick={() => activeMap?.setZoom((activeMap.getZoom() ?? 2) + 1)}><Plus /></Button>
     <Button variant="ghost" size="icon" aria-label="Zoom out" disabled={!activeMap} onClick={() => activeMap?.setZoom((activeMap.getZoom() ?? 2) - 1)}><Minus /></Button>
-    <Button variant="ghost" size="icon" aria-label="Frame scene" title="Frame scene" disabled={!activeMap} onClick={() => { if (activeMap) fitScene(activeMap, brief) }}><Maximize /></Button>
+    <Button variant="ghost" size="icon" aria-label="Frame scene" title="Frame scene" disabled={!activeMap} onClick={() => { if (activeMap) fitScene(activeMap, brief) }}><Target /></Button>
 
   </div>
 }
