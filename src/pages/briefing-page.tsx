@@ -50,7 +50,7 @@ export function BriefingPage({ session, dispatch, error, imageTransport, present
       <MapPanel presentation="briefing" objectSizePercent={presentation.overlaySize} images={images} selectedCameraIds={selectedCameraIds} onSelectCamera={selectCamera} session={shown} dispatch={dispatch} tool={idleTool} onToolChange={() => {}} selectedId={selectedId} onSelect={select} hiddenKinds={hiddenKinds}
         pointCallout={selectedId && brief.angles.some((angle) => angle.id === selectedId && angle.type !== 'extra-coverage') ? <PointHeightsCallout brief={brief} angleId={selectedId} language={presentation.language} onClose={() => select(null)} /> : null}
         bottomLeading={!infoOpen && <Button type="button" aria-expanded={false} aria-controls="briefing-details" onClick={() => setInfoOpen(true)}
-          className="pointer-events-auto shadow-sm animate-[pulse_3s_ease-in-out_infinite] motion-reduce:animate-none lg:hidden">
+          className="pointer-events-auto rounded-lg text-white shadow-sm animate-[pulse_3s_ease-in-out_infinite] motion-reduce:animate-none lg:hidden">
           {copy.instructions}
         </Button>}
         layerControls={<BriefingMapLayers brief={brief} language={presentation.language} hiddenKinds={hiddenKinds} onHiddenKinds={setHiddenKinds} scanSplit={scanOnly}
