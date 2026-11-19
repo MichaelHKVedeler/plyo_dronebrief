@@ -66,7 +66,7 @@ type Props = {
   /** Shared links: capture kinds the viewer has hidden. Takes the place of isolatedKind. */
   hiddenKinds?: ReadonlySet<CaptureToggleKey>
   layerControls?: ReactNode
-  /** Shown above the icon size and dimming sliders, such as the public link's Instructions button. */
+  /** Shown below the icon size and dimming sliders, such as the public link's Instructions button. */
   bottomLeading?: ReactNode
   pointCallout?: ReactNode
 }
@@ -303,11 +303,11 @@ function MapWorkspace(props: Props) {
     </div>}
     <div className="pointer-events-none absolute inset-x-3 bottom-8 z-20 flex items-end gap-2">
       <div className="grid min-w-0 max-w-40 flex-1 justify-items-start gap-2">
-        {props.bottomLeading}
         <div className="pointer-events-auto grid w-full gap-2">
           <MapObjectSizeControl value={objectSizePercent} onChange={setObjectSize} />
           <MapDimmerControl value={dimOpacity} onChange={setDimOpacity} />
         </div>
+        {props.bottomLeading}
       </div>
       <MapControls brief={brief} navigation={shadeActive ? shadeNavigation : googleMap} />
     </div>
