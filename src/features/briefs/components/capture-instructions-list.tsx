@@ -1,19 +1,18 @@
 import type { DroneBrief } from '../model/brief'
 import type { PdfLanguage } from '../export/pdf-copy'
 import { captureInstructions } from './capture-instructions'
-import type { IsolatedCapture } from '@/features/map/isolated-capture'
-import { CaptureKindGlyph } from './capture-kind-glyph'
+import { CaptureKindGlyph, type CaptureKind } from './capture-kind-glyph'
 
-export function CaptureInstructionsList({ brief, language, isolatedKind }: {
+export function CaptureInstructionsList({ brief, language, hiddenKinds }: {
   brief: DroneBrief
   language: PdfLanguage
-  isolatedKind: IsolatedCapture
+  hiddenKinds: ReadonlySet<CaptureKind>
 }) {
   const rows = captureInstructions(brief, language)
   if (!rows.length) return null
   return <ul className="grid gap-4" aria-label="Capture instructions">
     {rows.map((row) => {
-      const dimmed = row.key === 'extra-coverage' ? isolatedKind !== 'droneScan' && isolatedKind !== 'extra-coverage' : Boolean(isolatedKind && isolatedKind !== row.key)
+      const dimmed = hiddenKinds.has(row.key)
       return <li key={row.key} className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 items-start gap-2">
           <CaptureKindGlyph kind={row.key} />

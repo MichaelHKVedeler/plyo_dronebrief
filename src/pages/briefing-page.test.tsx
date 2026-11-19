@@ -11,11 +11,11 @@ import { BriefingPage } from './briefing-page'
 afterEach(cleanup)
 vi.mock('@/features/map/pdf-address', () => ({ lookupPdfAddress: vi.fn(async () => 'Auto street 1: Area') }))
 vi.mock('@/features/map/map-panel', () => ({
-  MapPanel: ({ layerControls, onSelectCamera, pointCallout, session, isolatedKind }: { layerControls?: ReactNode; onSelectCamera?: (id: string, additive: boolean) => void; pointCallout?: ReactNode; session: BriefSession; isolatedKind?: string | null }) => <div role="region" aria-label="Brief map">
+  MapPanel: ({ layerControls, onSelectCamera, pointCallout, session, hiddenKinds }: { layerControls?: ReactNode; onSelectCamera?: (id: string, additive: boolean) => void; pointCallout?: ReactNode; session: BriefSession; hiddenKinds?: ReadonlySet<string> }) => <div role="region" aria-label="Brief map">
     <button type="button" onClick={() => onSelectCamera?.('p1', false)}>Select 360 point</button>
     <button type="button" onClick={() => onSelectCamera?.('d1', false)}>Select drone point</button>
     <button type="button" onClick={() => onSelectCamera?.('extra', false)}>Select extra coverage</button>
-    <p data-testid="map-content">{[session.brief.circleRig ? 'rig' : '', session.brief.droneScan ? 'scan' : '', ...session.brief.angles.map((angle) => angle.id), `isolated:${isolatedKind ?? 'none'}`].filter(Boolean).join(' ')}</p>
+    <p data-testid="map-content">{[session.brief.circleRig ? 'rig' : '', session.brief.droneScan ? 'scan' : '', ...session.brief.angles.map((angle) => angle.id), `hidden:${[...hiddenKinds ?? []].sort().join(',') || 'none'}`].filter(Boolean).join(' ')}</p>
     {layerControls}
     {pointCallout}
   </div>,
@@ -28,7 +28,7 @@ it('keeps the map in place and scrolls project details inside the information ov
   const user = userEvent.setup()
   render(<BriefingPage session={openSession(brief, 'view')} dispatch={() => {}} error={null} presentation={{ ...defaultBriefingPresentation, address: 'Karl Johans gate: Oslo' }} />)
   expect(screen.getByRole('region', { name: 'Brief map' })).toBeInTheDocument()
-  expect(screen.getByRole('button', { name: 'Show only Aerial photo' })).toBeVisible()
+  expect(screen.getByRole('button', { name: 'Hide Aerial photo' })).toBeVisible()
   expect(screen.queryByRole('banner')).not.toBeInTheDocument()
   expect(screen.queryByLabelText('Map layers')).not.toBeInTheDocument()
   const info = screen.getByRole('button', { name: 'Project information' })
@@ -92,7 +92,7 @@ it('hides the floorplan from the public map without writing the brief', async ()
   expect(screen.getByRole('button', { name: 'Show floorplan' })).toHaveAttribute('aria-pressed', 'false')
 })
 
-it('offers the scan switch for extra coverage alone and switches exclusively without saving', async () => {
+it('offers the scan toggle for extra coverage alone, hidden at first, and toggles kinds independently without saving', async () => {
   const brief = createBrief({ name: 'Extra coverage', clientName: 'Test' })
   brief.angles = [
     { id: 'extra', label: 'Extra coverage 1', type: 'extra-coverage', position: brief.coordinates },
@@ -101,20 +101,20 @@ it('offers the scan switch for extra coverage alone and switches exclusively wit
   const dispatch = vi.fn()
   const user = userEvent.setup()
   render(<BriefingPage session={openSession(brief, 'view')} dispatch={dispatch} error={null} presentation={defaultBriefingPresentation} />)
-  const scan = screen.getByRole('button', { name: 'Show only Drone scan' })
-  const drone = screen.getByRole('button', { name: 'Show only Aerial photo' })
-  expect(scan).toHaveAttribute('aria-pressed', 'false')
-  expect(screen.queryByRole('button', { name: 'Show only Extra coverage' })).not.toBeInTheDocument()
-  await user.click(scan)
-  expect(scan).toHaveAttribute('aria-pressed', 'true')
-  expect(drone).toHaveAttribute('aria-pressed', 'false')
-  await user.click(drone)
+  const scan = screen.getByRole('button', { name: 'Show Drone scan' })
+  const drone = screen.getByRole('button', { name: 'Hide Aerial photo' })
   expect(scan).toHaveAttribute('aria-pressed', 'false')
   expect(drone).toHaveAttribute('aria-pressed', 'true')
+  expect(screen.getByTestId('map-content')).toHaveTextContent(/hidden:droneScan,extra-coverage$/)
+  expect(screen.queryByRole('button', { name: /Extra coverage/ })).not.toBeInTheDocument()
   await user.click(scan)
-  await user.click(scan)
-  expect(scan).toHaveAttribute('aria-pressed', 'false')
+  expect(scan).toHaveAttribute('aria-pressed', 'true')
+  expect(drone).toHaveAttribute('aria-pressed', 'true')
+  expect(screen.getByTestId('map-content')).toHaveTextContent(/hidden:none$/)
+  await user.click(drone)
+  expect(scan).toHaveAttribute('aria-pressed', 'true')
   expect(drone).toHaveAttribute('aria-pressed', 'false')
+  expect(screen.getByTestId('map-content')).toHaveTextContent(/hidden:drone-image$/)
   expect(dispatch).not.toHaveBeenCalled()
 })
 
@@ -132,28 +132,24 @@ function splitBrief() {
 it('shows only photo content in a photo brief link', () => {
   const brief = splitBrief()
   render(<BriefingPage session={openSession(brief, 'view')} dispatch={() => {}} error={null} presentation={{ ...defaultBriefingPresentation, content: 'photo' }} />)
-  expect(screen.getByTestId('map-content')).toHaveTextContent(/^rig d1 isolated:none$/)
-  expect(screen.queryByRole('button', { name: 'Show only Drone scan' })).not.toBeInTheDocument()
+  expect(screen.getByTestId('map-content')).toHaveTextContent(/^rig d1 hidden:droneScan,extra-coverage$/)
+  expect(screen.queryByRole('button', { name: /Drone scan/ })).not.toBeInTheDocument()
   expect(within(screen.getByLabelText('Brief details')).queryByText('Extra coverage', { exact: false })).not.toBeInTheDocument()
   expect(within(screen.getByLabelText('General information')).getByText('RAW + JPG')).toBeInTheDocument()
 })
 
-it('shows only the drone scan in a scan link with separate circle and extra coverage isolation, without shoot times or heights', async () => {
+it('shows only the drone scan in a scan link with separate circle and extra coverage toggles, without shoot times or heights', async () => {
   const brief = splitBrief()
   const user = userEvent.setup()
   render(<BriefingPage session={openSession(brief, 'view')} dispatch={() => {}} error={null} presentation={{ ...defaultBriefingPresentation, content: 'scan' }} />)
-  expect(screen.getByTestId('map-content')).toHaveTextContent(/^scan extra isolated:droneScan$/)
-  const circles = screen.getByRole('button', { name: 'Show only Drone scan' })
-  const extra = screen.getByRole('button', { name: 'Show only Extra coverage' })
-  await user.click(circles)
-  expect(circles).toHaveAttribute('aria-pressed', 'true')
-  expect(screen.getByTestId('map-content')).toHaveTextContent(/isolated:scanCircles$/)
-  await user.click(extra)
-  expect(extra).toHaveAttribute('aria-pressed', 'true')
-  expect(circles).toHaveAttribute('aria-pressed', 'false')
-  expect(screen.getByTestId('map-content')).toHaveTextContent(/isolated:extra-coverage$/)
-  await user.click(extra)
-  expect(screen.getByTestId('map-content')).toHaveTextContent(/isolated:droneScan$/)
+  expect(screen.getByTestId('map-content')).toHaveTextContent(/^scan extra hidden:none$/)
+  await user.click(screen.getByRole('button', { name: 'Hide Drone scan' }))
+  expect(screen.getByRole('button', { name: 'Show Drone scan' })).toHaveAttribute('aria-pressed', 'false')
+  expect(screen.getByTestId('map-content')).toHaveTextContent(/hidden:droneScan$/)
+  await user.click(screen.getByRole('button', { name: 'Hide Extra coverage' }))
+  expect(screen.getByTestId('map-content')).toHaveTextContent(/hidden:droneScan,extra-coverage$/)
+  await user.click(screen.getByRole('button', { name: 'Show Drone scan' }))
+  expect(screen.getByTestId('map-content')).toHaveTextContent(/hidden:extra-coverage$/)
   const details = screen.getByLabelText('Brief details')
   expect(within(details).getByText('High detail: 500 m diameter')).toBeInTheDocument()
   expect(within(details).getByText('Low detail: 800 m diameter')).toBeInTheDocument()

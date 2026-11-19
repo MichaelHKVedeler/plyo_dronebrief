@@ -3,12 +3,11 @@ import { ShieldBan } from 'lucide-react'
 import { FloorplanIcon } from '@/features/map/floorplan-icon'
 import type { DroneBrief } from '../model/brief'
 import type { PdfLanguage } from '../export/pdf-copy'
-import { toggleIsolatedCapture, type IsolatedCapture } from '@/features/map/isolated-capture'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import { briefingCopy } from './briefing-copy'
 import { captureInstructions } from './capture-instructions'
-import { CaptureKindIsolateButton } from './capture-kind-glyph'
+import { CaptureKindToggleButton, type CaptureKind } from './capture-kind-glyph'
 
 export function LayerToggleButton({ visible, showLabel, hideLabel, onToggle, icon: Icon }: {
   visible: boolean
@@ -27,12 +26,12 @@ export function LayerToggleButton({ visible, showLabel, hideLabel, onToggle, ico
   </Button>
 }
 
-export function BriefingMapLayers({ brief, language, isolatedKind, onIsolate, scanSplit = false, floorplanVisible = true, onFloorplanVisible, zonesVisible = true, onZonesVisible }: {
+export function BriefingMapLayers({ brief, language, hiddenKinds, onHiddenKinds, scanSplit = false, floorplanVisible = true, onFloorplanVisible, zonesVisible = true, onZonesVisible }: {
   brief: DroneBrief
   language: PdfLanguage
-  isolatedKind: IsolatedCapture
-  onIsolate: (kind: IsolatedCapture) => void
-  /** Drone scan links isolate the circles and the extra coverage points separately. */
+  hiddenKinds: ReadonlySet<CaptureKind>
+  onHiddenKinds: (kinds: ReadonlySet<CaptureKind>) => void
+  /** Drone scan links hide the circles and the extra coverage points separately. */
   scanSplit?: boolean
   floorplanVisible?: boolean
   onFloorplanVisible?: (visible: boolean) => void
@@ -46,17 +45,20 @@ export function BriefingMapLayers({ brief, language, isolatedKind, onIsolate, sc
   const hasExtra = brief.angles.some((angle) => angle.type === 'extra-coverage')
   const hasScan = !scanSplit && (hasCircles || hasExtra)
   const splitKinds = scanSplit ? ([hasCircles && 'droneScan', hasExtra && 'extra-coverage'] as const).filter((kind) => kind !== false) : []
+  function toggle(label: string, kind: CaptureKind, together: CaptureKind[] = [kind]) {
+    const visible = !hiddenKinds.has(kind)
+    return <CaptureKindToggleButton key={kind} kind={kind} visible={visible} label={`${visible ? copy.hide : copy.show} ${label}`}
+      onClick={() => {
+        const next = new Set(hiddenKinds)
+        for (const each of together) if (visible) next.add(each); else next.delete(each)
+        onHiddenKinds(next)
+      }} />
+  }
   if (!rows.length && !hasFloorplan && !hasScan && !splitKinds.length && !onZonesVisible) return null
   return <div className="pointer-events-auto grid w-fit justify-items-center gap-2.5 rounded-lg border bg-card p-2 shadow-sm">
-    {rows.map((row) => <CaptureKindIsolateButton key={row.key} kind={row.key} label={row.label} pressed={isolatedKind === row.key}
-      dimmed={isolatedKind !== null && isolatedKind !== row.key}
-      onClick={() => onIsolate(toggleIsolatedCapture(isolatedKind, row.key))} />)}
-    {hasScan && <CaptureKindIsolateButton kind="droneScan" label={copy.droneScan} pressed={isolatedKind === 'droneScan'}
-      dimmed={isolatedKind !== null && isolatedKind !== 'droneScan'}
-      onClick={() => onIsolate(toggleIsolatedCapture(isolatedKind, 'droneScan'))} />}
-    {splitKinds.map((kind) => <CaptureKindIsolateButton key={kind} kind={kind} label={kind === 'droneScan' ? copy.droneScan : copy.extraCoverage} pressed={isolatedKind === kind}
-      dimmed={isolatedKind !== null && isolatedKind !== kind}
-      onClick={() => onIsolate(toggleIsolatedCapture(isolatedKind, kind))} />)}
+    {rows.map((row) => toggle(row.label, row.key))}
+    {hasScan && toggle(copy.droneScan, 'droneScan', ['droneScan', 'extra-coverage'])}
+    {splitKinds.map((kind) => toggle(kind === 'droneScan' ? copy.droneScan : copy.extraCoverage, kind))}
     {hasFloorplan && onFloorplanVisible && <>
       {rows.length > 0 && <Separator />}
       <LayerToggleButton icon={FloorplanIcon} visible={floorplanVisible} showLabel={copy.showFloorplan} hideLabel={copy.hideFloorplan}

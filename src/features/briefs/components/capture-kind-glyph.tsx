@@ -23,15 +23,15 @@ export function CaptureKindGlyph({ kind }: { kind: CaptureKind }) {
   </span>
 }
 
-export function CaptureKindIsolateButton({ kind, label, pressed, dimmed = false, onClick }: {
+export function CaptureKindToggleButton({ kind, label, visible, onClick }: {
   kind: CaptureKind
+  /** The action, such as "Hide Aerial photo". */
   label: string
-  pressed: boolean
-  dimmed?: boolean
+  visible: boolean
   onClick: () => void
 }) {
-  return <Button type="button" variant="ghost" size="icon-sm" className={`rounded-full p-0 hover:bg-transparent ${dimmed ? 'opacity-50' : ''}`}
-    aria-pressed={pressed} aria-label={`Show only ${label}`} onClick={onClick}>
+  return <Button type="button" variant="ghost" size="icon-sm" className={`rounded-full p-0 hover:bg-transparent ${visible ? '' : 'opacity-50'}`}
+    aria-pressed={visible} aria-label={label} title={label} onClick={onClick}>
     <CaptureKindGlyph kind={kind} />
   </Button>
 }

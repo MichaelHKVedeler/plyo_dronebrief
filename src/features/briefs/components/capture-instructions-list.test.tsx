@@ -19,8 +19,8 @@ function captureBrief() {
 
 it('keeps description icons at full opacity while dimming other copy on wide screens', () => {
   const brief = captureBrief()
-  render(<CaptureInstructionsList brief={brief} language="en" isolatedKind="drone-image" />)
-  expect(screen.queryByRole('button', { name: 'Show only Aerial photo' })).not.toBeInTheDocument()
+  render(<CaptureInstructionsList brief={brief} language="en" hiddenKinds={new Set(['dslr'])} />)
+  expect(screen.queryByRole('button', { name: 'Hide Aerial photo' })).not.toBeInTheDocument()
   const aerial = screen.getByText('Aerial photo', { exact: false }).closest('li')
   const dslr = screen.getByText('DSLR', { exact: false }).closest('li')
   expect(aerial).not.toHaveClass('opacity-50')
@@ -47,29 +47,29 @@ it('does not show points or heights in the extra coverage description', () => {
     position: brief.coordinates,
   }]
 
-  render(<CaptureInstructionsList brief={brief} language="en" isolatedKind="droneScan" />)
+  render(<CaptureInstructionsList brief={brief} language="en" hiddenKinds={new Set()} />)
 
   const extraCoverage = screen.getByText('Extra coverage', { exact: false }).closest('li')
   expect(within(extraCoverage!).queryByText('Point 1:')).not.toBeInTheDocument()
   expect(within(extraCoverage!).queryByText('40m, 60m')).not.toBeInTheDocument()
 })
 
-it('isolates a capture type from the map overlay and restores all types on a second click', async () => {
-  const onIsolate = vi.fn()
+it('hides a capture type from the map overlay and shows it again on a second click', async () => {
+  const onHiddenKinds = vi.fn()
   const user = userEvent.setup()
-  const view = render(<BriefingMapLayers brief={captureBrief()} language="en" isolatedKind={null} onIsolate={onIsolate} />)
+  const view = render(<BriefingMapLayers brief={captureBrief()} language="en" hiddenKinds={new Set()} onHiddenKinds={onHiddenKinds} />)
   expect(screen.queryByRole('button', { name: 'Hide floorplan' })).not.toBeInTheDocument()
-  await user.click(screen.getByRole('button', { name: 'Show only Aerial photo' }))
-  expect(onIsolate).toHaveBeenCalledWith('drone-image')
-  view.rerender(<BriefingMapLayers brief={captureBrief()} language="en" isolatedKind="drone-image" onIsolate={onIsolate} />)
-  expect(screen.getByRole('button', { name: 'Show only Aerial photo' })).not.toHaveClass('opacity-50')
-  expect(screen.getByRole('button', { name: 'Show only DSLR' })).toHaveClass('opacity-50')
-  await user.click(screen.getByRole('button', { name: 'Show only Aerial photo' }))
-  expect(onIsolate).toHaveBeenLastCalledWith(null)
+  await user.click(screen.getByRole('button', { name: 'Hide Aerial photo' }))
+  expect(onHiddenKinds).toHaveBeenCalledWith(new Set(['drone-image']))
+  view.rerender(<BriefingMapLayers brief={captureBrief()} language="en" hiddenKinds={new Set(['drone-image'])} onHiddenKinds={onHiddenKinds} />)
+  expect(screen.getByRole('button', { name: 'Show Aerial photo' })).toHaveClass('opacity-50')
+  expect(screen.getByRole('button', { name: 'Hide DSLR' })).not.toHaveClass('opacity-50')
+  await user.click(screen.getByRole('button', { name: 'Show Aerial photo' }))
+  expect(onHiddenKinds).toHaveBeenLastCalledWith(new Set())
 })
 
-it('toggles the floorplan under the capture icons without isolating cameras', async () => {
-  const onIsolate = vi.fn()
+it('toggles the floorplan under the capture icons without hiding cameras', async () => {
+  const onHiddenKinds = vi.fn()
   const onFloorplanVisible = vi.fn()
   const brief = captureBrief()
   brief.imageOverlays = [{
@@ -77,12 +77,12 @@ it('toggles the floorplan under the capture icons without isolating cameras', as
     widthMeters: 40, heightMeters: 30, rotationDegrees: 0, opacity: 0.7,
   }]
   const user = userEvent.setup()
-  const view = render(<BriefingMapLayers brief={brief} language="en" isolatedKind={null} onIsolate={onIsolate} floorplanVisible onFloorplanVisible={onFloorplanVisible} />)
+  const view = render(<BriefingMapLayers brief={brief} language="en" hiddenKinds={new Set()} onHiddenKinds={onHiddenKinds} floorplanVisible onFloorplanVisible={onFloorplanVisible} />)
   const hide = screen.getByRole('button', { name: 'Hide floorplan' })
   expect(hide).toHaveAttribute('aria-pressed', 'true')
   await user.click(hide)
   expect(onFloorplanVisible).toHaveBeenCalledWith(false)
-  expect(onIsolate).not.toHaveBeenCalled()
-  view.rerender(<BriefingMapLayers brief={brief} language="en" isolatedKind={null} onIsolate={onIsolate} floorplanVisible={false} onFloorplanVisible={onFloorplanVisible} />)
+  expect(onHiddenKinds).not.toHaveBeenCalled()
+  view.rerender(<BriefingMapLayers brief={brief} language="en" hiddenKinds={new Set()} onHiddenKinds={onHiddenKinds} floorplanVisible={false} onFloorplanVisible={onFloorplanVisible} />)
   expect(screen.getByRole('button', { name: 'Show floorplan' })).toHaveAttribute('aria-pressed', 'false')
 })

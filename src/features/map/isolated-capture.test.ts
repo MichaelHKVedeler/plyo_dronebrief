@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest'
 import { defaultVisibility, type CameraAngle } from '@/features/briefs/model/brief'
-import { isolatedCaptureAngles, isolatedCaptureVisibility, toggleIsolatedCapture } from './isolated-capture'
+import { hiddenCaptureAngles, hiddenCaptureVisibility, isolatedCaptureAngles, isolatedCaptureVisibility } from './isolated-capture'
 
 const angles: CameraAngle[] = [
   { id: 'd1', label: 'D1', type: 'drone-image', position: { lat: 59, lng: 10 }, directionDegrees: 0 },
@@ -8,10 +8,13 @@ const angles: CameraAngle[] = [
   { id: 's1', label: 'S1', type: 'dslr', position: { lat: 59, lng: 10 }, directionDegrees: 90 },
 ]
 
-it('toggles one capture kind on and off', () => {
-  expect(toggleIsolatedCapture(null, 'drone-image')).toBe('drone-image')
-  expect(toggleIsolatedCapture('drone-image', 'drone-image')).toBeNull()
-  expect(toggleIsolatedCapture('drone-image', 'dslr')).toBe('dslr')
+it('hides capture kinds one at a time on shared links, with extra coverage on the scan layer', () => {
+  const all: CameraAngle[] = [...angles, { id: 'extra', label: 'Extra coverage 1', type: 'extra-coverage', position: { lat: 59, lng: 10 } }]
+  expect(hiddenCaptureVisibility(defaultVisibility, new Set())).toEqual({ circleRig: true, angles: true, droneScan: true })
+  expect(hiddenCaptureAngles(all, new Set(['dslr', '360'])).map((angle) => angle.id)).toEqual(['d1', 'extra'])
+  expect(hiddenCaptureVisibility(defaultVisibility, new Set(['circleRig', 'droneScan']))).toEqual({ circleRig: false, angles: true, droneScan: false })
+  expect(hiddenCaptureAngles(all, new Set(['extra-coverage'])).map((angle) => angle.id)).toEqual(['d1', 'p1', 's1'])
+  expect(hiddenCaptureAngles(all, new Set(), { ...defaultVisibility, droneScan: false }).map((angle) => angle.id)).toEqual(['d1', 'p1', 's1'])
 })
 
 it('hides other capture types while isolated and keeps layer toggles', () => {

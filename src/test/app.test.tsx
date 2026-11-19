@@ -407,5 +407,5 @@ it('counts planned images from the locked capture rules in the time menu', async
   expect(count.getByLabelText('360 count')).toHaveTextContent('30')
   expect(count.getByLabelText('DSLR count')).toHaveTextContent('6')
   expect(count.getByLabelText('Image count total')).toHaveTextContent('60')
-  expect(screen.queryByRole('button', { name: /Show only / })).not.toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: /^(Hide|Show) Aerial photo$/ })).not.toBeInTheDocument()
 })

@@ -1,5 +1,5 @@
 import { useEffect, useRef, type CSSProperties, type PointerEvent } from 'react'
-import { Sunrise, Sunset } from 'lucide-react'
+import { Sun, Sunrise, Sunset } from 'lucide-react'
 import { Slider } from '@/components/ui/slider'
 import { cn } from '@/lib/utils'
 import { ensureShootRange, type ShootSlot } from '@/features/briefs/model/brief'
@@ -57,7 +57,15 @@ export function ShootTimeSlider({ slot: stored, name, zone, active, endpoint, da
       : moveShootEndpoint(current.initial, current.endpoint, minutes)
     onPreview(current.preview)
   }
+  // The map previews the selected endpoint, so its time rides above that handle with a sun below.
+  const shown = endpoint === 1 && slot.endTime ? slot.endTime : slot.time
+  const shownAt = percent(timeMinutes(shown))
+  const shownFraction = timeMinutes(shown) / shadowSliderMax
+  const shownShift = shownFraction < 0.04 ? '0' : shownFraction > 0.96 ? '-100%' : '-50%'
   return <div className="grid gap-0.5">
+    <div className="relative h-4 text-xs font-semibold tabular-nums" aria-hidden="true">
+      {active && <span className="absolute" style={{ left: shownAt, transform: `translateX(${shownShift})` }}>{shown}</span>}
+    </div>
     <Slider value={[timeMinutes(slot.time), timeMinutes(slot.endTime ?? slot.time)]}
       min={0} max={shadowSliderMax} step={1}
       // The track is the day: night stays the muted track color under the daylight bands.
@@ -121,6 +129,9 @@ export function ShootTimeSlider({ slot: stored, name, zone, active, endpoint, da
         className: cn('h-8! w-2.5! cursor-ew-resize rounded-sm!', active && index === endpoint && 'ring-2 ring-primary'),
         onFocus: () => onSelect(index === 1 ? 1 : 0),
       })} />
+    <div className="relative h-4" aria-hidden="true">
+      {active && <Sun className="absolute size-4 -translate-x-1/2 text-amber-500" style={{ left: shownAt }} />}
+    </div>
     {daylight && <div className="relative h-4 text-xs text-muted-foreground tabular-nums" aria-hidden="true">
       <span className="absolute left-0">00</span>
       {daylight.sunrise !== null && <span className="absolute inline-flex -translate-x-1/2 items-center gap-1" style={{ left: percent(daylight.sunrise) }}><Sunrise className="size-3.5" />{timeLabel(daylight.sunrise)}</span>}

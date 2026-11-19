@@ -9,17 +9,17 @@ import { pdfProjectSize } from '@/features/briefs/export/pdf-project'
 import { formatScanDiameter } from '@/features/map/drone-scan'
 import type { BriefSession } from '@/features/briefs/state/brief-session'
 import type { LocalImages } from '@/features/briefs/state/use-local-images'
-import type { IsolatedCapture } from '@/features/map/isolated-capture'
+import type { CaptureKind } from './capture-kind-glyph'
 import type { BriefingPresentation } from '@/features/briefs/storage/public-brief-link'
 import type { BriefingCopy } from './briefing-copy'
 import { CaptureInstructionsList } from './capture-instructions-list'
 import { ShootTimes } from './shoot-times'
 
-export function BriefingDetails({ session, presentation, copy, isolatedKind, referenceImages, onClose }: {
+export function BriefingDetails({ session, presentation, copy, hiddenKinds, referenceImages, onClose }: {
   session: BriefSession
   presentation: BriefingPresentation
   copy: BriefingCopy
-  isolatedKind: IsolatedCapture
+  hiddenKinds: ReadonlySet<CaptureKind>
   referenceImages: LocalImages
   onClose: () => void
 }) {
@@ -71,7 +71,7 @@ export function BriefingDetails({ session, presentation, copy, isolatedKind, ref
               <p className="whitespace-pre-wrap text-sm text-muted-foreground">{session.brief.project.instructions || copy.emptyInstructions}</p>
             </div>
           </section>
-          <CaptureInstructionsList brief={session.brief} language={presentation.language} isolatedKind={isolatedKind} />
+          <CaptureInstructionsList brief={session.brief} language={presentation.language} hiddenKinds={hiddenKinds} />
           {session.brief.references.length > 0 && <section className="grid gap-1" aria-label={copy.references}>
             <p className="text-sm font-medium">{copy.references}</p>
             {session.brief.references.map((reference) => {

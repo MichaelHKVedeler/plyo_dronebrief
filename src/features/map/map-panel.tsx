@@ -37,7 +37,8 @@ import { MiddleMousePan } from './middle-mouse-pan'
 import { metersPerPixel } from './geometry'
 import { defaultOverlaySize, MapObjectScale, mapObjectScale } from './map-object-scale'
 import { idleTool, placeCamera, type MapTool } from './placement'
-import { isolatedCaptureAngles, isolatedCaptureVisibility, type IsolatedCapture } from './isolated-capture'
+import { hiddenCaptureAngles, hiddenCaptureVisibility, isolatedCaptureAngles, isolatedCaptureVisibility, type IsolatedCapture } from './isolated-capture'
+import type { CaptureKind } from '@/features/briefs/components/capture-kind-glyph'
 import { ResponsiveShadowTimeControl } from './shadow-time-control'
 import { previewShootSlot, type ShootEndpoint } from './shoot-time-range'
 import { droneZoneAttribution, useDroneZones, type DroneZones } from './drone-zones'
@@ -62,12 +63,14 @@ type Props = {
   objectSizePercent?: number
   overlaySizeRef?: RefObject<number>
   isolatedKind?: IsolatedCapture
+  /** Shared links: capture kinds the viewer has hidden. Takes the place of isolatedKind. */
+  hiddenKinds?: ReadonlySet<CaptureKind>
   layerControls?: ReactNode
   pointCallout?: ReactNode
 }
 const ShadeMapPanel = lazy(() => import('./shade-map').then((module) => ({ default: module.ShadeMapPanel })))
 type GoogleProps = Props & { droneZones: DroneZones | null; imageLayer: ImageLayerState; active: boolean; selectable?: boolean; dimOpacity: number; objectSizePercent: number; zoom: number; view: RefObject<MapView>; onViewChange: (view: MapView) => void; satellite: boolean; onMapClick: (point: Position) => void; onCameraPlace: (tool: MapTool, point: Position) => void; onCameraDuplicate: (source: CameraAngle, position: Position) => void }
-function ConnectedMap({ droneZones, imageLayer, selectedCameraIds, onSelectCamera, session, dispatch, tool, onToolChange, selectedId, onSelect, active, selectable = false, dimOpacity, objectSizePercent, zoom, view, onViewChange, satellite, onMapClick, onCameraPlace, onCameraDuplicate, isolatedKind = null, pointCallout, presentation }: GoogleProps) {
+function ConnectedMap({ droneZones, imageLayer, selectedCameraIds, onSelectCamera, session, dispatch, tool, onToolChange, selectedId, onSelect, active, selectable = false, dimOpacity, objectSizePercent, zoom, view, onViewChange, satellite, onMapClick, onCameraPlace, onCameraDuplicate, isolatedKind = null, hiddenKinds, pointCallout, presentation }: GoogleProps) {
   const status = useApiLoadingStatus()
   const dark = useDarkMode()
   const googleRestore = useRef({ holding: false, baseline: null as number | null })
@@ -77,8 +80,8 @@ function ConnectedMap({ droneZones, imageLayer, selectedCameraIds, onSelectCamer
   const editing = mode === 'edit'
   const interactive = tool.kind === 'idle'
   const objectsInteractive = interactive && !middlePanning
-  const capture = isolatedCaptureVisibility(visibility, isolatedKind, presentation === 'briefing')
-  const captureAngles = isolatedCaptureAngles(brief.angles, isolatedKind, presentation === 'briefing', visibility)
+  const capture = hiddenKinds ? hiddenCaptureVisibility(visibility, hiddenKinds) : isolatedCaptureVisibility(visibility, isolatedKind, presentation === 'briefing')
+  const captureAngles = hiddenKinds ? hiddenCaptureAngles(brief.angles, hiddenKinds, visibility) : isolatedCaptureAngles(brief.angles, isolatedKind, presentation === 'briefing', visibility)
   const pendingAngle: CameraAngle | null = tool.kind === 'camera' && tool.position && tool.cameraType !== '360' && tool.cameraType !== 'extra-coverage'
     ? { id: 'placement-preview', label: 'Choose direction', type: tool.cameraType, position: tool.position, directionDegrees: tool.directionDegrees }
     : null
@@ -218,7 +221,7 @@ function MapWorkspace(props: Props) {
     : capturePass === 'full'
       ? { ...session, mode: 'view' as const, visibility: { circleRig: true, angles: true, polygons: true, imageOverlays: true, droneScan: true, droneZones: false } }
       : session
-  const mapProps = capturePass ? { ...props, presentation: 'briefing' as const, session: renderedSession, selectedId: null, selectedCameraIds: [], tool: idleTool, isolatedKind: capturePass === 'drone-scan' ? 'droneScan' as const : null } : props
+  const mapProps = capturePass ? { ...props, presentation: 'briefing' as const, session: renderedSession, selectedId: null, selectedCameraIds: [], tool: idleTool, isolatedKind: capturePass === 'drone-scan' ? 'droneScan' as const : null, hiddenKinds: undefined } : props
   const renderedObjectSize = capturing ? 100 / 2 ** (zoom - 17) : objectSizePercent
   const zoneState = useDroneZones(renderedSession.visibility.droneZones)
   const droneZones = renderedSession.visibility.droneZones ? zoneState.zones : null
@@ -285,7 +288,7 @@ function MapWorkspace(props: Props) {
       <div className={'col-start-1 grid justify-items-start gap-2 ' + (briefing ? 'row-start-1' : 'row-start-2 @max-[400px]:col-span-2 @max-[400px]:row-start-3')}>
         {editing && !interactive && <Button className="pointer-events-auto shadow-sm" onClick={() => onToolChange(idleTool)}><X />Cancel placement</Button>}
         {briefing ? props.layerControls : <ViewerLayers session={session} dispatch={dispatch} />}
-        {renderedSession.visibility.droneZones && (droneZones || zoneState.error) && <p role="status" className="pointer-events-auto max-w-56 rounded-md bg-card/90 px-2 py-1 text-[11px] text-muted-foreground shadow-sm">
+        {!briefing && renderedSession.visibility.droneZones && (droneZones || zoneState.error) && <p role="status" className="pointer-events-auto max-w-56 rounded-md bg-card/90 px-2 py-1 text-[11px] text-muted-foreground shadow-sm">
           {droneZones ? <a href="https://dronesoner.no/" target="_blank" rel="noreferrer" className="underline-offset-2 hover:underline">{droneZoneAttribution}</a> : zoneState.error}
         </p>}
       </div>
