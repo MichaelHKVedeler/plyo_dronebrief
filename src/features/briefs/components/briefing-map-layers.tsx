@@ -59,7 +59,8 @@ export function BriefingMapLayers({ brief, language, sliders, hiddenKinds, onHid
   }
   if (!sliders && !rows.length && !hasFloorplan && !hasScan && !splitKinds.length && !onZonesVisible) return null
   const collapseLabel = collapsed ? copy.showLayerButtons : copy.hideLayerButtons
-  return <div className="pointer-events-auto grid w-fit justify-items-center gap-2.5 rounded-lg border bg-card p-2 shadow-sm">
+  // Glued to the left edge; buttons keep their size and the sliders shrink so the menu fits any height.
+  return <div className="pointer-events-auto flex max-h-full w-fit flex-col items-center gap-2.5 overflow-y-auto rounded-r-lg border border-l-0 bg-card p-2 shadow-sm [&>*]:shrink-0">
     <Button type="button" variant="ghost" size="icon-sm" className="rounded-full" aria-expanded={!collapsed} aria-label={collapseLabel} title={collapseLabel}
       onClick={() => setCollapsed(!collapsed)}>
       {collapsed ? <ChevronDown /> : <ChevronUp />}
@@ -79,7 +80,7 @@ export function BriefingMapLayers({ brief, language, sliders, hiddenKinds, onHid
       <LayerToggleButton icon={ShieldBan} visible={zonesVisible} showLabel={copy.showZones} hideLabel={copy.hideZones}
         onToggle={() => onZonesVisible(!zonesVisible)} />
     </>}
-    {sliders && <><Separator />{sliders}</>}
+    {sliders && <><Separator /><div className="flex min-h-0 !shrink flex-col items-center gap-2.5">{sliders}</div></>}
     </>}
   </div>
 }

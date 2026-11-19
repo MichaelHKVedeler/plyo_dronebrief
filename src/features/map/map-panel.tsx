@@ -292,15 +292,19 @@ function MapWorkspace(props: Props) {
       </div>
       <div className={'col-start-1 grid justify-items-start gap-2 ' + (briefing ? 'row-start-1' : 'row-start-2 @max-[400px]:col-span-2 @max-[400px]:row-start-3')}>
         {editing && !interactive && <Button className="pointer-events-auto shadow-sm" onClick={() => onToolChange(idleTool)}><X />Cancel placement</Button>}
-        {briefing ? props.layerControls?.(<>
-          <MapObjectSizeControl value={objectSizePercent} onChange={setObjectSize} upright />
-          <MapDimmerControl value={dimOpacity} onChange={setDimOpacity} upright />
-        </>) : <ViewerLayers session={session} dispatch={dispatch} />}
+        {!briefing && <ViewerLayers session={session} dispatch={dispatch} />}
         {!briefing && renderedSession.visibility.droneZones && (droneZones || zoneState.error) && <p role="status" className="pointer-events-auto max-w-56 rounded-md bg-card/90 px-2 py-1 text-[11px] text-muted-foreground shadow-sm">
           {droneZones ? <a href="https://dronesoner.no/" target="_blank" rel="noreferrer" className="underline-offset-2 hover:underline">{droneZoneAttribution}</a> : zoneState.error}
         </p>}
       </div>
     </div>
+    {/* Public links: the layer menu runs flush left from the top down to just above the Instructions button. */}
+    {briefing && <div className="pointer-events-none absolute top-3 bottom-[5.5rem] left-0 z-20 flex flex-col items-start lg:bottom-8">
+      {props.layerControls?.(<>
+        <MapObjectSizeControl value={objectSizePercent} onChange={setObjectSize} upright />
+        <MapDimmerControl value={dimOpacity} onChange={setDimOpacity} upright />
+      </>)}
+    </div>}
     {!briefing && <div className="pointer-events-auto absolute right-3 bottom-[5.5rem] z-20 grid max-h-[calc(100%-7rem)] w-[calc(100%-196px)] max-w-3xl gap-1 overflow-y-auto rounded-lg border bg-card p-2 shadow-sm @min-[750px]:right-auto @min-[750px]:bottom-8 @min-[750px]:left-1/2 @min-[750px]:w-[calc(100%-384px)] @min-[750px]:-translate-x-1/2 @min-[750px]:p-3">
       <ResponsiveShadowTimeControl totalImages={countBriefImages(brief).total} slots={slots} activeIndex={Math.min(activeSlot, slots.length - 1)} activeEndpoint={activeEndpoint}
         onActivate={(index, endpoint = 0) => { setActiveSlot(index); setActiveEndpoint(endpoint) }} onChange={setSlots} onCommit={commitSlots} position={view.current.center} />
