@@ -53,7 +53,7 @@ export function BriefingPage({ session, dispatch, error, imageTransport, present
           className="pointer-events-auto rounded-lg text-white shadow-sm animate-[pulse_3s_ease-in-out_infinite] motion-reduce:animate-none lg:hidden">
           {copy.instructions}
         </Button>}
-        layerControls={<BriefingMapLayers brief={brief} language={presentation.language} hiddenKinds={hiddenKinds} onHiddenKinds={setHiddenKinds} scanSplit={scanOnly}
+        layerControls={(sliders) => <BriefingMapLayers brief={brief} sliders={sliders} language={presentation.language} hiddenKinds={hiddenKinds} onHiddenKinds={setHiddenKinds} scanSplit={scanOnly}
           floorplanVisible={session.visibility.imageOverlays}
           onFloorplanVisible={(visible) => dispatch({ type: 'visibility', layer: 'imageOverlays', visible })}
           zonesVisible={session.visibility.droneZones}

@@ -1,4 +1,4 @@
-import { useState, type ComponentType } from 'react'
+import { useState, type ComponentType, type ReactNode } from 'react'
 import { ChevronDown, ChevronUp, ShieldBan } from 'lucide-react'
 import { FloorplanIcon } from '@/features/map/floorplan-icon'
 import type { DroneBrief } from '../model/brief'
@@ -26,9 +26,11 @@ export function LayerToggleButton({ visible, showLabel, hideLabel, onToggle, ico
   </Button>
 }
 
-export function BriefingMapLayers({ brief, language, hiddenKinds, onHiddenKinds, scanSplit = false, floorplanVisible = true, onFloorplanVisible, zonesVisible = true, onZonesVisible }: {
+export function BriefingMapLayers({ brief, language, sliders, hiddenKinds, onHiddenKinds, scanSplit = false, floorplanVisible = true, onFloorplanVisible, zonesVisible = true, onZonesVisible }: {
   brief: DroneBrief
   language: PdfLanguage
+  /** Icon size and dimming sliders, collapsed together with the layer buttons. */
+  sliders?: ReactNode
   hiddenKinds: ReadonlySet<CaptureToggleKey>
   onHiddenKinds: (kinds: ReadonlySet<CaptureToggleKey>) => void
   /** Drone scan links hide the circles and the extra coverage points separately. */
@@ -55,7 +57,7 @@ export function BriefingMapLayers({ brief, language, hiddenKinds, onHiddenKinds,
         onHiddenKinds(next)
       }} />
   }
-  if (!rows.length && !hasFloorplan && !hasScan && !splitKinds.length && !onZonesVisible) return null
+  if (!sliders && !rows.length && !hasFloorplan && !hasScan && !splitKinds.length && !onZonesVisible) return null
   const collapseLabel = collapsed ? copy.showLayerButtons : copy.hideLayerButtons
   return <div className="pointer-events-auto grid w-fit justify-items-center gap-2.5 rounded-lg border bg-card p-2 shadow-sm">
     <Button type="button" variant="ghost" size="icon-sm" className="rounded-full" aria-expanded={!collapsed} aria-label={collapseLabel} title={collapseLabel}
@@ -77,6 +79,7 @@ export function BriefingMapLayers({ brief, language, hiddenKinds, onHiddenKinds,
       <LayerToggleButton icon={ShieldBan} visible={zonesVisible} showLabel={copy.showZones} hideLabel={copy.hideZones}
         onToggle={() => onZonesVisible(!zonesVisible)} />
     </>}
+    {sliders && <><Separator />{sliders}</>}
     </>}
   </div>
 }

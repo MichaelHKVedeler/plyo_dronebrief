@@ -11,12 +11,12 @@ import { BriefingPage } from './briefing-page'
 afterEach(cleanup)
 vi.mock('@/features/map/pdf-address', () => ({ lookupPdfAddress: vi.fn(async () => 'Auto street 1: Area') }))
 vi.mock('@/features/map/map-panel', () => ({
-  MapPanel: ({ bottomLeading, layerControls, onSelectCamera, pointCallout, session, hiddenKinds }: { bottomLeading?: ReactNode; layerControls?: ReactNode; onSelectCamera?: (id: string, additive: boolean) => void; pointCallout?: ReactNode; session: BriefSession; hiddenKinds?: ReadonlySet<string> }) => <div role="region" aria-label="Brief map">
+  MapPanel: ({ bottomLeading, layerControls, onSelectCamera, pointCallout, session, hiddenKinds }: { bottomLeading?: ReactNode; layerControls?: (sliders: ReactNode) => ReactNode; onSelectCamera?: (id: string, additive: boolean) => void; pointCallout?: ReactNode; session: BriefSession; hiddenKinds?: ReadonlySet<string> }) => <div role="region" aria-label="Brief map">
     <button type="button" onClick={() => onSelectCamera?.('p1', false)}>Select 360 point</button>
     <button type="button" onClick={() => onSelectCamera?.('d1', false)}>Select drone point</button>
     <button type="button" onClick={() => onSelectCamera?.('extra', false)}>Select extra coverage</button>
     <p data-testid="map-content">{[session.brief.circleRig ? 'rig' : '', session.brief.droneScan ? 'scan' : '', ...session.brief.angles.map((angle) => angle.id), `hidden:${[...hiddenKinds ?? []].sort().join(',') || 'none'}`].filter(Boolean).join(' ')}</p>
-    {layerControls}
+    {layerControls?.(null)}
     {bottomLeading}
     {pointCallout}
   </div>,

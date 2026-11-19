@@ -65,8 +65,9 @@ type Props = {
   isolatedKind?: IsolatedCapture
   /** Shared links: capture kinds the viewer has hidden. Takes the place of isolatedKind. */
   hiddenKinds?: ReadonlySet<CaptureToggleKey>
-  layerControls?: ReactNode
-  /** Shown below the icon size and dimming sliders, such as the public link's Instructions button. */
+  /** Public links: the layer menu, given the icon size and dimming sliders to show inside it. */
+  layerControls?: (sliders: ReactNode) => ReactNode
+  /** Shown bottom left, such as the public link's Instructions button. */
   bottomLeading?: ReactNode
   pointCallout?: ReactNode
 }
@@ -291,7 +292,10 @@ function MapWorkspace(props: Props) {
       </div>
       <div className={'col-start-1 grid justify-items-start gap-2 ' + (briefing ? 'row-start-1' : 'row-start-2 @max-[400px]:col-span-2 @max-[400px]:row-start-3')}>
         {editing && !interactive && <Button className="pointer-events-auto shadow-sm" onClick={() => onToolChange(idleTool)}><X />Cancel placement</Button>}
-        {briefing ? props.layerControls : <ViewerLayers session={session} dispatch={dispatch} />}
+        {briefing ? props.layerControls?.(<>
+          <MapObjectSizeControl value={objectSizePercent} onChange={setObjectSize} upright />
+          <MapDimmerControl value={dimOpacity} onChange={setDimOpacity} upright />
+        </>) : <ViewerLayers session={session} dispatch={dispatch} />}
         {!briefing && renderedSession.visibility.droneZones && (droneZones || zoneState.error) && <p role="status" className="pointer-events-auto max-w-56 rounded-md bg-card/90 px-2 py-1 text-[11px] text-muted-foreground shadow-sm">
           {droneZones ? <a href="https://dronesoner.no/" target="_blank" rel="noreferrer" className="underline-offset-2 hover:underline">{droneZoneAttribution}</a> : zoneState.error}
         </p>}
@@ -303,10 +307,10 @@ function MapWorkspace(props: Props) {
     </div>}
     <div className="pointer-events-none absolute inset-x-3 bottom-8 z-20 flex items-end gap-2">
       <div className="grid min-w-0 max-w-40 flex-1 justify-items-start gap-2">
-        <div className={'pointer-events-auto gap-2 ' + (briefing ? 'grid justify-items-start' : 'grid w-full')}>
-          <MapObjectSizeControl value={objectSizePercent} onChange={setObjectSize} upright={briefing} />
-          <MapDimmerControl value={dimOpacity} onChange={setDimOpacity} upright={briefing} />
-        </div>
+        {!briefing && <div className="pointer-events-auto grid w-full gap-2">
+          <MapObjectSizeControl value={objectSizePercent} onChange={setObjectSize} />
+          <MapDimmerControl value={dimOpacity} onChange={setDimOpacity} />
+        </div>}
         {props.bottomLeading}
       </div>
       <MapControls brief={brief} navigation={shadeActive ? shadeNavigation : googleMap} />
