@@ -1,10 +1,19 @@
-import { effectiveRigHeights, effectivePanoramaHeights, type DroneBrief } from '../model/brief'
-import { countBriefImages } from '../model/image-count'
+import { circleRigs, effectiveRigHeights, effectivePanoramaHeights, type DroneBrief } from '../model/brief'
+import { countBriefImages, rigImageCount } from '../model/image-count'
 import type { PdfLanguage } from '../export/pdf-copy'
 import { briefingCopy } from './briefing-copy'
+import type { CaptureKind } from './capture-kind-glyph'
+
+/** Shared links hide each circle rig on its own, keyed by rig id. */
+export type CaptureToggleKey = CaptureKind | `circleRig:${string}`
+export function rigCaptureKey(id: string): CaptureToggleKey { return `circleRig:${id}` }
 
 export type CaptureInstructionRow = {
   key: 'circleRig' | 'drone-image' | '360' | 'dslr' | 'extra-coverage'
+  /** What a shared-link toggle hides: each rig separately, other rows by kind. */
+  toggleKey: CaptureToggleKey
+  /** Rig number, shown only when the brief has several rigs. */
+  number?: number
   label: string
   rule: string
   range?: string
@@ -31,21 +40,23 @@ export function captureInstructions(brief: DroneBrief, language: PdfLanguage): C
   const panoramaPoints = brief.angles.filter((angle) => angle.type === '360').length
   const dslrPoints = brief.angles.filter((angle) => angle.type === 'dslr').length
   const rows: CaptureInstructionRow[] = []
-  if (brief.circleRig) {
-    const rigRange = pointRangeLabel(copy.arrows, brief.circleRig.arrowCount)
-
+  const rigs = circleRigs(brief)
+  rigs.forEach((rig, index) => {
+    const number = rigs.length > 1 ? index + 1 : undefined
     rows.push({
       key: 'circleRig',
-      label: copy.rig,
+      toggleKey: rigCaptureKey(rig.id),
+      number,
+      label: number ? `${copy.rig} ${number}` : copy.rig,
       rule: copy.rigRule,
-      range: rigRange,
-      heights: formatCaptureHeights(effectiveRigHeights(brief)),
-      images: counts.circleRig,
+      range: pointRangeLabel(copy.arrows, rig.arrowCount),
+      heights: formatCaptureHeights(effectiveRigHeights(brief, rig)),
+      images: rigImageCount(brief, rig),
     })
-  }
+  })
   if (dronePoints) {
     rows.push({
-      key: 'drone-image',
+      key: 'drone-image', toggleKey: 'drone-image',
       label: copy.drone,
       rule: copy.droneRule,
       range: pointRangeLabel(copy.point, dronePoints),
@@ -55,7 +66,7 @@ export function captureInstructions(brief: DroneBrief, language: PdfLanguage): C
   }
   if (panoramaPoints) {
     rows.push({
-      key: '360',
+      key: '360', toggleKey: '360',
       label: copy.panorama,
       rule: copy.panoramaRule,
       range: pointRangeLabel(copy.point, panoramaPoints),
@@ -66,7 +77,7 @@ export function captureInstructions(brief: DroneBrief, language: PdfLanguage): C
   if (dslrPoints) {
     const { angleCount, spacingDegrees } = brief.typeSettings.dslr
     rows.push({
-      key: 'dslr',
+      key: 'dslr', toggleKey: 'dslr',
       label: copy.dslr,
       rule: copy.dslrRule(angleCount * spacingDegrees, angleCount),
       range: pointRangeLabel(copy.point, dslrPoints),
@@ -75,6 +86,6 @@ export function captureInstructions(brief: DroneBrief, language: PdfLanguage): C
     })
   }
   const extraPoints = brief.angles.filter((angle) => angle.type === 'extra-coverage').length
-  if (extraPoints) rows.push({ key: 'extra-coverage', label: copy.extraCoverage, rule: '', images: counts.extraCoverage })
+  if (extraPoints) rows.push({ key: 'extra-coverage', toggleKey: 'extra-coverage', label: copy.extraCoverage, rule: '', images: counts.extraCoverage })
   return rows
 }

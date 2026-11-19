@@ -9,7 +9,8 @@ The runtime contract is `src/features/briefs/model/brief.ts`. This document expl
 | createdAt, updatedAt | UTC ISO timestamps |
 | project | name, clientName, optional description and instructions (max 2000 each), calendar date YYYY-MM-DD, times HH:mm[], optional shoots[{date, time, endTime?}] (max 3) |
 | coordinates | Project/map reference point {lat, lng}; new briefs default to Oslo (59.9139, 10.7522) |
-| circleRig | null or {id, position, radiusMeters, ovalRatio, rotationDegrees, arrowCount, heightsMeters?} |
+| circleRig | null or {id, position, radiusMeters, ovalRatio, rotationDegrees, arrowCount, heightsMeters?} (rig 1) |
+| extraCircleRigs | Further rigs of the same shape, numbered from 2 (max 1, so two rigs in total); defaults to [] |
 | droneScan | null or {id, highRes, lowRes}; each circle is null or {id, position, radiusMeters} |
 | angles | Discriminated camera-angle array |
 | typeSettings | Drone/360 heightsMeters arrays (new briefs: drone 40, 60; 360 2, 5, 8); DSLR angleCount and spacingDegrees plus preserved legacy heightsMeters |
@@ -32,6 +33,12 @@ Every shoot slot is a range. `shoots[].endTime` (HH:mm) is the end on the slot's
 Map geometry uses spherical distances and bearings with longitude wrapping. The rig outline has 64 vertices. The scale/rotate handle sits on the rotated major axis at 1.16 times the major radius; the oval handle sits on the rotated minor axis at the minor radius plus 0.16 times the major radius. Their positions are independent of arrow count. Dragging compensates for this clearance so the handles remain under the pointer. Scaling and rotating preserve the center and oval ratio; reshaping preserves the major radius. These are planning graphics, not survey geometry.
 
 `arrowCount` is an integer from 1–50. New rigs start with 8; imported rigs missing the field retain the legacy default of 10. Explicit saved counts are unchanged. Numbered arrows follow clockwise parametric intervals around the circle/oval edge, starting at the rotated major-axis endpoint, and aim toward the center. Arrow symbols are offset 36 screen pixels toward the center; numbered badges are centered on the outline. Arrows have white fills and crisp 2-pixel colored strokes without shadows. They follow rig movement, rotation, and reshaping in both maps. This is an additive schema v1 extension; DB1/DB2 transport versions are unchanged. Older app builds ignore the field and lose it on re-export.
+
+### Two circle rigs
+
+A brief holds up to two rigs: `circleRig` is rig 1 and `extraCircleRigs` holds rig 2. Writes go through `withCircleRigs`, which keeps rig 2 empty while rig 1 is null, so removing rig 1 renumbers rig 2 as rig 1. Each rig has its own arrows, heights and image count. With two rigs the editor and map show the rig number at the centre, the PDF labels points `R1.3` / `R2.3`, and public links show one numbered hide/show button per rig (hidden state is ephemeral).
+
+**Version decision:** additive schema v1 field; DB1/DB2 transport versions are unchanged. Older snapshots omit it and parse as []. Older app builds and an undeployed `api`/`publicView` ignore and drop rig 2, so deploy the updated shared schema to the backend before releasing the frontend.
 
 ## Drone scan
 

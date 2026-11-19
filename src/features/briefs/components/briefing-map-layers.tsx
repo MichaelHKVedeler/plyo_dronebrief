@@ -6,7 +6,7 @@ import type { PdfLanguage } from '../export/pdf-copy'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import { briefingCopy } from './briefing-copy'
-import { captureInstructions } from './capture-instructions'
+import { captureInstructions, type CaptureToggleKey } from './capture-instructions'
 import { CaptureKindToggleButton, type CaptureKind } from './capture-kind-glyph'
 
 export function LayerToggleButton({ visible, showLabel, hideLabel, onToggle, icon: Icon }: {
@@ -29,8 +29,8 @@ export function LayerToggleButton({ visible, showLabel, hideLabel, onToggle, ico
 export function BriefingMapLayers({ brief, language, hiddenKinds, onHiddenKinds, scanSplit = false, floorplanVisible = true, onFloorplanVisible, zonesVisible = true, onZonesVisible }: {
   brief: DroneBrief
   language: PdfLanguage
-  hiddenKinds: ReadonlySet<CaptureKind>
-  onHiddenKinds: (kinds: ReadonlySet<CaptureKind>) => void
+  hiddenKinds: ReadonlySet<CaptureToggleKey>
+  onHiddenKinds: (kinds: ReadonlySet<CaptureToggleKey>) => void
   /** Drone scan links hide the circles and the extra coverage points separately. */
   scanSplit?: boolean
   floorplanVisible?: boolean
@@ -45,9 +45,9 @@ export function BriefingMapLayers({ brief, language, hiddenKinds, onHiddenKinds,
   const hasExtra = brief.angles.some((angle) => angle.type === 'extra-coverage')
   const hasScan = !scanSplit && (hasCircles || hasExtra)
   const splitKinds = scanSplit ? ([hasCircles && 'droneScan', hasExtra && 'extra-coverage'] as const).filter((kind) => kind !== false) : []
-  function toggle(label: string, kind: CaptureKind, together: CaptureKind[] = [kind]) {
-    const visible = !hiddenKinds.has(kind)
-    return <CaptureKindToggleButton key={kind} kind={kind} visible={visible} label={`${visible ? copy.hide : copy.show} ${label}`}
+  function toggle(label: string, kind: CaptureKind, key: CaptureToggleKey = kind, together: CaptureToggleKey[] = [key], number?: number) {
+    const visible = !hiddenKinds.has(key)
+    return <CaptureKindToggleButton key={key} kind={kind} number={number} visible={visible} label={`${visible ? copy.hide : copy.show} ${label}`}
       onClick={() => {
         const next = new Set(hiddenKinds)
         for (const each of together) if (visible) next.add(each); else next.delete(each)
@@ -56,8 +56,8 @@ export function BriefingMapLayers({ brief, language, hiddenKinds, onHiddenKinds,
   }
   if (!rows.length && !hasFloorplan && !hasScan && !splitKinds.length && !onZonesVisible) return null
   return <div className="pointer-events-auto grid w-fit justify-items-center gap-2.5 rounded-lg border bg-card p-2 shadow-sm">
-    {rows.map((row) => toggle(row.label, row.key))}
-    {hasScan && toggle(copy.droneScan, 'droneScan', ['droneScan', 'extra-coverage'])}
+    {rows.map((row) => toggle(row.label, row.key, row.toggleKey, undefined, row.number))}
+    {hasScan && toggle(copy.droneScan, 'droneScan', 'droneScan', ['droneScan', 'extra-coverage'])}
     {splitKinds.map((kind) => toggle(kind === 'droneScan' ? copy.droneScan : copy.extraCoverage, kind))}
     {hasFloorplan && onFloorplanVisible && <>
       {rows.length > 0 && <Separator />}

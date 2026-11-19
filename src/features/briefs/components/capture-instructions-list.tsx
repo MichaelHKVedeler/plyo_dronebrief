@@ -1,21 +1,21 @@
 import type { DroneBrief } from '../model/brief'
 import type { PdfLanguage } from '../export/pdf-copy'
-import { captureInstructions } from './capture-instructions'
-import { CaptureKindGlyph, type CaptureKind } from './capture-kind-glyph'
+import { captureInstructions, type CaptureToggleKey } from './capture-instructions'
+import { CaptureKindGlyph } from './capture-kind-glyph'
 
 export function CaptureInstructionsList({ brief, language, hiddenKinds }: {
   brief: DroneBrief
   language: PdfLanguage
-  hiddenKinds: ReadonlySet<CaptureKind>
+  hiddenKinds: ReadonlySet<CaptureToggleKey>
 }) {
   const rows = captureInstructions(brief, language)
   if (!rows.length) return null
   return <ul className="grid gap-4" aria-label="Capture instructions">
     {rows.map((row) => {
-      const dimmed = hiddenKinds.has(row.key)
-      return <li key={row.key} className="flex items-start justify-between gap-3">
+      const dimmed = hiddenKinds.has(row.toggleKey)
+      return <li key={row.toggleKey} className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 items-start gap-2">
-          <CaptureKindGlyph kind={row.key} />
+          <CaptureKindGlyph kind={row.key} number={row.number} />
           <div className="min-w-0">
             <p className={`text-sm font-medium ${dimmed ? 'lg:opacity-50' : ''}`}>{row.label} {row.rule && <span className="font-normal text-muted-foreground">| {row.rule}</span>}</p>
           </div>

@@ -8,7 +8,7 @@ import { attachShadeViewSync } from './shade-view-sync'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Map as LibreMap, type GeoJSONSource } from 'maplibre-gl'
 import ShadeMap from 'mapbox-gl-shadow-simulator'
-import type { CameraAngle, Position, ShootSlot } from '@/features/briefs/model/brief'
+import { circleRigs, updateCircleRig, type CameraAngle, type Position, type ShootSlot } from '@/features/briefs/model/brief'
 import type { MapNavigation } from './map-navigation'
 import { idleTool, type MapTool } from './placement'
 import { shadowBuildings } from './shadow-buildings'
@@ -211,6 +211,7 @@ export function ShadeMapPanel({ droneZones, imageLayer, dimOpacity, objectSizePe
   const interactive = tool.kind === 'idle'
   const capture = isolatedCaptureVisibility(session.visibility, isolatedKind)
   const captureAngles = isolatedCaptureAngles(session.brief.angles, isolatedKind, false, session.visibility)
+  const rigs = circleRigs(session.brief)
   const pendingAngle = tool.kind === 'camera' && tool.position && tool.cameraType !== '360' && tool.cameraType !== 'extra-coverage'
     ? { id: 'pending', label: 'Choose direction', type: tool.cameraType, position: tool.position, directionDegrees: tool.directionDegrees } : null
   const commitCamera = useCallback((updated: CameraAngle) => {
@@ -227,9 +228,10 @@ export function ShadeMapPanel({ droneZones, imageLayer, dimOpacity, objectSizePe
         {capture.droneScan && hasDroneScan(session.brief.droneScan) && <DroneScanObject scan={session.brief.droneScan} zoom={view.zoom} editable={editable} interactive={interactive}
           onSelect={onSelect}
           onCommit={(next) => dispatch({ type: 'update', update: (brief) => brief.droneScan?.id === next.id ? { ...brief, droneScan: next } : brief })} />}
-        {capture.circleRig && session.brief.circleRig && <RigObject rig={session.brief.circleRig} pixelsToMeters={metersPerPixel(session.brief.circleRig.position.lat, view.zoom)} dark={dark} editable={editable} interactive={interactive}
-          selected={selectedId === session.brief.circleRig.id} onSelect={() => onSelect(session.brief.circleRig!.id)}
-          onCommit={(rig) => dispatch({ type: 'update', update: (brief) => ({ ...brief, circleRig: brief.circleRig?.id === rig.id ? rig : brief.circleRig }) })} />}
+        {capture.circleRig && rigs.map((rig, index) => <RigObject key={rig.id} rig={rig} number={rigs.length > 1 ? index + 1 : undefined}
+          pixelsToMeters={metersPerPixel(rig.position.lat, view.zoom)} dark={dark} editable={editable} interactive={interactive}
+          selected={selectedId === rig.id} onSelect={() => onSelect(rig.id)}
+          onCommit={(next) => dispatch({ type: 'update', update: (brief) => updateCircleRig(brief, next.id, () => next) })} />)}
         {capture.angles && <CameraMarkers angles={captureAngles} pendingAngle={pendingAngle} editable={editable} interactive={interactive}
           selectedCameraIds={selectedCameraIds} zoom={view.zoom} dslrSettings={session.brief.typeSettings.dslr}
           onSelectCamera={onSelectCamera} onCommit={commitCamera} onDuplicate={duplicateCameraAt} />}

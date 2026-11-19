@@ -15,7 +15,7 @@ import { useLocalImages } from '@/features/briefs/state/use-local-images'
 import type { BriefAction, BriefSession } from '@/features/briefs/state/brief-session'
 import type { ImageTransport } from '@/features/briefs/storage/image-transport'
 import type { BriefingPresentation } from '@/features/briefs/storage/public-brief-link'
-import type { CaptureKind } from '@/features/briefs/components/capture-kind-glyph'
+import type { CaptureToggleKey } from '@/features/briefs/components/capture-instructions'
 
 export function BriefingPage({ session, dispatch, error, imageTransport, presentation }: {
   session: BriefSession
@@ -33,7 +33,7 @@ export function BriefingPage({ session, dispatch, error, imageTransport, present
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [selectedCameraIds, setSelectedCameraIds] = useState<string[]>([])
   // The scan covers everything else, so a normal link starts with it hidden; a drone scan link shows it.
-  const [hiddenKinds, setHiddenKinds] = useState<ReadonlySet<CaptureKind>>(() => new Set(scanOnly ? [] : ['droneScan', 'extra-coverage']))
+  const [hiddenKinds, setHiddenKinds] = useState<ReadonlySet<CaptureToggleKey>>(() => new Set(scanOnly ? [] : ['droneScan', 'extra-coverage']))
   const [infoOpen, setInfoOpen] = useState(false)
   const copy = briefingCopy[presentation.language]
   function select(id: string | null) {

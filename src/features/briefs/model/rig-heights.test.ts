@@ -1,5 +1,5 @@
 import { afterEach, expect, it } from 'vitest'
-import { briefSchema, createBrief, effectiveRigHeights } from './brief'
+import { briefSchema, circleRigs, createBrief, effectiveRigHeights, withCircleRigs } from './brief'
 import { countBriefImages } from './image-count'
 import { exportBriefKey, importBriefKey } from '../storage/share-key'
 import { briefRepository } from '../storage/brief-repository'
@@ -15,7 +15,8 @@ function fixture() {
 afterEach(() => localStorage.clear())
 it('preserves legacy counts and uses independent rig heights for counts and instructions', () => {
   const brief = fixture()
-  expect(effectiveRigHeights(briefSchema.parse(brief))).toEqual([40, 60])
+  const parsed = briefSchema.parse(brief)
+  expect(effectiveRigHeights(parsed, parsed.circleRig!)).toEqual([40, 60])
   expect(countBriefImages(brief).circleRig).toBe(20)
   brief.circleRig!.heightsMeters = [15, 25, 35]
   brief.project.shoots = [{ date: '2026-09-29', time: '09:00' }, { date: '2026-09-29', time: '12:00' }]
@@ -40,4 +41,21 @@ it('round-trips rig heights through validated edits, draft storage and portable 
 it.each([[-1], [10001], [Infinity], Array(51).fill(10)].map((heightsMeters) => ({ heightsMeters })))('rejects invalid rig height lists', ({ heightsMeters }) => {
   const brief = fixture()
   expect(briefSchema.safeParse({ ...brief, circleRig: { ...brief.circleRig, heightsMeters } }).success).toBe(false)
+})
+it('supports a second rig: separate counts, numbered rows and toggles, renumbering after removal', () => {
+  const brief = fixture()
+  const second = { ...brief.circleRig!, id: 'rig-2', arrowCount: 4, heightsMeters: [30] }
+  const two = withCircleRigs(brief, [brief.circleRig!, second])
+  expect(two.extraCircleRigs.map((rig) => rig.id)).toEqual(['rig-2'])
+  expect(countBriefImages(two).circleRig).toBe(20 + 4)
+  expect(captureInstructions(two, 'en').slice(0, 2)).toMatchObject([
+    { label: 'Circle rig 1', number: 1, toggleKey: 'circleRig:rig', images: 20 },
+    { label: 'Circle rig 2', number: 2, toggleKey: 'circleRig:rig-2', images: 4, heights: '30m' },
+  ])
+  expect(importBriefKey(exportBriefKey(two)).extraCircleRigs).toEqual([second])
+  const removedFirst = withCircleRigs(two, circleRigs(two).filter((rig) => rig.id !== 'rig'))
+  expect(removedFirst).toMatchObject({ circleRig: { id: 'rig-2' }, extraCircleRigs: [] })
+  expect(briefSchema.safeParse({ ...two, extraCircleRigs: [second, { ...second, id: 'rig-3' }] }).success).toBe(false)
+  const { extraCircleRigs: _omitted, ...legacy } = brief
+  expect(briefSchema.parse(legacy).extraCircleRigs).toEqual([])
 })

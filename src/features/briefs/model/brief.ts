@@ -70,6 +70,17 @@ const dslrSettings = heights.extend({
 }).refine((settings) => settings.spacingDegrees <= maxDslrSpacing(settings.angleCount), {
   message: 'DSLR arrows must leave room for every angle without overlapping.', path: ['spacingDegrees'],
 })
+export const maxCircleRigs = 2
+const circleRigSchema = z.object({
+  id, position: positionSchema,
+  heightsMeters: heights.shape.heightsMeters.optional(),
+  // Snapshots written before arrowCount existed used ten arrows.
+  arrowCount: z.number().int().min(1).max(maxRigArrows).default(10),
+  radiusMeters: z.number().finite().positive().max(10000),
+  ovalRatio: z.number().finite().min(0.1).max(1),
+  rotationDegrees: heading,
+})
+export type CircleRig = z.infer<typeof circleRigSchema>
 export const briefSchema = z.object({
   schemaVersion: z.literal(1),
   id,
@@ -77,15 +88,9 @@ export const briefSchema = z.object({
   updatedAt: z.iso.datetime(),
   project: projectSchema,
   coordinates: positionSchema,
-  circleRig: z.object({
-    id, position: positionSchema,
-    heightsMeters: heights.shape.heightsMeters.optional(),
-    // Snapshots written before arrowCount existed used ten arrows.
-    arrowCount: z.number().int().min(1).max(maxRigArrows).default(10),
-    radiusMeters: z.number().finite().positive().max(10000),
-    ovalRatio: z.number().finite().min(0.1).max(1),
-    rotationDegrees: heading,
-  }).nullable(),
+  circleRig: circleRigSchema.nullable(),
+  // Additive v1: rigs after circleRig, numbered from 2. Older snapshots omit them.
+  extraCircleRigs: z.array(circleRigSchema).max(maxCircleRigs - 1).default([]),
   angles: z.array(angleSchema).max(1000),
   typeSettings: z.object({ 'drone-image': heights, '360': heights, dslr: dslrSettings }),
   polygons: z.array(z.object({
@@ -209,7 +214,7 @@ export function createBrief(project: Pick<ProjectDetails, 'name' | 'clientName'>
       ...(hasSchedule ? {} : { shoots: [{ date, time: defaultShootTime, endTime: defaultShootEndTime }] }),
       ...project,
     },
-    coordinates: { lat: 59.9139, lng: 10.7522 }, circleRig: null,
+    coordinates: { lat: 59.9139, lng: 10.7522 }, circleRig: null, extraCircleRigs: [],
     angles: [], typeSettings: {
       'drone-image': { heightsMeters: defaultDroneHeights },
       '360': { heightsMeters: default360Heights }, dslr: { heightsMeters: [1.6] },
@@ -227,6 +232,26 @@ export function hasLocalFiles(brief: Pick<DroneBrief, 'imageOverlays' | 'referen
 }
 
 /** Older rigs retain their shared drone heights until explicitly edited. */
-export function effectiveRigHeights(brief: DroneBrief): number[] {
-  return brief.circleRig ? brief.circleRig.heightsMeters ?? brief.typeSettings['drone-image'].heightsMeters : []
+export function effectiveRigHeights(brief: DroneBrief, rig: CircleRig): number[] {
+  return rig.heightsMeters ?? brief.typeSettings['drone-image'].heightsMeters
+}
+
+/** Rigs in number order: circleRig is rig 1, extraCircleRigs follow. */
+export function circleRigs(brief: Pick<DroneBrief, 'circleRig' | 'extraCircleRigs'>): CircleRig[] {
+  return brief.circleRig ? [brief.circleRig, ...brief.extraCircleRigs] : [...brief.extraCircleRigs]
+}
+
+/** PDF point label: R3 with one rig, R2.3 for arrow 3 of rig 2 when there are several. Point 0 is the centre. */
+export function rigPointLabel(rigCount: number, rigIndex: number, point: number) {
+  return rigCount > 1 ? `R${rigIndex + 1}.${point}` : `R${point}`
+}
+
+/** Writes rigs back in order, so removing rig 1 renumbers rig 2 as rig 1. */
+export function withCircleRigs<T extends Pick<DroneBrief, 'circleRig' | 'extraCircleRigs'>>(brief: T, rigs: CircleRig[]): T {
+  return { ...brief, circleRig: rigs[0] ?? null, extraCircleRigs: rigs.slice(1, maxCircleRigs) }
+}
+
+export function updateCircleRig(brief: DroneBrief, id: string, update: (rig: CircleRig) => CircleRig): DroneBrief {
+  const rigs = circleRigs(brief)
+  return rigs.some((rig) => rig.id === id) ? withCircleRigs(brief, rigs.map((rig) => rig.id === id ? update(rig) : rig)) : brief
 }

@@ -1,4 +1,4 @@
-import type { DroneBrief, Position } from '@/features/briefs/model/brief'
+import { circleRigs, type DroneBrief, type Position } from '@/features/briefs/model/brief'
 import { imageCorners } from './image-geometry'
 import { droneScanOutlinePoints, hasDroneScan } from './drone-scan'
 import { destination, rigOutline } from './geometry'
@@ -6,7 +6,7 @@ import type { MapNavigation } from './map-navigation'
 
 export function scenePoints(brief: DroneBrief): Position[] {
   const points = brief.angles.map((angle) => angle.position)
-  if (brief.circleRig) points.push(...rigOutline(brief.circleRig))
+  for (const rig of circleRigs(brief)) points.push(...rigOutline(rig))
   if (hasDroneScan(brief.droneScan)) points.push(...droneScanOutlinePoints(brief.droneScan))
   for (const polygon of brief.polygons) points.push(...polygon.vertices)
   for (const overlay of brief.imageOverlays) points.push(...imageCorners(overlay))
@@ -34,7 +34,7 @@ export function sceneBounds(points: Position[]): google.maps.LatLngBoundsLiteral
 }
 
 function sceneIsEmpty(brief: DroneBrief) {
-  return !brief.angles.length && !brief.circleRig && !hasDroneScan(brief.droneScan) && !brief.polygons.length && !brief.imageOverlays.length
+  return !brief.angles.length && !circleRigs(brief).length && !hasDroneScan(brief.droneScan) && !brief.polygons.length && !brief.imageOverlays.length
 }
 
 export function fitScene(map: MapNavigation, brief: DroneBrief) {

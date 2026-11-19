@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import type { DroneBrief, Position } from '../../briefs/model/brief.js'
+import { circleRigs, type DroneBrief, type Position } from '../../briefs/model/brief.js'
 
 /** Optional library metadata. Not part of the brief. Older project documents omit it. */
 export const mapViewSchema = z.object({
@@ -27,7 +27,7 @@ function destination(origin: Position, meters: number, heading: number): Positio
 
 function scenePoints(brief: DroneBrief): Position[] {
   const points = brief.angles.map((angle) => angle.position)
-  if (brief.circleRig) for (const heading of [0, 90, 180, 270]) points.push(destination(brief.circleRig.position, brief.circleRig.radiusMeters, heading))
+  for (const rig of circleRigs(brief)) for (const heading of [0, 90, 180, 270]) points.push(destination(rig.position, rig.radiusMeters, heading))
   for (const circle of [brief.droneScan?.lowRes, brief.droneScan?.highRes]) {
     if (circle) for (const heading of [0, 90, 180, 270]) points.push(destination(circle.position, circle.radiusMeters, heading))
   }
@@ -72,7 +72,7 @@ function zoomFor(frame: { north: number; south: number; east: number; west: numb
 
 /** Center and zoom matching the editor's opening frame, including the Oslo and unset-origin defaults. */
 export function editorMapView(brief: DroneBrief): EditorMapView {
-  const empty = !brief.angles.length && !brief.circleRig && !brief.droneScan?.highRes && !brief.droneScan?.lowRes && !brief.polygons.length && !brief.imageOverlays.length
+  const empty = !brief.angles.length && !circleRigs(brief).length && !brief.droneScan?.highRes && !brief.droneScan?.lowRes && !brief.polygons.length && !brief.imageOverlays.length
   if (empty && brief.coordinates.lat === 59.9139 && brief.coordinates.lng === 10.7522) return { lat: 59.9139, lng: 10.7522, zoom: 10 }
   if (empty && brief.coordinates.lat === 0 && brief.coordinates.lng === 0) return { lat: 0, lng: 0, zoom: 2 }
   const frame = sceneFrame(scenePoints(brief))

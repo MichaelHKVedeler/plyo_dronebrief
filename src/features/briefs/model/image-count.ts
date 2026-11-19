@@ -1,4 +1,4 @@
-import { effectiveRigHeights, effectivePanoramaHeights, shootSlots, type DroneBrief } from './brief'
+import { circleRigs, effectiveRigHeights, effectivePanoramaHeights, shootSlots, type CircleRig, type DroneBrief } from './brief'
 
 /** Locked capture multipliers. Circle rigs use their own heights, with a legacy drone-height fallback. */
 export const imageCaptureConfig = {
@@ -18,6 +18,10 @@ export type BriefImageCounts = {
   total: number
 }
 
+export function rigImageCount(brief: DroneBrief, rig: CircleRig) {
+  return imageCaptureConfig.circleRigPerArrowAndHeight * rig.arrowCount * effectiveRigHeights(brief, rig).length * shootSlots(brief.project).length
+}
+
 export function countBriefImages(brief: DroneBrief): BriefImageCounts {
   const times = shootSlots(brief.project).length
   const droneHeights = brief.typeSettings['drone-image'].heightsMeters.length
@@ -28,8 +32,7 @@ export function countBriefImages(brief: DroneBrief): BriefImageCounts {
     else if (angle.type === '360') panoramaHeightSlots += effectivePanoramaHeights(sharedPanoramaHeights, angle).length
     else if (angle.type === 'dslr') dslrPoints += 1
   }
-  const circleRig = (brief.circleRig
-    ? imageCaptureConfig.circleRigPerArrowAndHeight * brief.circleRig.arrowCount * effectiveRigHeights(brief).length : 0) * times
+  const circleRig = circleRigs(brief).reduce((sum, rig) => sum + rigImageCount(brief, rig), 0)
   const droneImage = imageCaptureConfig.droneImagePerPointAndHeight * dronePoints * droneHeights * times
   const extraCoverage = 0 // Scan markers have no capture heights or image count.
   const panorama = imageCaptureConfig.panoramaPerPointAndHeight * panoramaHeightSlots * times

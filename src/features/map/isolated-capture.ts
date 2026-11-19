@@ -1,5 +1,6 @@
-import { defaultVisibility, type CameraAngle, type LayerVisibility } from '@/features/briefs/model/brief'
+import { defaultVisibility, type CameraAngle, type CircleRig, type LayerVisibility } from '@/features/briefs/model/brief'
 import type { CaptureKind } from '@/features/briefs/components/capture-kind-glyph'
+import { rigCaptureKey, type CaptureToggleKey } from '@/features/briefs/components/capture-instructions'
 
 /** `droneScan` shows circles with extra coverage; `scanCircles` and `extra-coverage` split them for drone scan links. */
 export type IsolatedCapture = CaptureKind | 'scanCircles' | null
@@ -29,7 +30,7 @@ export function isolatedCaptureAngles(angles: CameraAngle[], isolated: IsolatedC
 }
 
 /** Shared links hide capture kinds one at a time. Extra coverage follows the drone scan layer, as in the editor. */
-export function hiddenCaptureVisibility(visibility: LayerVisibility, hidden: ReadonlySet<CaptureKind>): Pick<LayerVisibility, 'circleRig' | 'angles' | 'droneScan'> {
+export function hiddenCaptureVisibility(visibility: LayerVisibility, hidden: ReadonlySet<CaptureToggleKey>): Pick<LayerVisibility, 'circleRig' | 'angles' | 'droneScan'> {
   return {
     circleRig: visibility.circleRig && !hidden.has('circleRig'),
     angles: visibility.angles || (visibility.droneScan && !hidden.has('extra-coverage')),
@@ -37,8 +38,12 @@ export function hiddenCaptureVisibility(visibility: LayerVisibility, hidden: Rea
   }
 }
 
-export function hiddenCaptureAngles(angles: CameraAngle[], hidden: ReadonlySet<CaptureKind>, visibility = defaultVisibility) {
+export function hiddenCaptureAngles(angles: CameraAngle[], hidden: ReadonlySet<CaptureToggleKey>, visibility = defaultVisibility) {
   return angles.filter((angle) => angle.type === 'extra-coverage'
     ? visibility.droneScan && !hidden.has('extra-coverage')
     : visibility.angles && !hidden.has(angle.type))
+}
+
+export function hiddenCaptureRigs(rigs: CircleRig[], hidden: ReadonlySet<CaptureToggleKey>) {
+  return rigs.filter((rig) => !hidden.has(rigCaptureKey(rig.id)))
 }

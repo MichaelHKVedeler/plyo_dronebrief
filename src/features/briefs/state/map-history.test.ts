@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { createBrief, type DroneBrief } from '../model/brief'
+import { circleRigs, createBrief, withCircleRigs, type DroneBrief } from '../model/brief'
 import { exportBriefKey, importBriefKey } from '../storage/share-key'
 import { openSession, reduceSession, type BriefSession } from './brief-session'
 import { mapHistoryLimit } from './map-history'
@@ -143,6 +143,22 @@ describe('map transform history', () => {
     session = redo(session)
     session = redo(session)
     expect(session.brief.circleRig).toBeNull()
+  })
+
+  it('undoes removing rig 1 of two back into its numbered place', () => {
+    const brief = scene()
+    const second = { ...brief.circleRig!, id: 'rig-2', radiusMeters: 80 }
+    let session = openSession({ ...brief, extraCircleRigs: [second] }, 'edit')
+    session = edit(session, (b) => ({ ...b, extraCircleRigs: [{ ...second, radiusMeters: 95 }] }))
+    session = edit(session, (b) => withCircleRigs(b, circleRigs(b).filter((rig) => rig.id !== 'rig')))
+    expect(circleRigs(session.brief).map((rig) => rig.id)).toEqual(['rig-2'])
+    session = undo(session)
+    expect(circleRigs(session.brief).map((rig) => rig.id)).toEqual(['rig', 'rig-2'])
+    session = undo(session)
+    expect(session.brief.extraCircleRigs[0].radiusMeters).toBe(80)
+    session = redo(session)
+    session = redo(session)
+    expect(circleRigs(session.brief).map((rig) => [rig.id, rig.radiusMeters])).toEqual([['rig-2', 95]])
   })
 
   it('undoes and redoes adding and removing each drone scan circle', () => {

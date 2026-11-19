@@ -5,10 +5,10 @@ import { cameraAppearance } from './camera-appearance'
 
 export type CaptureKind = 'circleRig' | 'droneScan' | CameraAngle['type']
 
-export function CaptureKindGlyph({ kind }: { kind: CaptureKind }) {
+export function CaptureKindGlyph({ kind, number }: { kind: CaptureKind; number?: number }) {
   if (kind === 'circleRig') {
     return <span aria-hidden className="inline-flex size-8 shrink-0 items-center justify-center rounded-full border-2 border-primary bg-background text-primary shadow-sm">
-      <Circle className="size-4" />
+      {number ? <span className="text-sm font-semibold leading-none tabular-nums">{number}</span> : <Circle className="size-4" />}
     </span>
   }
   if (kind === 'droneScan') {
@@ -23,8 +23,9 @@ export function CaptureKindGlyph({ kind }: { kind: CaptureKind }) {
   </span>
 }
 
-export function CaptureKindToggleButton({ kind, label, visible, onClick }: {
+export function CaptureKindToggleButton({ kind, number, label, visible, onClick }: {
   kind: CaptureKind
+  number?: number
   /** The action, such as "Hide Aerial photo". */
   label: string
   visible: boolean
@@ -32,6 +33,6 @@ export function CaptureKindToggleButton({ kind, label, visible, onClick }: {
 }) {
   return <Button type="button" variant="ghost" size="icon-sm" className={`rounded-full p-0 hover:bg-transparent ${visible ? '' : 'opacity-50'}`}
     aria-pressed={visible} aria-label={label} title={label} onClick={onClick}>
-    <CaptureKindGlyph kind={kind} />
+    <CaptureKindGlyph kind={kind} number={number} />
   </Button>
 }

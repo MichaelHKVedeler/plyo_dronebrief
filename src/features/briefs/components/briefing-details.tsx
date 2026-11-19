@@ -9,7 +9,7 @@ import { pdfProjectSize } from '@/features/briefs/export/pdf-project'
 import { formatScanDiameter } from '@/features/map/drone-scan'
 import type { BriefSession } from '@/features/briefs/state/brief-session'
 import type { LocalImages } from '@/features/briefs/state/use-local-images'
-import type { CaptureKind } from './capture-kind-glyph'
+import type { CaptureToggleKey } from './capture-instructions'
 import type { BriefingPresentation } from '@/features/briefs/storage/public-brief-link'
 import type { BriefingCopy } from './briefing-copy'
 import { CaptureInstructionsList } from './capture-instructions-list'
@@ -19,7 +19,7 @@ export function BriefingDetails({ session, presentation, copy, hiddenKinds, refe
   session: BriefSession
   presentation: BriefingPresentation
   copy: BriefingCopy
-  hiddenKinds: ReadonlySet<CaptureKind>
+  hiddenKinds: ReadonlySet<CaptureToggleKey>
   referenceImages: LocalImages
   onClose: () => void
 }) {

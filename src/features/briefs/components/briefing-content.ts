@@ -1,16 +1,16 @@
-import type { DroneBrief } from '../model/brief'
+import { circleRigs, type DroneBrief } from '../model/brief'
 import type { BriefingContent } from '../storage/public-brief-link'
 
 /** Photo briefs and drone scans are shared as separate public links. */
 export function briefingContentBrief(brief: DroneBrief, content: BriefingContent): DroneBrief {
   if (content === 'photo') return { ...brief, droneScan: null, angles: brief.angles.filter((angle) => angle.type !== 'extra-coverage') }
-  if (content === 'scan') return { ...brief, circleRig: null, angles: brief.angles.filter((angle) => angle.type === 'extra-coverage') }
+  if (content === 'scan') return { ...brief, circleRig: null, extraCircleRigs: [], angles: brief.angles.filter((angle) => angle.type === 'extra-coverage') }
   return brief
 }
 
 export function briefingContentAvailable(brief: DroneBrief): Record<Exclude<BriefingContent, 'all'>, boolean> {
   return {
-    photo: !!brief.circleRig || brief.angles.some((angle) => angle.type !== 'extra-coverage'),
+    photo: circleRigs(brief).length > 0 || brief.angles.some((angle) => angle.type !== 'extra-coverage'),
     scan: !!(brief.droneScan?.highRes || brief.droneScan?.lowRes) || brief.angles.some((angle) => angle.type === 'extra-coverage'),
   }
 }

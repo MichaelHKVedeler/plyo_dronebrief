@@ -1,5 +1,5 @@
 import { rgb, type PDFPage, type PDFFont } from 'pdf-lib'
-import type { DroneBrief, Position } from '@/features/briefs/model/brief'
+import { circleRigs, rigPointLabel, type DroneBrief, type Position } from '@/features/briefs/model/brief'
 import { numberedCameras } from '@/features/briefs/model/camera-numbers'
 import { rigOutline, rigArrows, destination } from './geometry'
 import { circleOutline, droneScanFillOpacity, formatScanDiameter } from './drone-scan'
@@ -31,10 +31,11 @@ export function drawPdfPointDiagram(page: PDFPage, brief: DroneBrief, font: PDFF
     return p
   }
   brief.polygons.forEach((polygon) => line(polygon.vertices, orange))
-  if (brief.circleRig) {
-    line(rigOutline(brief.circleRig))
-    rigArrows(brief.circleRig).forEach((a) => { const p = dot(a.position, 'R' + a.number); arrow(p, a.directionDegrees) })
-  }
+  const rigs = circleRigs(brief)
+  rigs.forEach((rig, index) => {
+    line(rigOutline(rig))
+    rigArrows(rig).forEach((a) => { const p = dot(a.position, rigPointLabel(rigs.length, index, a.number)); arrow(p, a.directionDegrees) })
+  })
   for (const { angle, number } of numberedCameras(brief.angles)) {
     const color = angle.type === '360' ? purple : angle.type === 'dslr' ? blue : orange
     const p = project(angle.position)

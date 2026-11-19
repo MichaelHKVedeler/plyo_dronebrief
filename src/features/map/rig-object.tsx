@@ -25,8 +25,8 @@ function useCompactRig() {
   return compact
 }
 
-type Props = { rig: CircleRig; pixelsToMeters: number; dark?: boolean; editable: boolean; selected: boolean; interactive: boolean; onSelect: () => void; onCommit: (rig: CircleRig) => void }
-export function RigObject({ rig, pixelsToMeters, dark = false, editable, interactive, onSelect, onCommit }: Props) {
+type Props = { rig: CircleRig; number?: number; pixelsToMeters: number; dark?: boolean; editable: boolean; selected: boolean; interactive: boolean; onSelect: () => void; onCommit: (rig: CircleRig) => void }
+export function RigObject({ rig, number, pixelsToMeters, dark = false, editable, interactive, onSelect, onCommit }: Props) {
   const { Marker: AdvancedMarker, Polygon } = useObjectRenderer()
   const color = mapBrandColor(dark)
   // Only hovering the rig outline highlights its stroke.
@@ -74,6 +74,14 @@ export function RigObject({ rig, pixelsToMeters, dark = false, editable, interac
         <Badge data-rig-hover variant="outline" style={{ borderColor: color, borderWidth: baseStroke, color, scale: numberScale }} className="bg-white absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 size-10 justify-center rounded-full p-0 text-lg font-semibold leading-none tabular-nums">{arrow.number}</Badge>
       </div>
     </AdvancedMarker>)}
+    {/* Rig number at the centre, filled so it reads apart from the white arrow numbers. The cross replaces it while dragging. */}
+    {number !== undefined && !(canEdit && (rigHovered || draft !== null)) && <AdvancedMarker position={visible.position} anchorLeft="-50%" anchorTop="-50%"
+      title={'Circle rig ' + number} zIndex={10} clickable={false} style={{ pointerEvents: 'none' }}>
+      <div className="size-10" style={{ scale: scale * numberScale }}>
+        <Badge data-rig-number={rig.id} role="img" aria-label={'Circle rig ' + number} style={{ backgroundColor: color, borderColor: color }}
+          className="size-10 justify-center rounded-full p-0 text-lg font-semibold leading-none text-white tabular-nums">{number}</Badge>
+      </div>
+    </AdvancedMarker>}
     {/* Centre cross only while the rig outline is hovered or being dragged. */}
     {canEdit && (rigHovered || draft !== null) && <AdvancedMarker position={visible.position} anchorLeft="-50%" anchorTop="-50%"
       zIndex={10} clickable={false} style={{ pointerEvents: 'none' }}>

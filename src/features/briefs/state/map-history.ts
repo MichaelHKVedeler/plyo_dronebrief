@@ -1,4 +1,4 @@
-import type { CameraAngle, DroneBrief } from '../model/brief'
+import { circleRigs, withCircleRigs, type CameraAngle, type DroneBrief } from '../model/brief'
 
 export const mapHistoryLimit = 100
 
@@ -12,13 +12,12 @@ function cameraGeometry(angle: CameraAngle) {
 // Existing-object edits compare and restore geometry only. Lifecycle snapshots
 // let undo recreate removed camera points and rigs with all of their settings.
 function mapGeometry(brief: DroneBrief) {
-  const rig = brief.circleRig
   const scan = brief.droneScan
   return [
     ...brief.angles.map((angle, index) => ({ kind: 'camera' as const, id: angle.id, index, angle, geometry: cameraGeometry(angle) })),
-    ...(rig ? [{ kind: 'rig' as const, id: rig.id, rig, geometry: {
+    ...circleRigs(brief).map((rig, index) => ({ kind: 'rig' as const, id: rig.id, index, rig, geometry: {
       position: rig.position, radiusMeters: rig.radiusMeters, rotationDegrees: rig.rotationDegrees, ovalRatio: rig.ovalRatio,
-    } }] : []),
+    } })),
     ...(scan ? [{ kind: 'scan' as const, id: scan.id, geometry: scan }] : []),
     ...brief.imageOverlays.map((image) => ({ kind: 'image' as const, id: image.id, geometry: {
       position: image.position, widthMeters: image.widthMeters, heightMeters: image.heightMeters, rotationDegrees: image.rotationDegrees,
@@ -113,12 +112,14 @@ export function restoreMapHistory(brief: DroneBrief, entry: MapHistoryEntry, dir
       return cameraWithGeometry(angle, item)
     }) }
   }
-  const sourceRig = source.find((item) => item.kind === 'rig')
-  const targetRig = target.find((item) => item.kind === 'rig')
-  if (sourceRig && !targetRig) result = { ...result, circleRig: null }
-  if (targetRig) result = { ...result, circleRig: result.circleRig?.id === targetRig.id
-    ? { ...result.circleRig, ...targetRig.geometry }
-    : targetRig.rig }
+  const targetRigIds = new Set(target.flatMap((item) => item.kind === 'rig' ? [item.id] : []))
+  const removedRigIds = new Set(source.flatMap((item) => item.kind === 'rig' && !targetRigIds.has(item.id) ? [item.id] : []))
+  let rigs = circleRigs(result).filter((rig) => !removedRigIds.has(rig.id))
+  for (const item of target.filter((value) => value.kind === 'rig').sort((a, b) => a.index - b.index)) {
+    if (rigs.some((rig) => rig.id === item.id)) rigs = rigs.map((rig) => rig.id === item.id ? { ...rig, ...item.geometry } : rig)
+    else rigs = [...rigs.slice(0, item.index), item.rig, ...rigs.slice(item.index)]
+  }
+  if (removedRigIds.size || targetRigIds.size) result = withCircleRigs(result, rigs)
   const sourceScan = source.find((item) => item.kind === 'scan')
   const targetScan = target.find((item) => item.kind === 'scan')
   if (sourceScan && !targetScan) result = { ...result, droneScan: null }

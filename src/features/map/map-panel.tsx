@@ -25,7 +25,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import type { BriefAction, BriefSession } from '@/features/briefs/state/brief-session'
-import { defaultShootTime, ensureShootRange, projectWithShoots, shootSlots, type CameraAngle, type Position, type ShootSlot } from '@/features/briefs/model/brief'
+import { circleRigs, updateCircleRig, defaultShootTime, ensureShootRange, projectWithShoots, shootSlots, type CameraAngle, type Position, type ShootSlot } from '@/features/briefs/model/brief'
 import { CameraMarkers } from './camera-markers'
 import { RigObject } from './rig-object'
 import { DroneScanObject } from './drone-scan-object'
@@ -37,8 +37,8 @@ import { MiddleMousePan } from './middle-mouse-pan'
 import { metersPerPixel } from './geometry'
 import { defaultOverlaySize, MapObjectScale, mapObjectScale } from './map-object-scale'
 import { idleTool, placeCamera, type MapTool } from './placement'
-import { hiddenCaptureAngles, hiddenCaptureVisibility, isolatedCaptureAngles, isolatedCaptureVisibility, type IsolatedCapture } from './isolated-capture'
-import type { CaptureKind } from '@/features/briefs/components/capture-kind-glyph'
+import { hiddenCaptureAngles, hiddenCaptureRigs, hiddenCaptureVisibility, isolatedCaptureAngles, isolatedCaptureVisibility, type IsolatedCapture } from './isolated-capture'
+import type { CaptureToggleKey } from '@/features/briefs/components/capture-instructions'
 import { ResponsiveShadowTimeControl } from './shadow-time-control'
 import { previewShootSlot, type ShootEndpoint } from './shoot-time-range'
 import { droneZoneAttribution, useDroneZones, type DroneZones } from './drone-zones'
@@ -64,7 +64,7 @@ type Props = {
   overlaySizeRef?: RefObject<number>
   isolatedKind?: IsolatedCapture
   /** Shared links: capture kinds the viewer has hidden. Takes the place of isolatedKind. */
-  hiddenKinds?: ReadonlySet<CaptureKind>
+  hiddenKinds?: ReadonlySet<CaptureToggleKey>
   layerControls?: ReactNode
   pointCallout?: ReactNode
 }
@@ -77,6 +77,7 @@ function ConnectedMap({ droneZones, imageLayer, selectedCameraIds, onSelectCamer
   useLayoutEffect(() => { if (!active) googleRestore.current = { holding: true, baseline: null } }, [active])
   const [middlePanning, setMiddlePanning] = useState(false)
   const { brief, visibility, mode } = session
+  const rigs = circleRigs(brief)
   const editing = mode === 'edit'
   const interactive = tool.kind === 'idle'
   const objectsInteractive = interactive && !middlePanning
@@ -121,10 +122,11 @@ function ConnectedMap({ droneZones, imageLayer, selectedCameraIds, onSelectCamer
       {capture.droneScan && hasDroneScan(brief.droneScan) && <DroneScanObject scan={brief.droneScan} zoom={renderedZoom} editable={editing} interactive={objectsInteractive}
         onSelect={onSelect}
         onCommit={(next) => dispatch({ type: 'update', update: (b) => b.droneScan?.id === next.id ? { ...b, droneScan: next } : b })} />}
-      {capture.circleRig && brief.circleRig && <RigObject rig={brief.circleRig} pixelsToMeters={metersPerPixel(brief.circleRig.position.lat, renderedZoom)} dark={dark} editable={editing} interactive={objectsInteractive}
-        selected={selectedId === brief.circleRig.id}
-        onSelect={() => onSelect(brief.circleRig!.id)}
-        onCommit={(rig) => dispatch({ type: 'update', update: (b) => ({ ...b, circleRig: b.circleRig?.id === rig.id ? rig : b.circleRig }) })} />}
+      {capture.circleRig && (hiddenKinds ? hiddenCaptureRigs(rigs, hiddenKinds) : rigs).map((rig) => <RigObject key={rig.id} rig={rig} number={rigs.length > 1 ? rigs.indexOf(rig) + 1 : undefined}
+        pixelsToMeters={metersPerPixel(rig.position.lat, renderedZoom)} dark={dark} editable={editing} interactive={objectsInteractive}
+        selected={selectedId === rig.id}
+        onSelect={() => onSelect(rig.id)}
+        onCommit={(next) => dispatch({ type: 'update', update: (b) => updateCircleRig(b, next.id, () => next) })} />)}
       {capture.angles && <CameraMarkers angles={captureAngles} pendingAngle={pendingAngle} editable={editing} interactive={objectsInteractive}
         selectedCameraIds={selectedCameraIds} zoom={renderedZoom} dslrSettings={brief.typeSettings.dslr} selectable={selectable}
         onSelectCamera={onSelectCamera} onCommit={commitCamera} onDuplicate={duplicateCameraAt} />}

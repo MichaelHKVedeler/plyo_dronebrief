@@ -1,5 +1,5 @@
 import { DroneScanEditing } from '@/features/briefs/state/drone-scan-editing'
-import { defaultRigArrowCount, type Position } from '@/features/briefs/model/brief'
+import { circleRigs, defaultRigArrowCount, maxCircleRigs, withCircleRigs, type Position } from '@/features/briefs/model/brief'
 import { addDroneScanCircle, type ScanRole } from '@/features/map/drone-scan'
 import { useEffect, useRef, useState, type ReactNode, type RefObject } from 'react'
 import type { PdfMapCapture } from '@/features/briefs/export/pdf-types'
@@ -33,16 +33,20 @@ export function BriefPage({ session, dispatch, error, pdfMapRef, imageTransport,
     const placement = rigPlacement.current?.() ?? { position: { ...viewCenter.current }, radiusMeters: 50 }
     const rig = { id: crypto.randomUUID(), ...placement, heightsMeters: [...session.brief.typeSettings['drone-image'].heightsMeters], arrowCount: defaultRigArrowCount, ovalRatio: 1, rotationDegrees: 0 }
     pendingRig.current = rig.id
-    dispatch({ type: 'update', update: (brief) => brief.circleRig ? brief : { ...brief, circleRig: rig } })
+    dispatch({ type: 'update', update: (brief) => {
+      const rigs = circleRigs(brief)
+      return rigs.length >= maxCircleRigs ? brief : withCircleRigs(brief, [...rigs, rig])
+    } })
     setTool(idleTool)
     select(rig.id)
   }
+  const { circleRig, extraCircleRigs } = session.brief
   useEffect(() => {
-    if (pendingRig.current && session.brief.circleRig?.id === pendingRig.current) {
+    if (pendingRig.current && circleRigs({ circleRig, extraCircleRigs }).some((rig) => rig.id === pendingRig.current)) {
       pendingRig.current = null
       if (!session.visibility.circleRig) dispatch({ type: 'visibility', layer: 'circleRig', visible: true })
     }
-  }, [dispatch, session.brief.circleRig, session.visibility.circleRig])
+  }, [dispatch, circleRig, extraCircleRigs, session.visibility.circleRig])
   function addScan(role: ScanRole) {
     if (session.mode !== 'edit') return
     if (role === 'high' && session.brief.droneScan?.highRes) return

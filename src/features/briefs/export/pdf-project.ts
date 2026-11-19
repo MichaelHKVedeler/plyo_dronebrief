@@ -1,4 +1,4 @@
-import { effectiveRigHeights, effectivePanoramaHeights, type DroneBrief } from '../model/brief'
+import { circleRigs, effectiveRigHeights, effectivePanoramaHeights, rigPointLabel, type DroneBrief } from '../model/brief'
 import { numberedCameras } from '../model/camera-numbers'
 import { rigArrows } from '@/features/map/geometry'
 
@@ -10,10 +10,11 @@ export function pdfProjectPosition(brief: DroneBrief) {
 
 /** Smallest template tier that contains the actual capture plan, not image totals. */
 export function pdfProjectSize(brief: DroneBrief): PdfProjectSize {
-  const aerial = (brief.circleRig?.arrowCount ?? 0) + brief.angles.filter((a) => a.type === 'drone-image').length
+  const rigs = circleRigs(brief)
+  const aerial = rigs.reduce((sum, rig) => sum + rig.arrowCount, 0) + brief.angles.filter((a) => a.type === 'drone-image').length
   const panorama = brief.angles.filter((a) => a.type === '360').length
   const dslr = brief.angles.filter((a) => a.type === 'dslr').length
-  const aerialHeights = Math.max(effectiveRigHeights(brief).length, brief.angles.some((a) => a.type === 'drone-image') ? brief.typeSettings['drone-image'].heightsMeters.length : 0)
+  const aerialHeights = Math.max(0, ...rigs.map((rig) => effectiveRigHeights(brief, rig).length), brief.angles.some((a) => a.type === 'drone-image') ? brief.typeSettings['drone-image'].heightsMeters.length : 0)
   const panoramaPoints = brief.angles.filter((angle) => angle.type === '360')
   const panoramaHeights = panoramaPoints.length
     ? Math.max(...panoramaPoints.map((angle) => effectivePanoramaHeights(brief.typeSettings['360'].heightsMeters, angle).length))
@@ -27,10 +28,10 @@ export function pdfProjectSize(brief: DroneBrief): PdfProjectSize {
 }
 
 export function pdfCapturePoints(brief: DroneBrief) {
-  const rig = brief.circleRig
+  const rigs = circleRigs(brief)
   return [
-    ...(rig ? [{ label: 'R0', position: rig.position, direction: undefined as number | undefined, fov: undefined as number | undefined },
-      ...rigArrows(rig).map((a) => ({ label: `R${a.number}`, position: a.position, direction: a.directionDegrees, fov: undefined as number | undefined }))] : []),
+    ...rigs.flatMap((rig, index) => [{ label: rigPointLabel(rigs.length, index, 0), position: rig.position, direction: undefined as number | undefined, fov: undefined as number | undefined },
+      ...rigArrows(rig).map((a) => ({ label: rigPointLabel(rigs.length, index, a.number), position: a.position, direction: a.directionDegrees, fov: undefined as number | undefined }))]),
     ...numberedCameras(brief.angles).map(({ angle, number }) => ({
       label: `${angle.type === 'extra-coverage' ? 'E' : angle.type === 'drone-image' ? 'D' : angle.type === '360' ? 'P' : 'S'}${number}`,
       position: angle.position,

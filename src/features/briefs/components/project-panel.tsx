@@ -3,7 +3,7 @@ import { Circle, Crosshair, Drone, X } from 'lucide-react'
 import { Accordion } from '@/components/ui/accordion'
 import { SettingsSection } from './settings-section'
 import { Button } from '@/components/ui/button'
-import { effectiveRigHeights, cameraLabels, cameraTypes, effectivePanoramaHeights, formatHeightsMeters, type CameraAngle, type DroneBrief, type LayerVisibility } from '../model/brief'
+import { circleRigs, effectiveRigHeights, cameraLabels, cameraTypes, effectivePanoramaHeights, formatHeightsMeters, maxCircleRigs, withCircleRigs, type CameraAngle, type DroneBrief, type LayerVisibility } from '../model/brief'
 import { CameraAddPanel } from './camera-add-panel'
 import { cameraAppearance } from './camera-appearance'
 import { RigRadii } from './rig-radii'
@@ -16,14 +16,16 @@ import type { BriefSession } from '../state/brief-session'
 
 const editSections = ['rig', 'add-cameras', 'drone-scan', 'cameras']
 const viewSections = ['rig', 'cameras', 'drone-scan', 'heights']
+const rigButtonClass = 'border-emerald-700 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 hover:text-emerald-800 dark:border-emerald-400 dark:bg-emerald-950 dark:text-emerald-200 dark:hover:bg-emerald-900 dark:hover:text-emerald-200'
 
 type Props = { placingType?: CameraAngle['type'] | null; onCenterCamera: (angle: CameraAngle) => void; onAddRig: () => void; onAddScan: (role: ScanRole) => void; selectedCameraIds: string[]; onSelectCamera: (id: string, range: boolean) => void; onRemoveCameras: (ids: string[]) => void; session: BriefSession; onUpdate: (update: (brief: DroneBrief) => DroneBrief) => void; onVisibilityChange: (layer: keyof LayerVisibility, visible: boolean) => void; selectedId: string | null; onSelect: (id: string | null) => void; onAddCamera: (type: CameraAngle['type']) => void }
 export function ProjectPanel({ placingType, onCenterCamera, onAddRig, onAddScan, selectedCameraIds, onSelectCamera, onRemoveCameras, session, onUpdate, onVisibilityChange, selectedId, onAddCamera }: Props) {
   const { brief, mode } = session
   const [open, setOpen] = useState<string[]>(mode === 'edit' ? editSections : viewSections)
   const [lastSelected, setLastSelected] = useState<string | null>(null)
+  const rigs = circleRigs(brief)
   const scanIds = [brief.droneScan?.highRes?.id, brief.droneScan?.lowRes?.id]
-  const selectedSection = selectedId ? (selectedId === brief.circleRig?.id ? 'rig' : scanIds.includes(selectedId) ? 'drone-scan' : 'cameras') : null
+  const selectedSection = selectedId ? (rigs.some((rig) => rig.id === selectedId) ? 'rig' : scanIds.includes(selectedId) ? 'drone-scan' : 'cameras') : null
   const scanCount = (brief.droneScan?.highRes ? 1 : 0) + (brief.droneScan?.lowRes ? 1 : 0)
   const visibility = (layer: keyof LayerVisibility) => ({ visible: session.visibility[layer], onToggle: () => onVisibilityChange(layer, !session.visibility[layer]) })
   if (lastSelected !== selectedId) {
@@ -31,8 +33,11 @@ export function ProjectPanel({ placingType, onCenterCamera, onAddRig, onAddScan,
     if (selectedSection) setOpen((previous) => previous.includes(selectedSection) ? previous : [...previous, selectedSection])
   }
   if (mode === 'view') return <Accordion type="multiple" value={open} onValueChange={setOpen}>
-    <SettingsSection value="rig" title="Circle rig" count={brief.circleRig ? 1 : 0} visibility={visibility('circleRig')}>
-      {brief.circleRig ? <><RigRadii rig={brief.circleRig} /><p className="text-sm">Heights: {formatHeightsMeters(effectiveRigHeights(brief)) || 'None'} m</p></> : <p>No circle rig in this brief.</p>}
+    <SettingsSection value="rig" title="Circle rig" count={rigs.length} visibility={visibility('circleRig')}>
+      {rigs.length ? rigs.map((rig, index) => <div key={rig.id} className="grid gap-1">
+        {rigs.length > 1 && <p className="text-sm font-medium">Circle rig {index + 1}</p>}
+        <RigRadii rig={rig} /><p className="text-sm">Heights: {formatHeightsMeters(effectiveRigHeights(brief, rig)) || 'None'} m</p>
+      </div>) : <p>No circle rig in this brief.</p>}
     </SettingsSection>
     <SettingsSection value="cameras" title="Added camera points" count={brief.angles.length}>
       {brief.angles.length ? <CameraGroups angles={brief.angles}>{(points) => points.map((angle, index) => <div key={angle.id} className="text-sm">
@@ -49,15 +54,19 @@ export function ProjectPanel({ placingType, onCenterCamera, onAddRig, onAddScan,
     </SettingsSection>
   </Accordion>
   return <Accordion type="multiple" value={open} onValueChange={setOpen}>
-    <SettingsSection value="rig" title="Circle rig" count={brief.circleRig ? 1 : 0} visibility={visibility('circleRig')}>
-    {brief.circleRig && <>
-      <RigRadiusFields rig={brief.circleRig} heights={effectiveRigHeights(brief)} onUpdate={onUpdate} />
-    </>}
-    {brief.circleRig
-      ? <Button variant="outline" aria-label="Remove Circle Rig" className="justify-start border-emerald-700 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 hover:text-emerald-800 dark:border-emerald-400 dark:bg-emerald-950 dark:text-emerald-200 dark:hover:bg-emerald-900 dark:hover:text-emerald-200" onClick={() => onUpdate((b) => ({ ...b, circleRig: null }))}>
-        <X className="text-red-600 dark:text-red-400" />Circle Rig
-      </Button>
-      : <Button variant="outline" className="justify-start border-emerald-700 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 hover:text-emerald-800 dark:border-emerald-400 dark:bg-emerald-950 dark:text-emerald-200 dark:hover:bg-emerald-900 dark:hover:text-emerald-200" onClick={onAddRig}><Circle />Add Circle Rig</Button>}
+    <SettingsSection value="rig" title="Circle rig" count={rigs.length} visibility={visibility('circleRig')}>
+    {rigs.map((rig, index) => {
+      const name = rigs.length > 1 ? `Circle Rig ${index + 1}` : 'Circle Rig'
+      return <div key={rig.id} className="grid gap-3">
+        {rigs.length > 1 && <p className="text-sm font-medium">{name}</p>}
+        <RigRadiusFields rig={rig} heights={effectiveRigHeights(brief, rig)} onUpdate={onUpdate} />
+        <Button variant="outline" aria-label={'Remove ' + name} className={'justify-start ' + rigButtonClass}
+          onClick={() => onUpdate((b) => withCircleRigs(b, circleRigs(b).filter((item) => item.id !== rig.id)))}>
+          <X className="text-red-600 dark:text-red-400" />{name}
+        </Button>
+      </div>
+    })}
+    {rigs.length < maxCircleRigs && <Button variant="outline" className={'justify-start ' + rigButtonClass} onClick={onAddRig}><Circle />Add Circle Rig</Button>}
     </SettingsSection>
     <SettingsSection value="add-cameras" title="Add camera points" visibility={visibility('angles')}>
       <CameraAddPanel placingType={placingType} brief={brief} onAdd={onAddCamera} onUpdate={onUpdate} />
