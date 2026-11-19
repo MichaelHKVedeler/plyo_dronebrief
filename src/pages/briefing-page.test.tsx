@@ -61,7 +61,7 @@ it('shows the clicked point heights, including a 360 override', async () => {
   await user.click(screen.getByRole('button', { name: 'Select 360 point' }))
   const heights = screen.getByRole('status', { name: '360 1 Heights' })
   expect(heights).toHaveTextContent('11 m, 14 m')
-  expect(heights).toHaveTextContent('Custom heights')
+  expect(heights).not.toHaveTextContent('Custom heights')
   expect(heights).not.toHaveTextContent('360 1')
   await user.click(screen.getByRole('button', { name: 'Select drone point' }))
   expect(screen.getByRole('status', { name: 'Drone image 1 Heights' })).toHaveTextContent('40 m, 60 m')

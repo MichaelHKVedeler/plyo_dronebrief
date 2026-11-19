@@ -29,6 +29,6 @@ export function PointHeightsCallout({ brief, angleId, language, onClose }: {
       <p className="font-medium">{copy.heights}</p>
       <Button type="button" variant="ghost" size="icon" className="size-6" aria-label={copy.closeHeights} onClick={onClose}><X /></Button>
     </div>
-    <p className="text-muted-foreground">{meters?.length === 0 ? copy.noHeights : heights}{angle.type === '360' && angle.heightsMeters?.length ? ` · ${copy.customHeights}` : ''}</p>
+    <p className="text-muted-foreground">{meters?.length === 0 ? copy.noHeights : heights}</p>
   </div>
 }
