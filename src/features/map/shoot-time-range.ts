@@ -27,3 +27,11 @@ export function moveShootEndpoint(slot: ShootSlot, endpoint: ShootEndpoint, minu
   if (endpoint === 1) return { ...slot, endTime: value, time: timeLabel(Math.max(timeMinutes(slot.time), moved - maxShootRangeMinutes)) }
   return { ...slot, time: value, endTime: timeLabel(Math.min(timeMinutes(slot.endTime), moved + maxShootRangeMinutes)) }
 }
+
+/** Slides the whole range by `minutes`, stopping at either end of the day so its length never changes. */
+export function moveShootRange(slot: ShootSlot, minutes: number): ShootSlot {
+  if (!slot.endTime) return slot
+  const start = timeMinutes(slot.time), end = timeMinutes(slot.endTime)
+  const delta = Math.max(-start, Math.min(shadowSliderMax - end, Math.round(minutes)))
+  return { ...slot, time: timeLabel(start + delta), endTime: timeLabel(end + delta) }
+}

@@ -1,7 +1,7 @@
 import SunCalc from 'suncalc'
 import { formatInTimeZone } from 'date-fns-tz'
 import type { Position, ShootSlot } from '@/features/briefs/model/brief'
-import { shadowTime, timeMinutes } from './shadow-time'
+import { shadowSliderMax, shadowTime, timeMinutes } from './shadow-time'
 
 // Evening photographic blue hour: the sun is between 4 and 6 degrees below
 // the horizon. SunCalc's built-in dusk is the -6 degree event.
@@ -63,3 +63,24 @@ export function usedSunlightDays(slots: ShootSlot[], position: Position) {
     return { ...day, usedPhases }
   })
 }
+
+export type DaylightSegment = { kind: 'golden' | 'day'; start: number; end: number }
+/** Golden hours and daytime as wall-clock minutes of `date` at the site, clipped to that day, for the time slider. */
+export function daylight(date: string, position: Position) {
+  const { zone, phases } = sunlightTimes(date, position)
+  const minutes = (instant: Date) => {
+    const day = formatInTimeZone(instant, zone, 'yyyy-MM-dd')
+    return day < date ? 0 : day > date ? shadowSliderMax : timeMinutes(formatInTimeZone(instant, zone, 'HH:mm'))
+  }
+  const segments: DaylightSegment[] = []
+  for (const [phase, kind] of [['sunrise', 'golden'], ['daytime', 'day'], ['sunset', 'golden']] as const) {
+    const window = phases[phase]
+    if (window) segments.push({ kind, start: minutes(window.start), end: minutes(window.end) })
+  }
+  return {
+    segments: segments.filter((segment) => segment.end > segment.start),
+    sunrise: phases.sunrise ? minutes(phases.sunrise.start) : null,
+    sunset: phases.sunset ? minutes(phases.sunset.end) : null,
+  }
+}
+export type Daylight = ReturnType<typeof daylight>

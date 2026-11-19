@@ -7,6 +7,7 @@ import { ensureShootRange, maxShootSlots, nextShootSlot, type Position, type Sho
 import { shadowTime, timeMinutes } from './shadow-time'
 import { previewShootSlot, type ShootEndpoint } from './shoot-time-range'
 import { ShootTimeSlider } from './shoot-time-slider'
+import { daylight } from './sunlight-times'
 
 function formatSlotDate(date: string) {
   const [year, month, day] = date.split('-').map(Number)
@@ -29,6 +30,7 @@ export function ShadowTimeControl({ slots, activeIndex, activeEndpoint = 0, onAc
   const ranged = slots.map(ensureShootRange)
   const shown = ranged[Math.min(activeIndex, ranged.length - 1)] ?? ranged[0]
   const date = ranged[0]?.date ?? ''
+  const light = date ? daylight(date, position) : undefined
   const zone = shown ? shadowTime(shown.date, timeMinutes(shown.time), position).zone : ''
   function replace(index: number, slot: ShootSlot, commit = false) {
     const next = ranged.map((current, i) => ensureShootRange(i === index ? slot : current))
@@ -101,7 +103,7 @@ export function ShadowTimeControl({ slots, activeIndex, activeEndpoint = 0, onAc
                 }}><X /></Button>}
             </div>
           </div>
-          <ShootTimeSlider slot={slot} name={timeName} zone={time.zone} active={selected} endpoint={endpoint}
+          <ShootTimeSlider slot={slot} name={timeName} zone={time.zone} active={selected} endpoint={endpoint} daylight={light}
             onSelect={(value) => onActivate(index, value)} onPreview={(value) => replace(index, value)} onCommit={(value) => replace(index, value, true)} />
           {time.adjusted && <p className="text-xs text-muted-foreground">Adjusted for daylight saving</p>}
         </div>
@@ -114,7 +116,7 @@ export function ShadowTimeControl({ slots, activeIndex, activeEndpoint = 0, onAc
         }}><Plus /> Add time</Button>}
         {zone && <p className="text-xs text-muted-foreground">{zone}</p>}
       </div>
-      <p className="text-xs text-muted-foreground">Select either time to preview its shadows.</p>
+      <p className="text-xs text-muted-foreground">Drag the window to move the range, or its edges to resize it. Select either time to preview its shadows.</p>
     </div>
   </div>
 }

@@ -81,3 +81,19 @@ it('discards an unfinished preview when its editor closes', () => {
   expect(preview).toHaveBeenLastCalledWith(slot)
   expect(commit).not.toHaveBeenCalled()
 })
+it('drags the window to move the whole range and commits once', () => {
+  render(<Control initial={{ date: '2026-09-19', time: '09:00', endTime: '11:00' }} />)
+  const range = document.querySelector('[data-slot="slider-range"]')!
+  fireEvent.pointerDown(range, { button: 0, pointerId: 1, clientX: 600 })
+  fireEvent.pointerMove(track(), { pointerId: 1, clientX: 690 })
+  expect(screen.getByRole('slider', { name: 'Shoot start' })).toHaveAttribute('aria-valuetext', '10:30 Europe/Oslo')
+  expect(screen.getByRole('slider', { name: 'Shoot end' })).toHaveAttribute('aria-valuetext', '12:30 Europe/Oslo')
+  expect(commit).not.toHaveBeenCalled()
+  fireEvent.pointerUp(track(), { button: 0, pointerId: 1 })
+  expect(commit).toHaveBeenCalledExactlyOnceWith({ date: '2026-09-19', time: '10:30', endTime: '12:30' })
+})
+it('moves the whole range with Shift and the arrow keys', () => {
+  render(<Control initial={{ date: '2026-09-19', time: '09:00', endTime: '11:00' }} />)
+  fireEvent.keyDown(screen.getByRole('slider', { name: 'Shoot end' }), { key: 'ArrowLeft', shiftKey: true })
+  expect(commit).toHaveBeenCalledExactlyOnceWith({ date: '2026-09-19', time: '08:45', endTime: '10:45' })
+})

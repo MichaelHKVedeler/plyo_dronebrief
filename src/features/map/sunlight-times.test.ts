@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest'
 import { formatInTimeZone } from 'date-fns-tz'
-import { sunlightPhases, sunlightRange, sunlightTimes, usedSunlightDays } from './sunlight-times'
+import { daylight, sunlightPhases, sunlightRange, sunlightTimes, usedSunlightDays } from './sunlight-times'
 
 it('calculates ordered photographic windows in Oslo, including evening blue hour', () => {
   const day = sunlightTimes('2026-09-19', { lat: 59.9139, lng: 10.7522 })
@@ -61,4 +61,12 @@ it('filters independently per date through the site daylight-saving transition',
   const days = usedSunlightDays([{ date: '2026-03-28', time: '12:00' }, { date: '2026-03-29', time: '11:00', endTime: '13:00' }], oslo)
   expect(days.map((day) => day.usedPhases)).toEqual([['daytime'], ['daytime']])
   expect(days.map((day) => formatInTimeZone(day.phases.daytime!.start, day.zone, 'xxx'))).toEqual(['+01:00', '+02:00'])
+})
+it('lays out golden hours and daytime in site minutes for the slider, and none in polar night', () => {
+  const oslo = daylight('2026-09-19', { lat: 59.9139, lng: 10.7522 })
+  expect(oslo.segments.map((segment) => segment.kind)).toEqual(['golden', 'day', 'golden'])
+  expect(oslo.sunrise).toBeGreaterThan(6 * 60); expect(oslo.sunrise).toBeLessThan(8 * 60)
+  expect(oslo.sunset).toBeGreaterThan(18 * 60); expect(oslo.sunset).toBeLessThan(20 * 60)
+  for (const [a, b] of oslo.segments.slice(1).map((segment, i) => [oslo.segments[i], segment])) expect(a.end).toBe(b.start)
+  expect(daylight('2026-12-21', { lat: 78.2232, lng: 15.6469 })).toEqual({ segments: [], sunrise: null, sunset: null })
 })
