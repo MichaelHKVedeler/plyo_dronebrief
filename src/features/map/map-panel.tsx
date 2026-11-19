@@ -1,5 +1,6 @@
 import { countBriefImages } from '@/features/briefs/model/image-count'
 import { ImageLayer } from './image-layer'
+import './google-logo.css'
 import type { PdfMapCapture } from '@/features/briefs/export/pdf-types'
 import { usePdfMapCapture, waitForMapIdle } from './use-pdf-map-capture'
 import type { ImageLayerState } from './image-interaction'
@@ -266,7 +267,7 @@ function MapWorkspace(props: Props) {
     onSelect(angle.id)
   }
 
-  return <CardContent ref={viewport} className="@container relative h-full min-h-0 p-0">
+  return <CardContent ref={viewport} data-map-root className="@container relative h-full min-h-0 p-0">
     <div data-pdf-map-surface className="absolute inset-0" style={{ visibility: showGoogle ? 'visible' : 'hidden' }} aria-hidden={!showGoogle} inert={!showGoogle}>
       {apiKey ? <ConnectedMap {...mapProps} droneZones={droneZones} selectable={briefing} imageLayer={imageLayer} dimOpacity={dimOpacity} objectSizePercent={renderedObjectSize} zoom={zoom} active={showGoogle} view={view} satellite={satellite} onViewChange={onViewChange} onMapClick={handleMapClick} onCameraPlace={handleCameraPlace} onCameraDuplicate={handleCameraDuplicate} /> : <MapMessage title="Map setup pending" description="Google Maps will appear once connected. Your brief is still available." />}
     </div>

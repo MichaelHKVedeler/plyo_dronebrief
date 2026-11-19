@@ -61,7 +61,7 @@ export function BriefingMapLayers({ brief, language, sliders, hiddenKinds, onHid
   const collapseLabel = collapsed ? copy.showLayerButtons : copy.hideLayerButtons
   // A full-height bar on the left edge; buttons keep their size and the sliders shrink so it fits any height.
   // Collapsed, only a small show button remains in the top-left corner.
-  return <div className={collapsed ? 'pointer-events-auto mt-3 ml-3 self-start rounded-lg border bg-card p-1 shadow-sm'
+  return <div data-layer-sidebar={collapsed ? 'closed' : 'open'} className={collapsed ? 'pointer-events-auto mt-3 ml-3 self-start rounded-lg border bg-card p-1 shadow-sm'
     : 'pointer-events-auto flex h-full w-fit flex-col items-center gap-2.5 overflow-y-auto border-r bg-card p-2 shadow-sm [&>*]:shrink-0'}>
     <Button type="button" variant="ghost" size="icon-lg" className="[&_svg]:size-6" aria-expanded={!collapsed} aria-label={collapseLabel} title={collapseLabel}
       onClick={() => setCollapsed(!collapsed)}>

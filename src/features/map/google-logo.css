@@ -1,0 +1,5 @@
+/* Google's terms require its logo to stay visible: slide it right of the open public-link sidebar.
+   shortcut: relies on Google's logo link pointing at maps.google.com/maps; recheck if the logo reappears under the sidebar. */
+[data-map-root]:has([data-layer-sidebar="open"]) .gm-style div:has(> a[href*="maps.google.com/maps"]) {
+  transform: translateX(4rem);
+}
