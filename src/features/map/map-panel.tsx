@@ -303,7 +303,7 @@ function MapWorkspace(props: Props) {
     </div>}
     <div className="pointer-events-none absolute inset-x-3 bottom-8 z-20 flex items-end gap-2">
       <div className="grid min-w-0 max-w-40 flex-1 justify-items-start gap-2">
-        <div className={'pointer-events-auto gap-2 ' + (briefing ? 'flex items-end' : 'grid w-full')}>
+        <div className={'pointer-events-auto gap-2 ' + (briefing ? 'grid justify-items-start' : 'grid w-full')}>
           <MapObjectSizeControl value={objectSizePercent} onChange={setObjectSize} upright={briefing} />
           <MapDimmerControl value={dimOpacity} onChange={setDimOpacity} upright={briefing} />
         </div>
